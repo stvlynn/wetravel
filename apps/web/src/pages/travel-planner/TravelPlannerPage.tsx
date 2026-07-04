@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchTrip, renameTrip, reversePlace } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { stopNumbers } from "@/entities/trip";
+import type { Trip } from "@/entities/trip";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
 import { AppSidebar } from "@/widgets/app-sidebar";
@@ -24,6 +26,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const { navigate } = useRouter();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? "lynn";
+  const preferredCurrency = session?.user?.defaultCurrency;
 
   const { i18n } = useTranslation();
   const [tab, setTab] = useState<Tab>("map");
@@ -59,7 +62,13 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   }, [trip]);
 
   const openCompose = (d: number, index: number) =>
-    setCompose({ day: d, index, name: "", time: "" });
+    setCompose({
+      day: d,
+      index,
+      name: "",
+      time: "",
+      costCurrency: preferredCurrency || trip?.currency,
+    });
   const patchCompose = (patch: Partial<ComposeDraft>) =>
     setCompose((c) => (c ? { ...c, ...patch } : c));
   const cancelCompose = () => {
@@ -80,6 +89,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           area: c.area,
           category: c.category,
           cost: c.cost,
+          costCurrency: c.costCurrency,
           note: c.note?.trim() || undefined,
         });
       }
@@ -115,7 +125,15 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     if (!trip) return;
     const targetDay = day > 0 ? day : (trip.days[0]?.number ?? 1);
     const index = trip.stops.filter((s) => s.day === targetDay).length;
-    setCompose({ day: targetDay, index, name: "", time: "", lat, lng });
+    setCompose({
+      day: targetDay,
+      index,
+      name: "",
+      time: "",
+      lat,
+      lng,
+      costCurrency: preferredCurrency || trip.currency,
+    });
     setPicking(false);
     setTab("schedule");
     try {
@@ -149,11 +167,11 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
       <div className="flex h-dvh bg-sidebar">
         <AppSidebar top={<BackButton onBack={() => navigate("/")} />} />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background">
-          <p className="text-sm text-muted-foreground">{tc("state.error")}</p>
+          <p className="text-sm text-pretty text-muted-foreground">{tc("state.error")}</p>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="text-sm text-corn-600 hover:underline"
+            className="inline-flex h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
           >
             {tc("state.retry")}
           </button>
@@ -172,23 +190,28 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     setSelectedStopId(id);
   };
 
+  const headerSubtitle = formatTripSubtitle(trip, i18n.language, t);
+
   return (
     <div className="flex h-dvh bg-sidebar">
       <AppSidebar
         top={
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <BackButton
               onBack={() => navigate("/")}
               title={trip.title}
+              subtitle={headerSubtitle}
               onRename={(title) => rename.mutate(title)}
             />
-            <Tabs
-              items={tabItems}
-              value={tab}
-              onValueChange={(v) => setTab(v as Tab)}
-              aria-label={t("tabs.map")}
-              className="flex w-full"
-            />
+            <div className="px-1 pb-1 pt-2">
+              <Tabs
+                items={tabItems}
+                value={tab}
+                onValueChange={(v) => setTab(v as Tab)}
+                aria-label={t("tabs.map")}
+                className="flex w-full"
+              />
+            </div>
           </div>
         }
       >
@@ -208,6 +231,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           onComment={(stopId, text) =>
             actions.comment.mutate({ stopId, text })
           }
+          commentPending={actions.comment.isPending}
         />
       </AppSidebar>
 
@@ -233,6 +257,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
               <ScheduleBoard
                 trip={trip}
                 compose={compose}
+                defaultCurrency={preferredCurrency || trip.currency}
                 biasLat={bias?.lat}
                 biasLng={bias?.lng}
                 onOpen={openCompose}
@@ -252,6 +277,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
               <BudgetBoard
                 trip={trip}
                 currentUserId={currentUserId}
+                defaultCurrency={preferredCurrency || trip.currency}
                 onAddExpense={(input) => actions.expense.mutate(input)}
               />
             )}
@@ -267,10 +293,12 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
 function BackButton({
   onBack,
   title,
+  subtitle,
   onRename,
 }: {
   onBack: () => void;
   title?: string;
+  subtitle?: string;
   onRename?: (title: string) => void;
 }) {
   const { t } = useTranslation("common");
@@ -288,15 +316,17 @@ function BackButton({
   };
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 items-start gap-2.5">
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex w-fit items-center gap-1 rounded-md text-xs font-medium text-muted-foreground transition-colors duration-100 hover:text-foreground"
+        aria-label={t("actions.back")}
+        title={t("actions.back")}
+        className="relative inline-flex size-8 flex-none items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 after:absolute after:-inset-1 after:content-[''] hover:bg-accent hover:text-foreground active:scale-[0.96]"
       >
         <svg
           viewBox="0 0 24 24"
-          className="size-3.5"
+          className="size-4"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -306,7 +336,6 @@ function BackButton({
         >
           <path d="m15 18-6-6 6-6" />
         </svg>
-        {t("actions.back")}
       </button>
       {title == null ? null : editing ? (
         <input
@@ -326,18 +355,66 @@ function BackButton({
               setEditing(false);
             }
           }}
-          className="w-full rounded-md border border-ring bg-background px-1.5 py-0.5 font-heading text-base font-semibold outline-none"
+          className="min-h-8 w-full rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-base font-semibold outline-none"
         />
       ) : (
-        <button
-          type="button"
-          onClick={() => onRename && setEditing(true)}
-          title={onRename ? tp("header.renameAria") : title}
-          className="truncate rounded-md px-1.5 py-0.5 text-left font-heading text-base font-semibold transition-colors duration-100 hover:bg-accent"
-        >
-          {title}
-        </button>
+        <div className="flex min-w-0 flex-col gap-0.5 py-0.5">
+          <button
+            type="button"
+            onClick={() => onRename && setEditing(true)}
+            title={onRename ? tp("header.renameAria") : title}
+            className="truncate text-left font-heading text-base font-semibold leading-tight tracking-tight transition-[background-color,color,scale] duration-100 hover:text-corn-600 active:scale-[0.96]"
+          >
+            {title}
+          </button>
+          {subtitle ? (
+            <span className="truncate font-mono text-[11px] text-muted-foreground tabular-nums">
+              {subtitle}
+            </span>
+          ) : null}
+        </div>
       )}
     </div>
   );
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function formatTripSubtitle(
+  trip: Trip,
+  locale: string,
+  t: TFunction<"planner">,
+): string {
+  const dayCount = trip.days.length;
+  const stopCount = trip.stops.length;
+
+  let startLabel = "";
+  let endLabel = "";
+
+  if (ISO_DATE.test(trip.startDate) && dayCount > 0) {
+    const [y, m, d] = trip.startDate.split("-").map(Number) as [
+      number,
+      number,
+      number,
+    ];
+    const start = new Date(Date.UTC(y, m - 1, d));
+    const end = new Date(Date.UTC(y, m - 1, d + dayCount - 1));
+    const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+    const fmt = (date: Date, withYear: boolean) =>
+      new Intl.DateTimeFormat(locale, {
+        month: "short",
+        day: "numeric",
+        year: withYear ? "numeric" : undefined,
+        timeZone: "UTC",
+      }).format(date);
+    startLabel = fmt(start, !sameYear);
+    endLabel = fmt(end, true);
+  }
+
+  return t("header.subtitle", {
+    start: startLabel,
+    end: endLabel,
+    days: dayCount,
+    stops: stopCount,
+  });
 }

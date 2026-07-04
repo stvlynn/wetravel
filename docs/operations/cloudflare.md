@@ -13,7 +13,7 @@ lives in [deploy/cloudflare](../../deploy/cloudflare/README.md). Reference:
 ## 1. Hyperdrive
 
 ```bash
-wrangler hyperdrive create wayfare-db \
+wrangler hyperdrive create wetravel-db \
   --connection-string "postgres://USER:PASSWORD@HOST:5432/DBNAME"
 ```
 
@@ -46,8 +46,8 @@ wrangler deploy --config wrangler.api.jsonc
 ## 4. Frontend (Pages)
 
 ```bash
-BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
-wrangler pages deploy apps/web/dist --project-name wayfare-web
+BASE_URL="https://<api-worker-domain>" pnpm --filter @wetravel/web build
+wrangler pages deploy apps/web/dist --project-name wetravel-web
 ```
 
 See [deploy/cloudflare/pages.md](../../deploy/cloudflare/pages.md).

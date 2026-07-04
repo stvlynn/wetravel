@@ -43,6 +43,7 @@ export interface InsertStopInput {
   area?: string;
   category?: StopCategory;
   cost?: number;
+  costCurrency?: string;
   note?: string;
 }
 
@@ -73,6 +74,7 @@ export function addComment(
 export interface AddExpenseInput {
   description: string;
   amount: number;
+  currency?: string;
   payer: string;
   participants: string[];
 }

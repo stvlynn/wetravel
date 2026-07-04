@@ -7,7 +7,7 @@ WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/web/package.json apps/web/package.json
-RUN pnpm install --filter @wayfare/web... --frozen-lockfile
+RUN pnpm install --filter @wetravel/web... --frozen-lockfile
 
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web

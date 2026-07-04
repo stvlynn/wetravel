@@ -12,9 +12,21 @@ export const auth = betterAuth({
   database: pool,               // pg.Pool
   emailAndPassword: { enabled: true },
   trustedOrigins: config.trustedOrigins,
+  user: {
+    additionalFields: {
+      // User preference: default currency for new stop costs.
+      defaultCurrency: { type: "string", required: false, defaultValue: "JPY", input: true },
+    },
+  },
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
 });
 ```
+
+### User preferences
+
+`user.additionalFields.defaultCurrency` is stored on the `user` table
+(`0005_currency.sql`) and surfaced on every session as `session.user.defaultCurrency`.
+The planner uses it as the preselected currency when composing a stop cost.
 
 ## Environment
 
@@ -48,9 +60,13 @@ Business routes read the session via shared middleware
 
 Auth tables (`user`, `session`, `account`, `verification`) are created by
 `migrations/0001_auth.sql`. Re-run the Better Auth CLI to regenerate the schema
-after changing options/plugins, then add a new migration.
+after changing options/plugins, then add a new migration. The `defaultCurrency`
+additional field lives in `0005_currency.sql`.
 
 ## Client
 
 The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
-`/api/auth`, exposing `signIn`, `signUp`, `signOut`, and `useSession`.
+`/api/auth`, exposing `signIn`, `signUp`, `signOut`, and `useSession`. It loads
+the `inferAdditionalFields` client plugin so `session.user.defaultCurrency` is
+typed; the field shape is declared explicitly since the API is a separate
+package.

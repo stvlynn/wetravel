@@ -92,6 +92,7 @@ export function PlaceSearch({
           }}
         >
           <AutocompleteInput
+            className="rounded-lg"
             autoFocus={autoFocus}
             placeholder={placeholder}
             showClear
@@ -130,7 +131,7 @@ export function PlaceSearch({
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate font-medium">{item.label}</span>
                     {item.secondary ? (
-                      <span className="truncate text-xs text-muted-foreground">
+                      <span className="truncate text-xs text-muted-foreground text-pretty">
                         {item.secondary}
                       </span>
                     ) : null}
@@ -147,7 +148,7 @@ export function PlaceSearch({
         onClick={onPickOnMap}
         aria-label={t("pick.onMap")}
         title={t("pick.onMap")}
-        className="flex size-9 flex-none items-center justify-center rounded-lg border border-input bg-card text-muted-foreground transition-colors duration-150 hover:border-ring/50 hover:bg-accent hover:text-corn-600"
+        className="flex size-10 flex-none items-center justify-center rounded-lg bg-card text-muted-foreground shadow-[var(--shadow-border)] transition-[background-color,box-shadow,color,scale] duration-150 hover:bg-accent hover:text-corn-600 hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
       >
         <svg
           viewBox="0 0 24 24"

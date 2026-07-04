@@ -1,16 +1,16 @@
-name: wayfare
+name: wetravel
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-wayfare}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wayfare}
-      POSTGRES_DB: ${POSTGRES_DB:-wayfare}
+      POSTGRES_USER: ${POSTGRES_USER:-wetravel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wetravel}
+      POSTGRES_DB: ${POSTGRES_DB:-wetravel}
     volumes:
-      - wayfare-pgdata:/var/lib/postgresql/data
+      - wetravel-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wayfare}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wetravel}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,7 +22,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-wayfare}:${POSTGRES_PASSWORD:-wayfare}@postgres:5432/${POSTGRES_DB:-wayfare}
+      DATABASE_URL: postgres://${POSTGRES_USER:-wetravel}:${POSTGRES_PASSWORD:-wetravel}@postgres:5432/${POSTGRES_DB:-wetravel}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       TRUSTED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8080}
@@ -51,4 +51,4 @@ services:
       - "8080:80"
 
 volumes:
-  wayfare-pgdata:
+  wetravel-pgdata:

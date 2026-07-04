@@ -15,7 +15,7 @@ Full walkthrough: [../../docs/operations/cloudflare.md](../../docs/operations/cl
 
 ```bash
 # 1. Hyperdrive over your external Postgres
-wrangler hyperdrive create wayfare-db \
+wrangler hyperdrive create wetravel-db \
   --connection-string "postgres://USER:PASSWORD@HOST:5432/DBNAME"
 # paste the id into wrangler.api.jsonc
 
@@ -29,8 +29,8 @@ wrangler secret put BETTER_AUTH_SECRET --config wrangler.api.jsonc
 wrangler deploy --config wrangler.api.jsonc
 
 # 4. Frontend (Pages)
-BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
-wrangler pages deploy apps/web/dist --project-name wayfare-web
+BASE_URL="https://<api-worker-domain>" pnpm --filter @wetravel/web build
+wrangler pages deploy apps/web/dist --project-name wetravel-web
 ```
 
 Set `TRUSTED_ORIGINS` (var in `wrangler.api.jsonc`) to the Pages origin so auth

@@ -1,7 +1,8 @@
 {
-  "title": "我的行程",
-  "subtitle": "共享行程、投票与花费，尽在一处。",
+  "title": "行程",
+  "subtitle": "一起规划，费用分摊。",
   "newTrip": "新建行程",
+  "beta": "测试版",
   "empty": {
     "title": "还没有行程",
     "subtitle": "创建第一个行程，开始规划路线、投票与分摊花费。"
@@ -13,10 +14,13 @@
   },
   "card": {
     "dates": "{{start}} – {{end}}",
+    "members_one": "{{count}} 位同行者",
     "members_other": "{{count}} 位同行者",
+    "stops_one": "{{count}} 个地点",
     "stops_other": "{{count}} 个地点",
+    "by": "{{name}}",
     "createdBy": "{{name}} 在{{when}}创建",
     "moreMembers": "还有 {{count}} 位",
-    "open": "打开规划"
+    "open": "打开"
   }
 }

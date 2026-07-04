@@ -13,7 +13,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         rows={rows}
         data-slot="textarea"
         className={cn(
-          "w-full resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground",
+          "w-full resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground min-h-10",
           "placeholder:text-muted-foreground/70",
           "transition-[background-color,border-color] duration-150 ease-[var(--ease-out)]",
           "outline-none hover:border-ring/50 hover:bg-accent/40",

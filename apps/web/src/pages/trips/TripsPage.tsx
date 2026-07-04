@@ -83,7 +83,7 @@ export function TripsPage() {
           ) : data.length === 0 && !creating ? (
             <EmptyState onCreate={() => create.mutate()} />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {creating && <SkeletonCard />}
               {data.map((trip, i) => (
                 <TripCard
@@ -117,13 +117,13 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
       <div className="absolute inset-0 flex items-center justify-center p-2">
         <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
-          <p className="text-base font-semibold">{t("empty.title")}</p>
+          <p className="text-base font-semibold text-pretty">{t("empty.title")}</p>
           <button
             type="button"
             onClick={onCreate}
-            className="wf-enter group flex w-full items-center gap-3 rounded-xl border border-border bg-card/85 px-3.5 py-3 text-left shadow-sm backdrop-blur-md transition-colors duration-150 hover:bg-accent"
+            className="wf-enter group flex w-full items-center gap-3 rounded-xl bg-card/85 px-3.5 py-3 text-left shadow-[var(--shadow-border)] backdrop-blur-md transition-[background-color,color,scale,box-shadow] duration-150 hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
           >
-            <span className="flex size-10 flex-none items-center justify-center rounded-lg bg-accent text-corn-600 transition-colors group-hover:bg-brand-muted">
+            <span className="flex size-10 flex-none items-center justify-center rounded-lg bg-accent text-corn-600 transition-[background-color] group-hover:bg-brand-muted">
               <svg
                 width="20"
                 height="20"
@@ -141,7 +141,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="text-sm font-semibold">{t("newTrip")}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-pretty text-muted-foreground">
                 {t("empty.subtitle")}
               </span>
             </span>
@@ -155,7 +155,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 /** Non-interactive placeholder matching the TripCard silhouette. */
 function SkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl bg-card shadow-[var(--shadow-border)]">
       <div className="h-24 w-full animate-pulse bg-muted" />
       <div className="flex flex-col gap-3 p-5">
         <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
@@ -170,11 +170,11 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation("common");
   return (
     <div className="flex flex-col items-center gap-3 py-16">
-      <p className="text-sm text-muted-foreground">{t("state.error")}</p>
+      <p className="text-sm text-pretty text-muted-foreground">{t("state.error")}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="text-sm text-corn-600 hover:underline"
+        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
       >
         {t("state.retry")}
       </button>

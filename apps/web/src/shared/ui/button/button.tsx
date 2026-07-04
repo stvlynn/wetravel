@@ -4,7 +4,7 @@ import { cn } from "@/shared/lib";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium select-none " +
-    "transition-[background-color,box-shadow,transform,color] duration-150 ease-[var(--ease-out)] " +
+    "transition-[background-color,box-shadow,scale,color] duration-150 ease-[var(--ease-out)] " +
     "outline-none " +
     "active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50",
   {
@@ -20,8 +20,8 @@ const buttonVariants = cva(
         ghost: "text-muted-foreground hover:bg-accent hover:text-foreground",
       },
       size: {
-        sm: "h-8 rounded-md px-3 text-xs",
-        md: "h-9 rounded-lg px-4 text-sm",
+        sm: "h-8 rounded-md px-3 text-xs relative after:absolute after:-inset-1 after:content-['']",
+        md: "h-9 rounded-lg px-4 text-sm relative after:absolute after:-inset-0.5 after:content-['']",
         lg: "h-10 rounded-lg px-5 text-sm",
         icon: "size-10 rounded-lg",
       },
@@ -32,15 +32,24 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  static?: boolean;
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  function Button({ className, variant, size, type = "button", ...props }, ref) {
+  function Button(
+    { className, variant, size, static: isStatic, type = "button", ...props },
+    ref,
+  ) {
     return (
       <button
         ref={ref}
         type={type}
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(
+          buttonVariants({ variant, size }),
+          isStatic && "active:scale-100",
+          className,
+        )}
         {...props}
       />
     );

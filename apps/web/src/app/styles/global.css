@@ -44,8 +44,10 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  --color-corn-300: var(--corn-300);
   --color-corn-500: var(--corn-500);
   --color-corn-600: var(--corn-600);
+  --color-ink-150: var(--ink-150);
   --color-ink-500: var(--ink-500);
   --color-ink-600: var(--ink-600);
 
@@ -86,7 +88,6 @@ body {
   background: var(--background);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
-  -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
@@ -197,6 +198,13 @@ img {
   margin: 0.5em 0;
 }
 
+/* Markdown notes may be long-form; prefer standard wrapping over pretty so
+ * the author-controlled line breaks and long paragraphs stay readable. */
+.wf-markdown p,
+.wf-markdown li {
+  text-wrap: wrap;
+}
+
 /* Staggered enter used by lists/cards. */
 @keyframes wf-enter {
   from {
@@ -210,4 +218,66 @@ img {
 }
 .wf-enter {
   animation: wf-enter 0.32s var(--ease-out) both;
+}
+
+/* Per-item stagger for semantic chunks. Apply `.wf-enter-stagger` to the parent
+ * and `.wf-enter` to each child; delays step by `--enter-stagger` (~90ms). */
+.wf-enter-stagger > .wf-enter:nth-child(1) { animation-delay: calc(var(--enter-stagger) * 0); }
+.wf-enter-stagger > .wf-enter:nth-child(2) { animation-delay: calc(var(--enter-stagger) * 1); }
+.wf-enter-stagger > .wf-enter:nth-child(3) { animation-delay: calc(var(--enter-stagger) * 2); }
+.wf-enter-stagger > .wf-enter:nth-child(4) { animation-delay: calc(var(--enter-stagger) * 3); }
+.wf-enter-stagger > .wf-enter:nth-child(5) { animation-delay: calc(var(--enter-stagger) * 4); }
+.wf-enter-stagger > .wf-enter:nth-child(6) { animation-delay: calc(var(--enter-stagger) * 5); }
+.wf-enter-stagger > .wf-enter:nth-child(7) { animation-delay: calc(var(--enter-stagger) * 6); }
+.wf-enter-stagger > .wf-enter:nth-child(8) { animation-delay: calc(var(--enter-stagger) * 7); }
+
+/* Exit animation — shorter than enter, lifts up and fades out. */
+@keyframes wf-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+    filter: blur(2px);
+  }
+}
+.wf-exit {
+  animation: wf-exit 0.2s var(--ease-out) both;
+}
+
+/* Contextual icon cross-fade. Both icons live in the DOM; the second icon is
+ * absolutely overlaid and revealed on hover or `[data-state="active"]`. */
+.wf-icon-swap {
+  position: relative;
+  display: inline-flex;
+}
+.wf-icon-swap > * {
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out), filter 0.3s var(--ease-out);
+}
+.wf-icon-swap > *:first-child {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+.wf-icon-swap > *:last-child {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.25);
+  filter: blur(4px);
+}
+.wf-icon-swap:hover > *:first-child,
+.wf-icon-swap[data-state="active"] > *:first-child {
+  opacity: 0;
+  transform: scale(0.25);
+  filter: blur(4px);
+}
+.wf-icon-swap:hover > *:last-child,
+.wf-icon-swap[data-state="active"] > *:last-child {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
 }

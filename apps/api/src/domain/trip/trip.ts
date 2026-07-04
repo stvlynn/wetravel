@@ -25,6 +25,8 @@ export interface InsertStopDraft {
   category?: StopCategory;
   /** Optional estimated cost per person, in the trip's minor currency units. */
   cost?: number;
+  /** Optional ISO currency code for `cost`. Defaults to the trip currency. */
+  costCurrency?: string;
   /** Optional free-form note (Markdown, may embed image URLs). */
   note?: string;
 }
@@ -32,6 +34,8 @@ export interface InsertStopDraft {
 export interface AddExpenseDraft {
   description: string;
   amount: number;
+  /** ISO currency code for the amount. Defaults to the trip currency. */
+  currency?: string;
   payer: string;
   participants: string[];
 }
@@ -230,6 +234,10 @@ export class Trip {
       typeof draft.cost === "number" && Number.isFinite(draft.cost) && draft.cost > 0
         ? Math.round(draft.cost)
         : 0;
+    // Only record a currency when there is a cost; otherwise fall back to the
+    // trip currency at read time.
+    const costCurrency =
+      cost > 0 ? draft.costCurrency?.trim() || this.snapshot.currency : "";
 
     const stop: StopSnapshot = {
       id: `n${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -242,6 +250,7 @@ export class Trip {
       lat,
       lng,
       cost,
+      costCurrency,
       createdBy,
       transit: false,
       order: 0,
@@ -278,6 +287,7 @@ export class Trip {
       description,
       payer: draft.payer,
       amount: Math.round(draft.amount),
+      currency: draft.currency?.trim() || this.snapshot.currency,
       participants: [...draft.participants],
       whenLabel: "Just added",
       createdOrder: this.snapshot.expenses.length,

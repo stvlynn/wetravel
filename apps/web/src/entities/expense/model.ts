@@ -3,6 +3,8 @@ export interface Expense {
   description: string;
   payer: string;
   amount: number;
+  /** ISO currency code for `amount`. Empty string means "use the trip currency". */
+  currency: string;
   participants: string[];
   whenLabel: string;
 }

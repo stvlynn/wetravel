@@ -27,14 +27,29 @@ function initialsOf(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
+export interface UserMenuProps {
+  /** Compact top-bar trigger: just an avatar, no name/chevron. */
+  compact?: boolean;
+}
+
 /** Sidebar footer: avatar trigger that opens an upward menu holding account
  * info, the language switch, and sign out. Mirrors Kalmia's UserMenu pattern. */
-export function UserMenu() {
+export function UserMenu({ compact }: UserMenuProps) {
   const { t } = useTranslation("common");
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
+  const [renderOpen, setRenderOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerId = useId();
+
+  useEffect(() => {
+    if (open) {
+      setRenderOpen(true);
+      return;
+    }
+    const id = setTimeout(() => setRenderOpen(false), 200);
+    return () => clearTimeout(id);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -60,57 +75,73 @@ export function UserMenu() {
 
   return (
     <div ref={containerRef} className="relative flex-none p-2">
-      {open && (
+      {renderOpen && (
         <div
           role="menu"
-          className="wf-enter absolute inset-x-2 bottom-full mb-2 flex flex-col rounded-xl border border-border bg-popover p-1 shadow-lg"
+          aria-hidden={!open}
+          className={cn(
+            "absolute bottom-full mb-2 flex flex-col rounded-xl bg-popover p-1 shadow-[var(--shadow-border),var(--shadow-lg)]",
+            compact ? "right-0 w-64" : "inset-x-2",
+            "transition-[opacity,translate,filter] duration-200 ease-[var(--ease-out)]",
+            open
+              ? "pointer-events-auto opacity-100 translate-y-0"
+              : "pointer-events-none opacity-0 -translate-y-3 blur-sm",
+          )}
         >
-          <div className="flex items-center gap-2.5 px-2 py-2">
-            <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} size={32} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{name}</p>
-              {email && email !== name ? (
-                <p className="truncate text-xs text-muted-foreground">{email}</p>
-              ) : null}
+          <div>
+            <div className="wf-enter" style={{ animationDelay: "0ms" }}>
+              <div className="flex items-center gap-2.5 px-2 py-2">
+                <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} size={32} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{name}</p>
+                  {email && email !== name ? (
+                    <p className="truncate text-xs text-muted-foreground">{email}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="my-1 h-px bg-border" />
+            </div>
+
+            <div className="wf-enter" style={{ animationDelay: "100ms" }}>
+              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("language")}
+                </span>
+                <LanguageSwitch />
+              </div>
+
+              <div className="my-1 h-px bg-border" />
+            </div>
+
+            <div className="wf-enter" style={{ animationDelay: "200ms" }}>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  void signOut();
+                }}
+                className="flex min-h-10 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 py-2 text-left text-sm font-medium text-foreground transition-[background-color,color,scale] duration-100 hover:bg-accent active:scale-[0.96]"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-4 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="m16 17 5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                {t("actions.signOut")}
+              </button>
             </div>
           </div>
-
-          <div className="my-1 h-px bg-border" />
-
-          <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("language")}
-            </span>
-            <LanguageSwitch />
-          </div>
-
-          <div className="my-1 h-px bg-border" />
-
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              void signOut();
-            }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition-colors duration-100 hover:bg-accent"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="size-4 text-muted-foreground"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="m16 17 5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
-            {t("actions.signOut")}
-          </button>
         </div>
       )}
 
@@ -121,31 +152,61 @@ export function UserMenu() {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left",
-          "transition-[background-color,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.98]",
+          "transition-[background-color,scale] duration-150 ease-[var(--ease-out)] active:scale-[0.96]",
+          compact
+            ? "inline-flex size-[30px] items-center justify-center rounded-full"
+            : "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left",
           open ? "bg-accent" : "hover:bg-accent",
         )}
       >
-        <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} size={32} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{name}</p>
-          {email && email !== name ? (
-            <p className="truncate text-xs text-muted-foreground">{email}</p>
-          ) : null}
-        </div>
-        <svg
-          viewBox="0 0 24 24"
-          className="size-4 flex-none text-muted-foreground"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m7 15 5 5 5-5" />
-          <path d="m7 9 5-5 5 5" />
-        </svg>
+        <Avatar
+          initials={initialsOf(name)}
+          name={name}
+          bg={color.bg}
+          fg={color.fg}
+          size={compact ? 30 : 32}
+          className={compact ? "ring-2 ring-card" : undefined}
+        />
+        {!compact && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{name}</p>
+              {email && email !== name ? (
+                <p className="truncate text-xs text-muted-foreground">{email}</p>
+              ) : null}
+            </div>
+            <span className="relative size-4 flex-none text-muted-foreground" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className={cn(
+                  "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                  open ? "scale-[0.25] opacity-0 blur-[4px]" : "scale-100 opacity-100",
+                )}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m7 15 5 5 5-5" />
+              </svg>
+              <svg
+                viewBox="0 0 24 24"
+                className={cn(
+                  "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                  open ? "scale-100 opacity-100" : "scale-[0.25] opacity-0 blur-[4px]",
+                )}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m7 9 5-5 5 5" />
+              </svg>
+            </span>
+          </>
+        )}
       </button>
     </div>
   );

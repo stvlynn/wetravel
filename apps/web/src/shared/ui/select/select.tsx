@@ -2,7 +2,7 @@ import type React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { cn } from "@/shared/lib";
 
-/** coss-style Select adapted to Wayfare tokens (Base UI under the hood).
+/** coss-style Select adapted to wetravel tokens (Base UI under the hood).
  * Inline icons and theme tokens replace the coss registry / lucide deps. */
 export const Select: typeof SelectPrimitive.Root = SelectPrimitive.Root;
 
@@ -27,15 +27,18 @@ function ChevronsUpDown() {
 export function SelectTrigger({
   className,
   children,
+  static: isStatic,
   ...props
-}: SelectPrimitive.Trigger.Props): React.ReactElement {
+}: SelectPrimitive.Trigger.Props & { static?: boolean }): React.ReactElement {
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-left text-sm text-foreground",
-        "outline-none transition-[background-color,border-color] duration-150 ease-[var(--ease-out)]",
+        "relative flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-left text-sm text-foreground",
+        "outline-none transition-[background-color,border-color,scale] duration-150 ease-[var(--ease-out)] active:scale-[0.96]",
+        "after:absolute after:-inset-0.5 after:content-['']",
         "hover:border-ring/50 hover:bg-accent/40 data-[popup-open]:border-ring",
         "data-disabled:pointer-events-none data-disabled:opacity-50",
+        isStatic && "active:scale-100",
         className,
       )}
       data-slot="select-trigger"
@@ -94,7 +97,7 @@ export function SelectPopup({
         <SelectPrimitive.Popup
           className={cn(
             "max-h-[min(var(--available-height),20rem)] min-w-(--anchor-width) origin-(--transform-origin) " +
-              "overflow-hidden rounded-lg border border-border bg-popover text-foreground shadow-lg outline-none",
+              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
             className,
           )}
           data-slot="select-popup"
@@ -120,7 +123,7 @@ export function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "grid min-h-8 cursor-default select-none grid-cols-[1rem_1fr] items-center gap-2 rounded-md py-1.5 pl-2 pr-3 text-sm outline-none",
+        "grid min-h-10 cursor-default select-none grid-cols-[1rem_1fr] items-center gap-2 rounded-sm py-2 pl-2 pr-3 text-sm outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-50",
         className,

@@ -1,4 +1,4 @@
-# Wayfare — Agentic Coding Guidelines
+# wetravel/微旅 — Agentic Coding Guidelines
 
 > Travel Planner SaaS. Read this file first, then follow the documentation map
 > below before writing any code. Template inspired by

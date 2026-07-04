@@ -21,6 +21,7 @@ export interface TripDto {
     lat: number;
     lng: number;
     cost: number;
+    costCurrency: string;
     createdBy: string;
     transit: boolean;
     note: string;
@@ -32,6 +33,7 @@ export interface TripDto {
     description: string;
     payer: string;
     amount: number;
+    currency: string;
     participants: string[];
     whenLabel: string;
   }>;
@@ -61,6 +63,7 @@ export function toTripDto(trip: Trip): TripDto {
       lat: st.lat,
       lng: st.lng,
       cost: st.cost,
+      costCurrency: st.costCurrency,
       createdBy: st.createdBy,
       transit: st.transit,
       note: st.note,
@@ -72,6 +75,7 @@ export function toTripDto(trip: Trip): TripDto {
       description: e.description,
       payer: e.payer,
       amount: e.amount,
+      currency: e.currency,
       participants: e.participants,
       whenLabel: e.whenLabel,
     })),

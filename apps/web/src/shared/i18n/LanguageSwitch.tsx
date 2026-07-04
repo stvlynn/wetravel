@@ -13,7 +13,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
       role="group"
       aria-label={t("language")}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5",
+        "inline-flex items-center gap-0.5 rounded-full bg-card p-0.5 shadow-[var(--shadow-border)]",
         className,
       )}
     >
@@ -26,7 +26,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
             aria-pressed={selected}
             onClick={() => void i18n.changeLanguage(lng)}
             className={cn(
-              "h-7 rounded-full px-3 text-xs font-medium transition-colors duration-150 active:scale-[0.96]",
+              "h-10 rounded-full px-3 text-xs font-medium transition-[color,background-color,scale] duration-150 active:scale-[0.96]",
               selected
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",

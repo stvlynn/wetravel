@@ -76,12 +76,12 @@ export function TripMapView({
         />
       {picking ? (
         <div className="absolute inset-x-0 top-4 flex justify-center px-4">
-          <div className="wf-enter flex items-center gap-3 rounded-full border border-border bg-card/95 py-2 pl-4 pr-2 text-sm shadow-md backdrop-blur-sm">
-            <span className="font-medium">{t("pick.hint")}</span>
+          <div className="wf-enter flex items-center gap-3 rounded-full bg-card/95 py-3 pl-4 pr-2 text-sm shadow-[var(--shadow-border),var(--shadow-md)] backdrop-blur-sm">
+            <span className="text-pretty font-medium">{t("pick.hint")}</span>
             <button
               type="button"
               onClick={onCancelPick}
-              className="rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="h-10 rounded-full px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,scale] hover:bg-accent hover:text-foreground active:scale-[0.96]"
             >
               {tc("actions.cancel")}
             </button>
@@ -89,7 +89,7 @@ export function TripMapView({
         </div>
       ) : null}
       {day === 0 ? (
-        <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 rounded-xl border border-border bg-card/90 p-3 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 rounded-xl bg-card/90 p-3 shadow-[var(--shadow-border),var(--shadow-md)] backdrop-blur-sm">
           {trip.days.map((d) => (
             <div key={d.number} className="flex items-center gap-2 text-xs">
               <span
@@ -99,7 +99,7 @@ export function TripMapView({
               <span className="font-medium">
                 {t("days.day", { n: d.number })}
               </span>
-              <span className="text-muted-foreground">{d.city}</span>
+              <span className="text-pretty text-muted-foreground">{d.city}</span>
             </div>
           ))}
         </div>

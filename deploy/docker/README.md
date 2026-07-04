@@ -38,7 +38,7 @@ open http://localhost:8080
 
 ```bash
 docker compose logs -f api
-docker compose exec postgres pg_dump -U wayfare wayfare > backup.sql
+docker compose exec postgres pg_dump -U wetravel wetravel > backup.sql
 ```
 
 ## Notes

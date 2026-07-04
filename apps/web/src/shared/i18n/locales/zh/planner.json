@@ -1,7 +1,8 @@
 {
   "header": {
     "renameAria": "重命名行程",
-    "renamePlaceholder": "行程名称"
+    "renamePlaceholder": "行程名称",
+    "subtitle": "{{start}} – {{end}} · {{days}} 天 · {{stops}} 个地点"
   },
   "tabs": {
     "map": "地图",
@@ -15,6 +16,7 @@
     "add": "添加一天"
   },
   "itinerary": {
+    "title": "行程",
     "count_other": "{{count}} 个地点"
   },
   "detail": {
@@ -25,21 +27,24 @@
     "noVotes": "暂无投票",
     "wantThis": "{{total}} 人中有 {{count}} 人想去",
     "vote": "投票",
+    "unvote": "取消投票",
     "voted": "已投票 ✓",
     "commentsWithCount": "评论（{{count}}）",
     "commentsEmpty": "评论 — 开启讨论",
     "commentPlaceholder": "添加评论…",
+    "postComment": "发送",
+    "backToItinerary": "行程",
     "justNow": "刚刚",
     "notes": "备注"
   },
   "schedule": {
     "insert": "插入地点",
-    "namePlaceholder": "地点名称",
-    "timePlaceholder": "时间",
-    "datePlaceholder": "日期",
+    "namePlaceholder": "新地点",
+    "timePlaceholder": "时间 · 14:00",
     "moreOptions": "更多选项",
     "categoryPlaceholder": "类型",
-    "costPlaceholder": "预计花费（{{currency}}）",
+    "costPlaceholder": "预计花费",
+    "currencyLabel": "货币",
     "notePlaceholder": "备注 — 支持 Markdown 与图片",
     "add": "添加",
     "voteCount": "▲ {{count}}"
@@ -69,7 +74,7 @@
     }
   },
   "budget": {
-    "total": "总计",
+    "total": "行程总计",
     "perPerson": "人均",
     "expenses": "花费",
     "expenseList": "花费清单",
@@ -77,7 +82,8 @@
     "descPlaceholder": "这笔花费用于？",
     "amountPlaceholder": "金额",
     "payer": "付款人",
-    "splitBetween": "分摊人",
+    "splitWith": "分摊给",
+    "currencyLabel": "货币",
     "save": "保存花费",
     "paidBy": "由 {{name}} 支付 · {{when}} · {{count}} 人分摊",
     "paidByYou": "你",
@@ -87,6 +93,7 @@
     "you": "{{name}}（你）",
     "settleUp": "结算",
     "transfersClear_other": "{{count}} 笔转账即可结清整趟行程",
+    "everyonePaid": "结清后互不欠款。",
     "owes": "应付给"
   },
   "members": {

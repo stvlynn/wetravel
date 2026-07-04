@@ -45,6 +45,9 @@ export interface StopSnapshot {
   lat: number;
   lng: number;
   cost: number;
+  /** ISO currency code for `cost`. Empty string means "use the trip currency".
+   * Costs are display-only, so mixed currencies never enter the budget. */
+  costCurrency: string;
   createdBy: string;
   transit: boolean;
   order: number;
@@ -59,6 +62,8 @@ export interface ExpenseSnapshot {
   description: string;
   payer: string;
   amount: number;
+  /** ISO currency code for `amount`. Empty string means "use the trip currency". */
+  currency: string;
   participants: string[];
   whenLabel: string;
   createdOrder: number;

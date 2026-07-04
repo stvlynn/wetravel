@@ -11,6 +11,7 @@ export interface TabsProps {
   onValueChange: (value: string) => void;
   className?: string;
   "aria-label"?: string;
+  static?: boolean;
 }
 
 /** Segmented tabs (roving via native buttons). Controlled. */
@@ -20,13 +21,14 @@ export function Tabs({
   onValueChange,
   className,
   "aria-label": ariaLabel,
+  static: isStatic,
 }: TabsProps) {
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-secondary p-0.5",
+        "inline-flex items-center gap-0.5 rounded-lg bg-secondary p-0.5 shadow-[var(--shadow-border)]",
         className,
       )}
     >
@@ -40,10 +42,11 @@ export function Tabs({
             aria-selected={selected}
             onClick={() => onValueChange(item.value)}
             className={cn(
-              "h-7 flex-1 rounded-md px-3 text-xs font-medium transition-[background-color,color,box-shadow] duration-150 active:scale-[0.96]",
+              "h-8 flex-1 relative rounded-md px-3 text-xs font-medium transition-[background-color,color,box-shadow,scale] duration-150 active:scale-[0.96] after:absolute after:-inset-y-1 after:content-['']",
               selected
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground",
+              isStatic && "active:scale-100",
             )}
           >
             {item.label}

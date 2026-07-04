@@ -1,4 +1,4 @@
-# Wayfare documentation
+# wetravel/微旅 documentation
 
 Travel Planner SaaS — plan trips together, split everything.
 

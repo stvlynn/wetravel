@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     envDir: repoRoot,
     define: {
-      __WAYFARE_BASE_URL__: JSON.stringify(baseUrl),
+      __WETRAVEL_BASE_URL__: JSON.stringify(baseUrl),
     },
     plugins: [react(), tailwindcss()],
     resolve: {

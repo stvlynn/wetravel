@@ -1,5 +1,5 @@
 {
-  "name": "@wayfare/api",
+  "name": "@wetravel/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,8 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "migrate": "tsx --env-file-if-exists=../../.env src/scripts/migrate.ts",
-    "seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts"
+    "seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts",
+    "reset": "tsx --env-file-if-exists=../../.env src/scripts/reset.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

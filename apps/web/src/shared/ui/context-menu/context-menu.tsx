@@ -2,7 +2,7 @@ import type React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { cn } from "@/shared/lib";
 
-/** coss-style ContextMenu adapted to Wayfare tokens (Base UI under the hood).
+/** coss-style ContextMenu adapted to wetravel tokens (Base UI under the hood).
  * Right-click / long-press a wrapped surface to open a pointer-anchored menu. */
 export const ContextMenu: typeof ContextMenuPrimitive.Root =
   ContextMenuPrimitive.Root;
@@ -48,7 +48,7 @@ export function ContextMenuPopup({
       >
         <ContextMenuPrimitive.Popup
           className={cn(
-            "min-w-44 origin-(--transform-origin) rounded-lg border border-border bg-popover p-1 text-foreground shadow-lg outline-none",
+            "min-w-44 origin-(--transform-origin) rounded-lg bg-popover p-1 text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
             className,
           )}
           data-slot="context-menu-popup"
@@ -71,7 +71,7 @@ export function ContextMenuItem({
   return (
     <ContextMenuPrimitive.Item
       className={cn(
-        "flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none",
+        "flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm pl-1.5 pr-2 py-1.5 text-sm text-foreground outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-[variant=destructive]:text-destructive-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-60",

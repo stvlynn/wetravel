@@ -95,12 +95,23 @@ describe("Trip aggregate", () => {
     const withOpts = trip.toSnapshot().stops.find((s) => s.name === "Ramen")!;
     expect(withOpts.category).toBe("Food");
     expect(withOpts.cost).toBe(1800);
+    // A cost with no explicit currency defaults to the trip currency.
+    expect(withOpts.costCurrency).toBe("JPY");
     expect(withOpts.note).toBe("Try the tsukemen ![pic](https://x/y.jpg)");
+
+    trip.insertStop(
+      { day: 2, index: 0, name: "Coffee", time: "10:00", cost: 5, costCurrency: "USD" },
+      "lynn",
+    );
+    const usd = trip.toSnapshot().stops.find((s) => s.name === "Coffee")!;
+    expect(usd.costCurrency).toBe("USD");
 
     trip.insertStop({ day: 2, index: 0, name: "Plain", time: "" }, "lynn");
     const bare = trip.toSnapshot().stops.find((s) => s.name === "Plain")!;
     expect(bare.category).toBe("Plan");
     expect(bare.cost).toBe(0);
+    // No cost means no currency is recorded (falls back to trip currency on read).
+    expect(bare.costCurrency).toBe("");
     expect(bare.note).toBe("");
   });
 
@@ -109,6 +120,26 @@ describe("Trip aggregate", () => {
     expect(() =>
       trip.addExpense({ description: "x", amount: 100, payer: "lynn", participants: [] }),
     ).toThrow();
+  });
+
+  it("stores expense currency, defaulting to the trip currency", () => {
+    const trip = freshTrip();
+    const defaultCurrency = trip.addExpense({
+      description: "Taxi",
+      amount: 2200,
+      payer: "lynn",
+      participants: ["lynn", "marco"],
+    });
+    expect(defaultCurrency.currency).toBe("JPY");
+
+    const customCurrency = trip.addExpense({
+      description: "Coffee",
+      amount: 12,
+      currency: "USD",
+      payer: "lynn",
+      participants: ["lynn", "marco"],
+    });
+    expect(customCurrency.currency).toBe("USD");
   });
 });
 
@@ -120,7 +151,7 @@ describe("computeBudget", () => {
 
   it("nets paid minus fair share", () => {
     const budget = computeBudget(members, [
-      { id: "e1", description: "dinner", payer: "a", amount: 100, participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
+      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
     ]);
     expect(budget.total).toBe(100);
     expect(budget.balances.find((x) => x.memberId === "a")!.net).toBe(50);
@@ -129,7 +160,7 @@ describe("computeBudget", () => {
 
   it("produces a minimal settlement transferring debtor -> creditor", () => {
     const budget = computeBudget(members, [
-      { id: "e1", description: "dinner", payer: "a", amount: 100, participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
+      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
     ]);
     expect(budget.settlements).toEqual([{ from: "b", to: "a", amount: 50 }]);
   });

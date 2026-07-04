@@ -1,7 +1,8 @@
 {
-  "title": "Your trips",
-  "subtitle": "Shared itineraries, votes, and expenses — all in one place.",
+  "title": "Trips",
+  "subtitle": "Plan together, split everything.",
   "newTrip": "New trip",
+  "beta": "beta",
   "empty": {
     "title": "No trips yet",
     "subtitle": "Create your first trip to start planning stops, votes, and shared expenses."
@@ -17,8 +18,9 @@
     "members_other": "{{count}} travelers",
     "stops_one": "{{count}} stop",
     "stops_other": "{{count}} stops",
+    "by": "by {{name}}",
     "createdBy": "{{name}} created {{when}}",
     "moreMembers": "{{count}} more",
-    "open": "Open planner"
+    "open": "Open"
   }
 }

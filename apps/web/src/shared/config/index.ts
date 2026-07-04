@@ -1,4 +1,4 @@
-declare const __WAYFARE_BASE_URL__: string;
+declare const __WETRAVEL_BASE_URL__: string;
 
 function requireBaseUrl(value: string): string {
   const trimmed = value.trim().replace(/\/$/, "");
@@ -17,7 +17,7 @@ function requireBaseUrl(value: string): string {
 /** Runtime configuration injected from the root `.env` by Vite. */
 export const config = {
   /** Public origin for API/auth calls. */
-  baseUrl: requireBaseUrl(__WAYFARE_BASE_URL__),
+  baseUrl: requireBaseUrl(__WETRAVEL_BASE_URL__),
 } as const;
 
 /** React Query keys, centralized to avoid string drift. */

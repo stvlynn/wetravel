@@ -20,7 +20,7 @@ docker compose up -d --build
 
 Services:
 
-- `postgres` — data volume `wayfare-pgdata`, healthchecked.
+- `postgres` — data volume `wetravel-pgdata`, healthchecked.
 - `api` — waits for a healthy `postgres`, then serves on port 8787.
 - `web` — serves the built SPA on port 8080.
 
@@ -49,9 +49,9 @@ docker compose logs -f web
 
 ```bash
 # backup
-docker compose exec postgres pg_dump -U wayfare wayfare > backup.sql
+docker compose exec postgres pg_dump -U wetravel wetravel > backup.sql
 # restore
-cat backup.sql | docker compose exec -T postgres psql -U wayfare wayfare
+cat backup.sql | docker compose exec -T postgres psql -U wetravel wetravel
 ```
 
 ## Notes

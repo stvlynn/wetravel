@@ -36,6 +36,7 @@ const insertStopSchema = z.object({
   area: z.string().max(120).optional(),
   category: stopCategorySchema.optional(),
   cost: z.number().min(0).max(100_000_000).optional(),
+  costCurrency: z.string().trim().min(1).max(8).optional(),
   note: z.string().max(20_000).optional(),
 });
 
@@ -53,6 +54,7 @@ const renameTripSchema = z.object({
 const expenseSchema = z.object({
   description: z.string().min(1),
   amount: z.number().positive(),
+  currency: z.string().trim().min(1).max(8).optional(),
   payer: z.string().min(1),
   participants: z.array(z.string().min(1)).min(1),
 });

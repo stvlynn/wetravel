@@ -1,8 +1,8 @@
 {
-  // Cloudflare Workers config for the Wayfare API (Hono).
+  // Cloudflare Workers config for the wetravel API (Hono).
   // Entry is the workspace worker file; wrangler bundles it with esbuild.
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "wayfare-api",
+  "name": "wetravel-api",
   "main": "../../apps/api/src/worker.ts",
   "compatibility_date": "2025-01-01",
   // pg + Better Auth need Node built-ins on Workers.
@@ -11,7 +11,7 @@
     "enabled": true
   },
   // Hyperdrive fronts the external PostgreSQL. Replace `id` with the value from
-  // `wrangler hyperdrive create wayfare-db --connection-string ...`.
+  // `wrangler hyperdrive create wetravel-db --connection-string ...`.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -21,7 +21,7 @@
   // Non-secret vars. BASE_URL is the public API Worker origin. Set
   // TRUSTED_ORIGINS to your Pages origin. Secrets go through `wrangler secret put`.
   "vars": {
-    "BASE_URL": "https://wayfare-api.<your-subdomain>.workers.dev",
-    "TRUSTED_ORIGINS": "https://wayfare-web.pages.dev"
+    "BASE_URL": "https://wetravel-api.<your-subdomain>.workers.dev",
+    "TRUSTED_ORIGINS": "https://wetravel-web.pages.dev"
   }
 }

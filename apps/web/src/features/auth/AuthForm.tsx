@@ -38,10 +38,10 @@ export function AuthForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-[-0.01em]">
+        <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
           {t(`${ns}.title`)}
         </h1>
-        <p className="text-sm text-muted-foreground">{t(`${ns}.subtitle`)}</p>
+        <p className="text-sm text-pretty text-muted-foreground">{t(`${ns}.subtitle`)}</p>
       </div>
 
       {isSignUp ? (
@@ -79,7 +79,7 @@ export function AuthForm() {
       </label>
 
       {error ? (
-        <p className="text-sm text-destructive-foreground" role="alert">
+        <p className="text-sm text-pretty text-destructive-foreground" role="alert">
           {error}
         </p>
       ) : null}
@@ -90,7 +90,7 @@ export function AuthForm() {
 
       <button
         type="button"
-        className="text-sm text-corn-600 hover:underline"
+        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
         onClick={() => {
           setMode(isSignUp ? "signIn" : "signUp");
           setError(null);

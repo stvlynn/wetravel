@@ -14,8 +14,8 @@ export function FloatingMembers({ members }: { members: TripMember[] }) {
   };
 
   return (
-    <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2">
-      <div className="pointer-events-auto flex items-center rounded-full border border-border bg-card/90 p-1 shadow-md backdrop-blur-sm">
+    <div className="pointer-events-none absolute right-3 bottom-3 z-20 flex items-center gap-2.5">
+      <div className="pointer-events-auto flex items-center">
         {members.map((m, i) => (
           <Avatar
             key={m.id}
@@ -23,15 +23,16 @@ export function FloatingMembers({ members }: { members: TripMember[] }) {
             name={m.name}
             bg={m.avatarBg}
             fg={m.avatarFg}
-            size={28}
+            size={30}
             stackIndex={i}
+            online={i < 2}
           />
         ))}
       </div>
       <Button
-        variant="brand"
+        variant="outline"
         size="sm"
-        className="pointer-events-auto shadow-md"
+        className="pointer-events-auto"
         onClick={invite}
       >
         {copied ? t("actions.inviteCopied") : t("actions.invite")}

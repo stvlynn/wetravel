@@ -26,6 +26,8 @@ export interface Stop {
   lat: number;
   lng: number;
   cost: number;
+  /** ISO currency code for `cost`. Empty string means "use the trip currency". */
+  costCurrency: string;
   createdBy: string;
   transit: boolean;
   /** Free-form note in Markdown (may embed image URLs). */

@@ -23,12 +23,13 @@ Other useful targets:
 | `make dev-api` | Postgres + migrations + API only |
 | `make postgres-up` / `make postgres-down` | Start/stop local Postgres container |
 | `make db-init` | `db:migrate` + `db:seed` |
+| `make db-reset` | drop all tables, then `db:migrate` + `db:seed` |
 | `make deploy-up` | Full docker stack (postgres + api + web on :8080) |
 
 `.env` is created from `.env.example` on first run. `BASE_URL` is the single
 public origin used by the frontend API client and Better Auth (default:
 `http://localhost:5173`). Ensure `DATABASE_URL` matches the Postgres credentials
-(defaults: `wayfare:wayfare@localhost:5432/wayfare`).
+(defaults: `wetravel:wetravel@localhost:5432/wetravel`).
 
 ## Local verification
 
@@ -61,6 +62,7 @@ set with `wrangler secret`.
 | --- | --- |
 | `pnpm db:migrate` | apply SQL migrations |
 | `pnpm db:seed` | load prototype seed data |
+| `pnpm db:reset` | drop all tables, then migrate + seed |
 | `make help` | list Make targets |
 
 ## Deployment

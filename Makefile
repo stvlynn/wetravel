@@ -3,16 +3,16 @@ SHELL := /bin/bash
 
 COMPOSE_FILE ?= deploy/docker/compose.yaml
 POSTGRES_PORT ?= 5432
-POSTGRES_USER ?= wayfare
-POSTGRES_DB ?= wayfare
+POSTGRES_USER ?= wetravel
+POSTGRES_DB ?= wetravel
 
 .PHONY: help install env setup postgres-up postgres-down dev dev-nodb dev-web dev-api
-.PHONY: db-init db-migrate db-seed
+.PHONY: db-init db-reset db-migrate db-seed
 .PHONY: deploy-up deploy-down deploy-logs
 .PHONY: build test lint typecheck check docs clean deploy
 
 help:
-	@echo "wayfare Makefile targets:"
+	@echo "wetravel Makefile targets:"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install         Install dependencies with pnpm"
@@ -36,6 +36,7 @@ help:
 	@echo ""
 	@echo "Database:"
 	@echo "  make db-init         Run migrations then seed demo data"
+	@echo "  make db-reset        Drop all tables, re-migrate, and re-seed"
 	@echo "  make db-migrate      Apply SQL migrations"
 	@echo "  make db-seed         Load prototype seed data"
 	@echo ""
@@ -100,10 +101,10 @@ dev-nodb: env
 	pnpm dev
 
 dev-web: env
-	pnpm --filter @wayfare/web dev
+	pnpm --filter @wetravel/web dev
 
 dev-api: env postgres-up db-migrate
-	pnpm --filter @wayfare/api dev
+	pnpm --filter @wetravel/api dev
 
 db-migrate:
 	pnpm db:migrate
@@ -113,6 +114,9 @@ db-seed:
 
 db-init: db-migrate db-seed
 	@echo "Database initialized."
+
+db-reset:
+	pnpm db:reset
 
 deploy-up:
 	@if [ ! -f deploy/docker/.env ]; then \

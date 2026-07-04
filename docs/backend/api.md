@@ -23,10 +23,10 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 | GET | `/api/trips/:id` | Full trip (members, days, stops, expenses, budget) |
 | PATCH | `/api/trips/:id` | Rename a trip `{ title }` |
 | POST | `/api/trips/:id/days` | Append an empty itinerary day (next number, cycled color) |
-| POST | `/api/trips/:id/stops` | Insert a stop `{ day, index, name, time, lat?, lng?, area?, category?, cost?, note? }`; when `lat`/`lng` are provided (geocode or map pick) they are used verbatim, otherwise the position is interpolated from neighbours. `category` is a `StopCategory`, `cost` a per-person estimate in minor units, `note` free-form Markdown |
+| POST | `/api/trips/:id/stops` | Insert a stop `{ day, index, name, time, lat?, lng?, area?, category?, cost?, costCurrency?, note? }`; when `lat`/`lng` are provided (geocode or map pick) they are used verbatim, otherwise the position is interpolated from neighbours. `category` is a `StopCategory`, `cost` a per-person estimate in minor units, `costCurrency` its ISO code (defaults to the trip currency), `note` free-form Markdown |
 | POST | `/api/trips/:id/stops/:stopId/vote` | Toggle current-user vote |
 | POST | `/api/trips/:id/stops/:stopId/comments` | Add a comment `{ text }` |
-| POST | `/api/trips/:id/expenses` | Add expense `{ description, amount, payer, participants }` |
+| POST | `/api/trips/:id/expenses` | Add expense `{ description, amount, currency?, payer, participants }`; `currency` is the ISO code for `amount` and defaults to the trip currency |
 
 ## Dates
 

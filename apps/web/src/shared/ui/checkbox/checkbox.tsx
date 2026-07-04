@@ -24,7 +24,7 @@ export function Checkbox({
     <label
       htmlFor={inputId}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-2 text-sm select-none",
+        "inline-flex min-h-10 min-w-10 cursor-pointer items-center gap-2 text-sm select-none",
         className,
       )}
     >
@@ -34,11 +34,11 @@ export function Checkbox({
           type="checkbox"
           checked={checked}
           onChange={(e) => onCheckedChange(e.target.checked)}
-          className="peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand transition-colors duration-150"
+          className="peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand transition-[background-color,border-color] duration-150"
         />
         <svg
           viewBox="0 0 24 24"
-          className="pointer-events-none relative size-3 text-brand-foreground opacity-0 peer-checked:opacity-100"
+          className="pointer-events-none relative size-3 text-brand-foreground opacity-0 transition-[opacity,scale,filter] duration-300 ease-[var(--ease-out)] scale-[0.25] blur-[4px] peer-checked:scale-100 peer-checked:opacity-100 peer-checked:blur-0"
           fill="none"
           stroke="currentColor"
           strokeWidth="3.5"

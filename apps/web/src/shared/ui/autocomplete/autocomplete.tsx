@@ -2,14 +2,14 @@ import type React from "react";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { cn } from "@/shared/lib";
 
-/** coss-style Autocomplete adapted to Wayfare tokens (Base UI under the hood).
+/** coss-style Autocomplete adapted to wetravel tokens (Base UI under the hood).
  * Uses a native styled input, a plain scroll popup, and inline icons so it has
  * no coss registry / lucide dependencies. */
 export const Autocomplete: typeof AutocompletePrimitive.Root =
   AutocompletePrimitive.Root;
 
 const inputBase =
-  "h-9 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground " +
+  "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground " +
   "placeholder:text-muted-foreground/70 transition-[background-color,border-color] duration-150 " +
   "ease-[var(--ease-out)] outline-none hover:border-ring/50 hover:bg-accent/40 " +
   "focus:border-ring focus:bg-background focus-visible:outline-none " +
@@ -44,7 +44,7 @@ export function AutocompleteInput({
         className={cn(
           inputBase,
           startAddon && "pl-9",
-          showClear && "pr-9",
+          showClear && "pr-12",
           className,
         )}
         data-slot="autocomplete-input"
@@ -52,7 +52,7 @@ export function AutocompleteInput({
       />
       {showClear && (
         <AutocompletePrimitive.Clear
-          className="absolute right-1 top-1/2 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-80 outline-none transition-colors hover:bg-accent hover:opacity-100"
+          className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-80 outline-none transition-[background-color,color,opacity,scale] hover:bg-accent hover:opacity-100 active:scale-[0.96]"
           data-slot="autocomplete-clear"
           {...clearProps}
         >
@@ -101,7 +101,7 @@ export function AutocompletePopup({
         <AutocompletePrimitive.Popup
           className={cn(
             "max-h-[min(var(--available-height),22rem)] w-(--anchor-width) max-w-(--available-width) " +
-              "overflow-hidden rounded-lg border border-border bg-popover text-foreground shadow-lg",
+              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)]",
             className,
           )}
           data-slot="autocomplete-popup"
@@ -135,7 +135,7 @@ export function AutocompleteItem({
   return (
     <AutocompletePrimitive.Item
       className={cn(
-        "flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none",
+        "flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-60",
         className,

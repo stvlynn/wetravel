@@ -1,7 +1,8 @@
 {
   "header": {
     "renameAria": "Rename trip",
-    "renamePlaceholder": "Trip name"
+    "renamePlaceholder": "Trip name",
+    "subtitle": "{{start}} – {{end}} · {{days}} days · {{stops}} stops"
   },
   "tabs": {
     "map": "Map",
@@ -15,6 +16,7 @@
     "add": "Add day"
   },
   "itinerary": {
+    "title": "Itinerary",
     "count_one": "{{count}} stop",
     "count_other": "{{count}} stops"
   },
@@ -26,21 +28,24 @@
     "noVotes": "No votes yet",
     "wantThis": "{{count}} of {{total}} want this",
     "vote": "Vote",
+    "unvote": "Remove vote",
     "voted": "Voted ✓",
     "commentsWithCount": "Comments ({{count}})",
     "commentsEmpty": "Comments — start the discussion",
     "commentPlaceholder": "Add a comment…",
+    "postComment": "Post",
+    "backToItinerary": "Itinerary",
     "justNow": "Just now",
     "notes": "Notes"
   },
   "schedule": {
     "insert": "Insert stop",
-    "namePlaceholder": "Stop name",
-    "timePlaceholder": "Time",
-    "datePlaceholder": "Date",
+    "namePlaceholder": "New stop",
+    "timePlaceholder": "Time · 14:00",
     "moreOptions": "More options",
     "categoryPlaceholder": "Type",
-    "costPlaceholder": "Est. cost ({{currency}})",
+    "costPlaceholder": "Est. cost",
+    "currencyLabel": "Currency",
     "notePlaceholder": "Notes — Markdown & images supported",
     "add": "Add",
     "voteCount": "▲ {{count}}"
@@ -70,15 +75,16 @@
     }
   },
   "budget": {
-    "total": "Total",
-    "perPerson": "Per person",
+    "total": "Trip total",
+    "perPerson": "Avg / person",
     "expenses": "Expenses",
     "expenseList": "Expenses",
     "addExpense": "Add expense",
     "descPlaceholder": "What was it for?",
     "amountPlaceholder": "Amount",
     "payer": "Paid by",
-    "splitBetween": "Split between",
+    "splitWith": "Split with",
+    "currencyLabel": "Currency",
     "save": "Save expense",
     "paidBy": "Paid by {{name}} · {{when}} · split {{count}} ways",
     "paidByYou": "you",
@@ -89,6 +95,7 @@
     "settleUp": "Settle up",
     "transfersClear_one": "{{count}} transfer clears the whole trip",
     "transfersClear_other": "{{count}} transfers clear the whole trip",
+    "everyonePaid": "Everyone paid, nothing else owed once these clear.",
     "owes": "owes"
   },
   "members": {

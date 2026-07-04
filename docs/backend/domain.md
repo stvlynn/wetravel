@@ -15,11 +15,13 @@ only through aggregate methods.
   isCurrentUser }`.
 - **TripDay** — `{ number, dateLabel, city, color }`.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
-  lat, lng, cost, createdBy, transit, note, votes: MemberId[],
-  comments: Comment[], order }`. `note` is optional Markdown.
+  lat, lng, cost, costCurrency, createdBy, transit, note, votes: MemberId[],
+  comments: Comment[], order }`. `note` is optional Markdown. `costCurrency` is
+  the ISO code for `cost` (empty string means "use the trip currency"); costs
+  are display-only and never enter the budget.
 - **Comment** (value object) — `{ author, timeLabel, text }`.
-- **Expense** (entity) — `{ id, description, payer, amount, participants,
-  whenLabel }`.
+- **Expense** (entity) — `{ id, description, payer, amount, currency,
+  participants, whenLabel }`. `currency` is the ISO code for `amount`.
 - **Money** (value object) — integer minor units + currency (JPY); formats as
   `¥` + grouped integer.
 - **SettlementPlan** (value object) — the computed transfers.
@@ -33,8 +35,13 @@ only through aggregate methods.
 - **insertStop(day, index, draft)** — inserts a stop at a position within a
   day. Coordinates interpolate from neighbors, or fall back to the day center
   (or use `draft.lat/lng` when provided). Optional `category`, `cost`, and
-  `note` default to `Plan`, `0`, and empty.
+  `note` default to `Plan`, `0`, and empty. `costCurrency` is recorded only when
+  there is a cost, defaulting to the trip currency when omitted.
   Ordering is preserved across the whole trip.
+- **addExpense(draft)** — records an equally split expense. `currency` defaults
+  to the trip currency when omitted. Current settlements do not perform FX
+  conversion; mixed-currency expenses are preserved for display/future FX support
+  while aggregate math still sums numeric amounts.
 - **create(draft, owner)** — new trip in `planning` status with the owner as its
   first member, one empty day, and `startDate` set to today (ISO). Day labels are
   derived from `startDate` on the read side, so days carry no fake "Day N" text.

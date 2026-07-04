@@ -8,7 +8,7 @@ WORKDIR /app
 # Install workspace deps (api + root). Copy manifests first for layer caching.
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/api/package.json apps/api/package.json
-RUN pnpm install --filter @wayfare/api... --frozen-lockfile
+RUN pnpm install --filter @wetravel/api... --frozen-lockfile
 
 # App source.
 COPY tsconfig.base.json ./

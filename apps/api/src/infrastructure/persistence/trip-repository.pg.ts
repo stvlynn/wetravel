@@ -119,7 +119,7 @@ export class PgTripRepository implements TripRepository {
           [id],
         ),
         this.pool.query(
-          `SELECT id, day, time, duration, name, area, category, lat, lng, cost, created_by, transit, note, sort_order
+          `SELECT id, day, time, duration, name, area, category, lat, lng, cost, cost_currency, created_by, transit, note, sort_order
            FROM stops WHERE trip_id = $1 ORDER BY sort_order ASC`,
           [id],
         ),
@@ -134,7 +134,7 @@ export class PgTripRepository implements TripRepository {
           [id],
         ),
         this.pool.query(
-          `SELECT id, description, payer_id, amount, when_label, sort_order
+          `SELECT id, description, payer_id, amount, currency, when_label, sort_order
            FROM expenses WHERE trip_id = $1 ORDER BY sort_order ASC`,
           [id],
         ),
@@ -181,6 +181,7 @@ export class PgTripRepository implements TripRepository {
         lat: number;
         lng: number;
         cost: number;
+        cost_currency: string | null;
         created_by: string;
         transit: boolean;
         note: string | null;
@@ -197,6 +198,7 @@ export class PgTripRepository implements TripRepository {
       lat: Number(s.lat),
       lng: Number(s.lng),
       cost: Number(s.cost),
+      costCurrency: s.cost_currency ?? "",
       createdBy: s.created_by,
       transit: s.transit,
       order: s.sort_order,
@@ -211,6 +213,7 @@ export class PgTripRepository implements TripRepository {
         description: string;
         payer_id: string;
         amount: number;
+        currency: string | null;
         when_label: string;
         sort_order: number;
       }>
@@ -219,6 +222,7 @@ export class PgTripRepository implements TripRepository {
       description: e.description,
       payer: e.payer_id,
       amount: Number(e.amount),
+      currency: e.currency ?? "",
       participants: partsByExpense.get(e.id) ?? [],
       whenLabel: e.when_label,
       createdOrder: e.sort_order,
@@ -309,11 +313,11 @@ export class PgTripRepository implements TripRepository {
 
       for (const st of s.stops) {
         await client.query(
-          `INSERT INTO stops (id, trip_id, day, time, duration, name, area, category, lat, lng, cost, created_by, transit, note, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+          `INSERT INTO stops (id, trip_id, day, time, duration, name, area, category, lat, lng, cost, cost_currency, created_by, transit, note, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
           [
             st.id, s.id, st.day, st.time, st.duration, st.name, st.area,
-            st.category, st.lat, st.lng, st.cost, st.createdBy, st.transit, st.note, st.order,
+            st.category, st.lat, st.lng, st.cost, st.costCurrency, st.createdBy, st.transit, st.note, st.order,
           ],
         );
         for (const memberId of st.votes) {
@@ -333,9 +337,18 @@ export class PgTripRepository implements TripRepository {
 
       for (const e of s.expenses) {
         await client.query(
-          `INSERT INTO expenses (id, trip_id, description, payer_id, amount, when_label, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [e.id, s.id, e.description, e.payer, e.amount, e.whenLabel, e.createdOrder],
+          `INSERT INTO expenses (id, trip_id, description, payer_id, amount, currency, when_label, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [
+            e.id,
+            s.id,
+            e.description,
+            e.payer,
+            e.amount,
+            e.currency,
+            e.whenLabel,
+            e.createdOrder,
+          ],
         );
         for (const memberId of e.participants) {
           await client.query(

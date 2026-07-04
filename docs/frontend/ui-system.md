@@ -25,7 +25,7 @@ semantic tokens, never raw palette values.
 Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
-`avatar`, `spinner`, `autocomplete`, `select`, `context-menu`. Each exposes a
+`avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`. Each exposes a
 public `index.ts`.
 Variants/sizes come from props, not ad-hoc overrides. Icon-only buttons require
 `aria-label`; form controls set an explicit `type`.

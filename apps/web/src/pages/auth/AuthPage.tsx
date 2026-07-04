@@ -18,7 +18,7 @@ export function AuthPage() {
           <Card className="wf-enter p-6">
             <AuthForm />
           </Card>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
+          <p className="mt-4 text-center text-xs text-pretty text-muted-foreground">
             {t("tagline")}
           </p>
         </div>
