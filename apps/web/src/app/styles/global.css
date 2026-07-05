@@ -68,6 +68,11 @@
   --shadow-lg: var(--shadow-lg);
 
   --ease-out: var(--ease-out);
+
+  --duration-fast: var(--dur-fast);
+  --duration-base: var(--dur-base);
+  --duration-slow: var(--dur-slow);
+  --duration-icon: var(--dur-icon);
 }
 
 :root {
@@ -123,14 +128,22 @@ img {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Respect reduced-motion: neutralize enter animations and transitions. */
+/* Respect reduced-motion: keep opacity/color transitions (they aid
+ * comprehension) but neutralize movement. Reduced motion means gentler, not
+ * zero. Movement-based utilities opt out explicitly below. */
 @media (prefers-reduced-motion: reduce) {
+  .wf-enter,
+  .wf-exit {
+    animation: none !important;
+  }
+  .wf-icon-swap > * {
+    transition-property: opacity !important;
+  }
+  /* Drop transform-based movement everywhere; keep opacity/color fades. */
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-property: opacity, color, background-color, border-color !important;
   }
 }
 
@@ -205,7 +218,35 @@ img {
   text-wrap: wrap;
 }
 
-/* Staggered enter used by lists/cards. */
+/* Press feedback — tactile scale on any pressable surface. Single source for
+ * the ~30 controls that previously hardcoded `active:scale-[0.96]`. */
+.wf-pressable {
+  transition: scale var(--dur-base) var(--ease-out);
+}
+.wf-pressable:active {
+  scale: var(--press-scale);
+}
+
+/* Interactive surface — background/color feedback + press scale. GPU-only
+ * properties (no box-shadow) so hover never risks dropped frames. */
+.wf-interactive {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    scale var(--dur-base) var(--ease-out);
+}
+.wf-interactive:active {
+  scale: var(--press-scale);
+}
+
+/* Form field — background + border feedback for inputs/textareas/selects. */
+.wf-field {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+/* Staggered enter used by lists/cards. Kept under 300ms. */
 @keyframes wf-enter {
   from {
     opacity: 0;
@@ -217,11 +258,12 @@ img {
   }
 }
 .wf-enter {
-  animation: wf-enter 0.32s var(--ease-out) both;
+  animation: wf-enter var(--dur-slow) var(--ease-out) both;
 }
 
 /* Per-item stagger for semantic chunks. Apply `.wf-enter-stagger` to the parent
- * and `.wf-enter` to each child; delays step by `--enter-stagger` (~90ms). */
+ * and `.wf-enter` to each child; delays step by `--enter-stagger`. This is the
+ * one place list stagger is expressed — children never hardcode delays. */
 .wf-enter-stagger > .wf-enter:nth-child(1) { animation-delay: calc(var(--enter-stagger) * 0); }
 .wf-enter-stagger > .wf-enter:nth-child(2) { animation-delay: calc(var(--enter-stagger) * 1); }
 .wf-enter-stagger > .wf-enter:nth-child(3) { animation-delay: calc(var(--enter-stagger) * 2); }
@@ -231,31 +273,35 @@ img {
 .wf-enter-stagger > .wf-enter:nth-child(7) { animation-delay: calc(var(--enter-stagger) * 6); }
 .wf-enter-stagger > .wf-enter:nth-child(8) { animation-delay: calc(var(--enter-stagger) * 7); }
 
-/* Exit animation — shorter than enter, lifts up and fades out. */
+/* Exit animation — shorter than enter, lifts up and fades out (no blur; blur
+ * is reserved for the icon cross-fade where it masks overlapping glyphs). */
 @keyframes wf-exit {
   from {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
   to {
     opacity: 0;
     transform: translateY(-12px);
-    filter: blur(2px);
   }
 }
 .wf-exit {
-  animation: wf-exit 0.2s var(--ease-out) both;
+  animation: wf-exit var(--dur-slow) var(--ease-out) both;
 }
 
 /* Contextual icon cross-fade. Both icons live in the DOM; the second icon is
- * absolutely overlaid and revealed on hover or `[data-state="active"]`. */
+ * absolutely overlaid and revealed when the container is active (state-driven)
+ * or, on fine pointers only, on hover. Consumed by the IconSwap primitive and
+ * any `[data-state]` toggle — the single cross-fade implementation. */
 .wf-icon-swap {
   position: relative;
   display: inline-flex;
 }
 .wf-icon-swap > * {
-  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out), filter 0.3s var(--ease-out);
+  transition:
+    opacity var(--dur-icon) var(--ease-out),
+    transform var(--dur-icon) var(--ease-out),
+    filter var(--dur-icon) var(--ease-out);
 }
 .wf-icon-swap > *:first-child {
   opacity: 1;
@@ -269,15 +315,25 @@ img {
   transform: scale(0.25);
   filter: blur(4px);
 }
-.wf-icon-swap:hover > *:first-child,
 .wf-icon-swap[data-state="active"] > *:first-child {
   opacity: 0;
   transform: scale(0.25);
   filter: blur(4px);
 }
-.wf-icon-swap:hover > *:last-child,
 .wf-icon-swap[data-state="active"] > *:last-child {
   opacity: 1;
   transform: scale(1);
   filter: blur(0);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wf-icon-swap[data-hover-swap]:hover > *:first-child {
+    opacity: 0;
+    transform: scale(0.25);
+    filter: blur(4px);
+  }
+  .wf-icon-swap[data-hover-swap]:hover > *:last-child {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
 }
