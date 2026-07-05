@@ -59,6 +59,36 @@ From make-interfaces-feel-better, applied consistently:
   `global.css`, and interactive surfaces convey focus through hover, border, and
   background changes (matching the Input/Autocomplete treatment).
 
+### Motion utilities
+
+CSS utilities in `apps/web/src/app/styles/global.css`:
+
+- `wf-enter` — one-shot enter (opacity + `translateY(6px)`, 0.32s).
+- `wf-enter-stagger` — parent that steps child `.wf-enter` delays by
+  `--enter-stagger` (~90ms). For longer lists, set per-item
+  `style={{ animationDelay: \`${index * 90}ms\` }}` instead.
+- `wf-exit` — subtle exit (opacity + `translateY(-12px)` + blur, 0.2s). Pair
+  with `usePresence` so the element stays mounted until the animation finishes.
+- `wf-icon-swap` — cross-fade two children (scale 0.25, blur 4px). Toggle with
+  `data-state="active"` or `:hover`.
+
+Shared helpers in `apps/web/src/shared/lib`:
+
+- `popupMotionClasses` — Base UI popup enter/exit (`data-starting-style` /
+  `data-ending-style`). Used by `select`, `autocomplete`, `context-menu`, and
+  `tooltip` popups.
+- `usePresence(visible, durationMs?)` — delays unmount for `wf-exit`; skips
+  delay when `prefers-reduced-motion` is set.
+- `useEnterOnUpdate(dep)` — returns `true` when `dep` changes after the first
+  render. Gate `wf-enter` on route/tab/panel swaps; do not use on first paint.
+
+Rules:
+
+- CSS transitions for interactive open/close (popups, collapsible panels).
+- Keyframe utilities (`wf-enter`, `wf-exit`) for one-shot mount/unmount sequences.
+- Enter duration > exit duration; exits use a small fixed `translateY`, not full height.
+- Skip enter animations on initial page load (auth gate, first tab, first route).
+
 ## Accessibility
 
 - Every interactive control is reachable and labeled; icons that are decorative

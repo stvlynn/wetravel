@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import type { TripMember } from "@/entities/member";
@@ -44,6 +44,16 @@ export function BudgetBoard({
   const [parts, setParts] = useState<Record<string, boolean>>(
     Object.fromEntries(trip.members.map((m) => [m.id, true])),
   );
+  const [enteringExpenseId, setEnteringExpenseId] = useState<string | null>(null);
+  const prevExpenseCount = useRef(trip.expenses.length);
+
+  useEffect(() => {
+    if (trip.expenses.length > prevExpenseCount.current) {
+      const newest = trip.expenses[trip.expenses.length - 1];
+      if (newest) setEnteringExpenseId(newest.id);
+    }
+    prevExpenseCount.current = trip.expenses.length;
+  }, [trip.expenses]);
 
   const submit = () => {
     const value = Number.parseFloat(amount);
@@ -85,8 +95,17 @@ export function BudgetBoard({
             </Button>
           </div>
 
-          {open ? (
-            <div className="flex flex-col gap-3 border-b border-border bg-background px-4 py-3.5">
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-200 ease-[var(--ease-out)]",
+              open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div
+              className={cn("overflow-hidden", !open && "pointer-events-none")}
+              aria-hidden={!open}
+            >
+              <div className="flex flex-col gap-3 border-b border-border bg-background px-4 py-3.5">
               <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-2">
                 <Input
                   value={desc}
@@ -159,8 +178,9 @@ export function BudgetBoard({
                   {t("budget.addExpense")}
                 </Button>
               </div>
+              </div>
             </div>
-          ) : null}
+          </div>
 
           {[...trip.expenses].reverse().map((e) => {
             const m = memberOf(trip, e.payer);
@@ -168,7 +188,10 @@ export function BudgetBoard({
             return (
               <div
                 key={e.id}
-                className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
+                className={cn(
+                  "flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0",
+                  enteringExpenseId === e.id && "wf-enter",
+                )}
               >
                 <Avatar
                   initials={m.initials}
