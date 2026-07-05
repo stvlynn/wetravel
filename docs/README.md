@@ -39,6 +39,10 @@ Travel Planner SaaS — plan trips together, split everything.
 
 - [reference/README.md](reference/README.md)
 
+### Implementation specifications
+
+- [superpowers/README.md](superpowers/README.md)
+
 ## Repository layout
 
 ```
