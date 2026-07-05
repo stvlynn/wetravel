@@ -8,6 +8,7 @@ import { cn, formatMoney } from "@/shared/lib";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { IconSwap } from "@/shared/ui/icon-swap";
 import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
@@ -19,9 +20,6 @@ function memberOf(trip: Trip, id: string): TripMember {
 function commentKey(c: StopComment): string {
   return `${c.author}|${c.timeLabel}|${c.text}`;
 }
-
-const iconTransition =
-  "transition-[opacity,transform,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]";
 
 function VoteIcon({ className }: { className?: string }) {
   return (
@@ -60,30 +58,12 @@ function UnvoteIcon({ className }: { className?: string }) {
 
 function VoteToggleIcon({ voted }: { voted: boolean }) {
   return (
-    <span className="relative inline-flex size-4 items-center justify-center">
-      <span
-        className={cn(
-          "absolute inset-0 flex items-center justify-center",
-          iconTransition,
-          voted
-            ? "scale-100 opacity-100 blur-0"
-            : "scale-[0.25] opacity-0 blur-[4px]",
-        )}
-      >
-        <UnvoteIcon className="size-4" />
-      </span>
-      <span
-        className={cn(
-          "flex items-center justify-center",
-          iconTransition,
-          voted
-            ? "scale-[0.25] opacity-0 blur-[4px]"
-            : "scale-100 opacity-100 blur-0",
-        )}
-      >
-        <VoteIcon className="size-4" />
-      </span>
-    </span>
+    <IconSwap
+      className="size-4"
+      active={voted}
+      from={<VoteIcon className="size-4" />}
+      to={<UnvoteIcon className="size-4" />}
+    />
   );
 }
 

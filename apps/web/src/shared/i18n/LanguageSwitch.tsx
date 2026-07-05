@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 import { supportedLanguages, type SupportedLanguage } from "./index";
 
 /** Compact segmented control to switch UI language. Choice persists via the
@@ -26,7 +26,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
             aria-pressed={selected}
             onClick={() => void i18n.changeLanguage(lng)}
             className={cn(
-              "h-10 rounded-full px-3 text-xs font-medium transition-[color,background-color,scale] duration-150 active:scale-[0.96]",
+              `h-10 rounded-full px-3 text-xs font-medium ${interactive}`,
               selected
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",

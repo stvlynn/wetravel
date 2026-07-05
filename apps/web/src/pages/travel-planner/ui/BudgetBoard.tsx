@@ -333,7 +333,7 @@ function MemberChoice({
       onClick={onClick}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-[12.5px] font-medium",
-        "transition-[background-color,color,border-color,scale] duration-150 active:scale-[0.96]",
+        "transition-[background-color,color,border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] active:scale-[var(--press-scale)]",
         selected
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",

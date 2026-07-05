@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { dayColor } from "@/entities/trip";
+import { interactive } from "@/shared/lib";
 import { TripMap, type MapStop } from "@/shared/ui/map";
 import {
   ContextMenu,
@@ -81,7 +82,7 @@ export function TripMapView({
             <button
               type="button"
               onClick={onCancelPick}
-              className="h-10 rounded-full px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,scale] hover:bg-accent hover:text-foreground active:scale-[0.96]"
+              className={`h-10 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground ${interactive}`}
             >
               {tc("actions.cancel")}
             </button>

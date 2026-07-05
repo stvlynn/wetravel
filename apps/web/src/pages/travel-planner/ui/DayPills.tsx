@@ -28,7 +28,7 @@ export function DayPills({
             aria-pressed={active}
             onClick={() => onDayChange(p.n)}
             className={cn(
-              "relative h-7 flex-none rounded-full px-3 text-[12.5px] font-medium transition-[background-color,box-shadow,color,scale] duration-150 after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] active:scale-[0.96]",
+              "relative h-7 flex-none rounded-full px-3 text-[12.5px] font-medium transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] active:scale-[var(--press-scale)]",
               active
                 ? "bg-primary text-primary-foreground shadow-[0_0_0_1px_var(--primary)]"
                 : "bg-card text-muted-foreground shadow-[0_0_0_1px_var(--border)] hover:text-foreground",

@@ -12,7 +12,8 @@ import { useTranslation } from "react-i18next";
 import { signOut, useSession } from "@/shared/auth";
 import { useSettings, type SettingsPane } from "@/features/settings";
 import { Avatar } from "@/shared/ui/avatar";
-import { cn, initialsOf, avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
+import { IconSwap } from "@/shared/ui/icon-swap";
+import { cn, interactive, initialsOf, avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
 
 export interface UserMenuProps {
   /** Compact top-bar trigger: just an avatar, no name/chevron. */
@@ -75,15 +76,15 @@ export function UserMenu({ compact }: UserMenuProps) {
           aria-hidden={!open}
           className={cn(
             "absolute bottom-full mb-2 flex flex-col rounded-xl bg-popover p-1 shadow-[var(--shadow-border),var(--shadow-lg)]",
-            compact ? "right-0 w-64" : "inset-x-2",
-            "transition-[opacity,translate,filter] duration-200 ease-[var(--ease-out)]",
+            compact ? "right-0 w-64 origin-bottom-right" : "inset-x-2 origin-bottom",
+            "transition-[opacity,translate,filter] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
             open
               ? "pointer-events-auto opacity-100 translate-y-0"
               : "pointer-events-none opacity-0 -translate-y-3 blur-sm",
           )}
         >
-          <div>
-            <div className="wf-enter" style={{ animationDelay: "0ms" }}>
+          <div className="wf-enter-stagger">
+            <div className="wf-enter">
               <div className="flex items-center gap-2.5 px-2 py-2">
                 <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} src={image} size={32} />
                 <div className="min-w-0">
@@ -97,7 +98,7 @@ export function UserMenu({ compact }: UserMenuProps) {
               <div className="my-1 h-px bg-border" />
             </div>
 
-            <div className="wf-enter" style={{ animationDelay: "100ms" }}>
+            <div className="wf-enter">
               <MenuItem
                 icon={CircleUserRound}
                 label={t("settings.userMenu.profile")}
@@ -117,7 +118,7 @@ export function UserMenu({ compact }: UserMenuProps) {
               <div className="my-1 h-px bg-border" />
             </div>
 
-            <div className="wf-enter" style={{ animationDelay: "200ms" }}>
+            <div className="wf-enter">
               <button
                 type="button"
                 role="menuitem"
@@ -125,7 +126,10 @@ export function UserMenu({ compact }: UserMenuProps) {
                   setOpen(false);
                   void signOut();
                 }}
-                className="flex min-h-10 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 py-2 text-left text-sm font-medium text-foreground transition-[background-color,color,scale] duration-100 hover:bg-accent active:scale-[0.96]"
+                className={cn(
+                  "flex min-h-10 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 py-2 text-left text-sm font-medium text-foreground hover:bg-accent",
+                  interactive,
+                )}
               >
                 <LogOut aria-hidden="true" className="size-4 text-muted-foreground" />
                 {t("actions.signOut")}
@@ -142,7 +146,7 @@ export function UserMenu({ compact }: UserMenuProps) {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "transition-[background-color,scale] duration-150 ease-[var(--ease-out)] active:scale-[0.96]",
+          interactive,
           compact
             ? "inline-flex size-[30px] items-center justify-center rounded-full"
             : "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left",
@@ -166,22 +170,12 @@ export function UserMenu({ compact }: UserMenuProps) {
                 <p className="truncate text-xs text-muted-foreground">{email}</p>
               ) : null}
             </div>
-            <span className="relative size-4 flex-none text-muted-foreground" aria-hidden="true">
-              <ChevronDown
-                aria-hidden="true"
-                className={cn(
-                  "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                  open ? "scale-[0.25] opacity-0 blur-[4px]" : "scale-100 opacity-100",
-                )}
-              />
-              <ChevronUp
-                aria-hidden="true"
-                className={cn(
-                  "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                  open ? "scale-100 opacity-100" : "scale-[0.25] opacity-0 blur-[4px]",
-                )}
-              />
-            </span>
+            <IconSwap
+              className="size-4 flex-none text-muted-foreground"
+              active={open}
+              from={<ChevronDown className="size-4" />}
+              to={<ChevronUp className="size-4" />}
+            />
           </>
         )}
       </button>
@@ -202,7 +196,10 @@ const MenuItem = ({
     type="button"
     role="menuitem"
     onClick={onClick}
-    className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition-[background-color,color,scale] duration-100 hover:bg-accent active:scale-[0.96]"
+    className={cn(
+      "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground hover:bg-accent",
+      interactive,
+    )}
   >
     <Icon aria-hidden="true" className="size-4 text-muted-foreground" />
     <span className="flex-1">{label}</span>
