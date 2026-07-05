@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { cn } from "@/shared/lib";
+import { cn, field } from "@/shared/lib";
 
 export interface CheckboxProps {
   checked: boolean;
@@ -34,7 +34,10 @@ export function Checkbox({
           type="checkbox"
           checked={checked}
           onChange={(e) => onCheckedChange(e.target.checked)}
-          className="peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand transition-[background-color,border-color] duration-150"
+          className={cn(
+            "peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand",
+            field,
+          )}
         />
         <svg
           viewBox="0 0 24 24"

@@ -1,6 +1,6 @@
 import type React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 
 /** coss-style ContextMenu adapted to wetravel tokens (Base UI under the hood).
  * Right-click / long-press a wrapped surface to open a pointer-anchored menu. */
@@ -48,7 +48,10 @@ export function ContextMenuPopup({
       >
         <ContextMenuPrimitive.Popup
           className={cn(
-            "min-w-44 origin-(--transform-origin) rounded-lg bg-popover p-1 text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
+            "min-w-44 origin-(--transform-origin) rounded-lg bg-popover p-1 text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none " +
+              "transition-[transform,opacity] duration-[var(--dur-slow)] ease-[var(--ease-out)] " +
+              "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 " +
+              "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
             className,
           )}
           data-slot="context-menu-popup"
@@ -71,7 +74,7 @@ export function ContextMenuItem({
   return (
     <ContextMenuPrimitive.Item
       className={cn(
-        "flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm pl-1.5 pr-2 py-1.5 text-sm text-foreground outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
+        `flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm pl-1.5 pr-2 py-1.5 text-sm text-foreground outline-none ${interactive}`,
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-[variant=destructive]:text-destructive-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-60",

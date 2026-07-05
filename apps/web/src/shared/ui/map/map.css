@@ -13,9 +13,8 @@
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
   box-shadow: 0 1px 3px rgba(20, 26, 48, 0.35);
-  transition:
-    transform 0.15s cubic-bezier(0.2, 0.8, 0.3, 1),
-    box-shadow 0.15s ease;
+  /* GPU-only: animate transform (scale) rather than box-shadow. */
+  transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 .dark .trip-map-marker {
   outline-color: rgba(255, 255, 255, 0.1);
