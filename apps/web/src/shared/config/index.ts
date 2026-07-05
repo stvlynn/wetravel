@@ -1,4 +1,5 @@
 declare const __WETRAVEL_BASE_URL__: string;
+declare const __WETRAVEL_VERSION__: string;
 
 function requireBaseUrl(value: string): string {
   const trimmed = value.trim().replace(/\/$/, "");
@@ -18,6 +19,7 @@ function requireBaseUrl(value: string): string {
 export const config = {
   /** Public origin for API/auth calls. */
   baseUrl: requireBaseUrl(__WETRAVEL_BASE_URL__),
+  version: __WETRAVEL_VERSION__,
 } as const;
 
 /** React Query keys, centralized to avoid string drift. */

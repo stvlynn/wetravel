@@ -5,6 +5,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { AuthPage } from "@/pages/auth";
 import { TripsPage } from "@/pages/trips";
 import { TravelPlannerPage } from "@/pages/travel-planner";
+import { SettingsDialog } from "@/widgets/settings-dialog";
 
 function Routes() {
   const { path } = useRouter();
@@ -29,6 +30,7 @@ function Gate() {
   return (
     <RouterProvider>
       <Routes />
+      <SettingsDialog />
     </RouterProvider>
   );
 }

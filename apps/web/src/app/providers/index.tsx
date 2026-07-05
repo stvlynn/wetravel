@@ -1,9 +1,11 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/shared/i18n";
 import { Spinner } from "@/shared/ui/spinner";
 import { TooltipProvider } from "@/shared/ui/tooltip";
+import { SettingsProvider } from "@/features/settings";
+import { subscribeToThemeChanges } from "@/features/toggle-theme";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,19 +14,25 @@ const queryClient = new QueryClient({
 });
 
 export function AppProviders({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    return subscribeToThemeChanges();
+  }, []);
+
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delay={400}>
-          <Suspense
-            fallback={
-              <div className="flex min-h-dvh items-center justify-center">
-                <Spinner className="size-6" />
-              </div>
-            }
-          >
-            {children}
-          </Suspense>
+          <SettingsProvider>
+            <Suspense
+              fallback={
+                <div className="flex min-h-dvh items-center justify-center">
+                  <Spinner className="size-6" />
+                </div>
+              }
+            >
+              {children}
+            </Suspense>
+          </SettingsProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </I18nextProvider>

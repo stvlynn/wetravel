@@ -21,5 +21,56 @@
     "loading": "Loading…",
     "error": "Something went wrong.",
     "retry": "Try again"
+  },
+  "settings": {
+    "userMenu": {
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "about": "About"
+    },
+    "groups": {
+      "personal": "Personal",
+      "application": "Application"
+    },
+    "nav": {
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "about": "About"
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Your display name and public identity.",
+      "displayName": "Display name",
+      "uploadAvatar": "Upload avatar",
+      "removeAvatar": "Remove avatar",
+      "save": "Save profile",
+      "saving": "Saving…",
+      "errors": {
+        "displayNameRequired": "Display name is required.",
+        "saveFailed": "Failed to save profile.",
+        "avatarTooLarge": "Avatar must be smaller than 2 MB.",
+        "avatarUnsupported": "Only PNG, JPEG and WebP images are allowed.",
+        "avatarUploadFailed": "Failed to upload avatar.",
+        "avatarRemoveFailed": "Failed to remove avatar."
+      }
+    },
+    "preferences": {
+      "title": "Preferences",
+      "description": "Language and appearance settings."
+    },
+    "appearance": {
+      "label": "Appearance",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "label": "Language"
+    },
+    "about": {
+      "title": "About",
+      "version": "Version {{version}}",
+      "description": "wetravel is a collaborative trip planner for friends and families."
+    }
   }
 }

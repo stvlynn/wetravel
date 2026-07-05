@@ -70,3 +70,7 @@ The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
 the `inferAdditionalFields` client plugin so `session.user.defaultCurrency` is
 typed; the field shape is declared explicitly since the API is a separate
 package.
+
+Avatar changes use the authenticated `/api/users/avatar` endpoints. The
+application service stores or removes the object and updates Better Auth through
+the server `auth.api.updateUser` API, with compensating cleanup on failure.

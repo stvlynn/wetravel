@@ -62,6 +62,7 @@ flowchart TD
 | API | Workers (`fetch` entry) | Node (`@hono/node-server`) |
 | DB connection | Hyperdrive binding `connectionString` | `DATABASE_URL` |
 | Secrets | `wrangler secret` / vars | env file |
+| Avatar storage | S3-compatible API configured by env (R2) | persistent filesystem volume or S3-compatible API |
 
 Both runtimes import the same `application`/`domain`/`infrastructure` code; only
 the entry point and the connection-string source differ. See

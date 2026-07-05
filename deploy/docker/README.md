@@ -6,7 +6,8 @@ proxying `/api` to the API). Walkthrough:
 
 ## Files
 
-- [compose.yaml](compose.yaml) — the three services + volume + healthchecks.
+- [compose.yaml](compose.yaml) — the three services, persistent database/upload
+  volumes, and healthchecks.
 - [api.Dockerfile](api.Dockerfile) — API image (workspace install, `pnpm start`).
 - [web.Dockerfile](web.Dockerfile) — build SPA, serve with nginx.
 - [nginx.conf](nginx.conf) — SPA fallback + `/api` reverse proxy.
@@ -46,3 +47,5 @@ docker compose exec postgres pg_dump -U wetravel wetravel > backup.sql
 - The browser talks only to `web` (port 8080); nginx proxies `/api` to `api`,
   so auth cookies are same-origin.
 - The API connects to Postgres via `DATABASE_URL` (no Hyperdrive locally).
+- Avatar files use the `wetravel-uploads` named volume by default. Storage
+  backend and root are selected explicitly in `.env`.

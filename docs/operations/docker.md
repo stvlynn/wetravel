@@ -21,7 +21,8 @@ docker compose up -d --build
 Services:
 
 - `postgres` — data volume `wetravel-pgdata`, healthchecked.
-- `api` — waits for a healthy `postgres`, then serves on port 8787.
+- `api` — waits for a healthy `postgres`, serves on port 8787, and stores
+  filesystem uploads in the `wetravel-uploads` volume.
 - `web` — serves the built SPA on port 8080.
 
 ## 3. Migrate + seed
@@ -60,3 +61,7 @@ cat backup.sql | docker compose exec -T postgres psql -U wetravel wetravel
   is no Hyperdrive locally.
 - `WEB_ORIGIN` must be listed in `TRUSTED_ORIGINS` for auth to accept requests
   from the SPA.
+- `STORAGE_BACKEND=fs` and `STORAGE_ROOT=/app/apps/api/uploads` are explicit in
+  the example env. The named volume preserves avatars across container rebuilds.
+- S3-compatible storage can be used instead by setting `STORAGE_BACKEND=s3`
+  and all `S3_*` variables described in [README.md](README.md).

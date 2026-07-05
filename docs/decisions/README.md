@@ -16,3 +16,5 @@ Each ADR uses: **Context**, **Decision**, **Consequences**, **Status**
 - [0002-cloudflare-and-docker-deploy.md](0002-cloudflare-and-docker-deploy.md) —
   dual deployment targets and the Hyperdrive vs `DATABASE_URL` split.
 - [0003-i18n.md](0003-i18n.md) — react-i18next and centralized copy.
+- [0004-env-configured-object-storage.md](0004-env-configured-object-storage.md) —
+  explicit filesystem or S3-compatible avatar storage across runtimes.

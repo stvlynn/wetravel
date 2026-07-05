@@ -21,5 +21,56 @@
     "loading": "加载中…",
     "error": "出错了。",
     "retry": "重试"
+  },
+  "settings": {
+    "userMenu": {
+      "profile": "个人资料",
+      "preferences": "偏好设置",
+      "about": "关于"
+    },
+    "groups": {
+      "personal": "个人",
+      "application": "应用"
+    },
+    "nav": {
+      "profile": "个人资料",
+      "preferences": "偏好设置",
+      "about": "关于"
+    },
+    "profile": {
+      "title": "个人资料",
+      "description": "你的显示名称与公开身份。",
+      "displayName": "显示名称",
+      "uploadAvatar": "上传头像",
+      "removeAvatar": "移除头像",
+      "save": "保存资料",
+      "saving": "保存中…",
+      "errors": {
+        "displayNameRequired": "显示名称不能为空。",
+        "saveFailed": "保存资料失败。",
+        "avatarTooLarge": "头像大小不能超过 2 MB。",
+        "avatarUnsupported": "仅支持 PNG、JPEG 和 WebP 图片。",
+        "avatarUploadFailed": "上传头像失败。",
+        "avatarRemoveFailed": "移除头像失败。"
+      }
+    },
+    "preferences": {
+      "title": "偏好设置",
+      "description": "语言与外观设置。"
+    },
+    "appearance": {
+      "label": "外观",
+      "system": "跟随系统",
+      "light": "浅色",
+      "dark": "深色"
+    },
+    "language": {
+      "label": "语言"
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本 {{version}}",
+      "description": "微旅是一款供亲友一起规划旅行的协作工具。"
+    }
   }
 }

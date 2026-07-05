@@ -26,6 +26,8 @@ DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:seed
 # 3. API (Workers)
 cd deploy/cloudflare
 wrangler secret put BETTER_AUTH_SECRET --config wrangler.api.jsonc
+wrangler secret put S3_ACCESS_KEY_ID --config wrangler.api.jsonc
+wrangler secret put S3_SECRET_ACCESS_KEY --config wrangler.api.jsonc
 wrangler deploy --config wrangler.api.jsonc
 
 # 4. Frontend (Pages)
@@ -34,4 +36,5 @@ wrangler pages deploy apps/web/dist --project-name wetravel-web
 ```
 
 Set `TRUSTED_ORIGINS` (var in `wrangler.api.jsonc`) to the Pages origin so auth
-CSRF checks pass, and `BASE_URL` to the Worker's public URL.
+CSRF checks pass, and `BASE_URL` to the Worker's public URL. Replace the R2 S3
+endpoint and bucket placeholders before deployment.

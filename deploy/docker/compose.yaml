@@ -26,7 +26,11 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       TRUSTED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8080}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-fs}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/app/apps/api/uploads}
       PORT: "8787"
+    volumes:
+      - wetravel-uploads:/app/apps/api/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,3 +56,4 @@ services:
 
 volumes:
   wetravel-pgdata:
+  wetravel-uploads:

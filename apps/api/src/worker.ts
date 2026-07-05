@@ -1,11 +1,11 @@
 import { createContainer, type Container } from "./infrastructure/composition/container";
+import { loadConfig, type RawEnv } from "./infrastructure/config";
+import { createWorkerStorage } from "./infrastructure/storage/create-worker-storage";
 import { createApp } from "./interfaces/http/app";
 
-interface WorkerEnv {
+interface WorkerEnv extends RawEnv {
   HYPERDRIVE: { connectionString: string };
-  BASE_URL?: string;
   BETTER_AUTH_SECRET: string;
-  TRUSTED_ORIGINS?: string;
 }
 
 let cached: { app: ReturnType<typeof createApp>; container: Container } | null =
@@ -13,7 +13,8 @@ let cached: { app: ReturnType<typeof createApp>; container: Container } | null =
 
 function getApp(env: WorkerEnv) {
   if (!cached) {
-    const container = createContainer(env, env.HYPERDRIVE.connectionString);
+    const config = loadConfig(env, env.HYPERDRIVE.connectionString);
+    const container = createContainer(config, createWorkerStorage(config.storage));
     cached = { app: createApp(container), container };
   }
   return cached.app;

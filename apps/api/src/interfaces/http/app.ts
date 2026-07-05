@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { MAX_AVATAR_BYTES } from "../../application/avatar";
+import { BetterAuthCurrentUserProfile } from "../../infrastructure/auth/current-user-profile";
 import type { Container } from "../../infrastructure/composition/container";
 import { handleError } from "./errors";
 import { ok, fail } from "./response";
@@ -59,10 +62,13 @@ const expenseSchema = z.object({
   participants: z.array(z.string().min(1)).min(1),
 });
 
+const MAX_MULTIPART_OVERHEAD_BYTES = 64 * 1024;
+const MAX_AVATAR_REQUEST_BYTES = MAX_AVATAR_BYTES + MAX_MULTIPART_OVERHEAD_BYTES;
+
 /** Build the Hono app for a wired container. Shared by the Node and Workers
  * entry points. */
 export function createApp(container: Container) {
-  const { auth, tripService, config } = container;
+  const { auth, tripService, avatarService, fileStorage, config } = container;
   const app = new Hono<Env>();
 
   app.use(
@@ -85,6 +91,24 @@ export function createApp(container: Container) {
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   app.get("/api/health", (c) => ok(c, { status: "ok" }));
+
+  // Serve uploaded files publicly (avatars, etc.).
+  app.get("/api/uploads/*", async (c) => {
+    const encodedPath = c.req.path.replace(/^\/api\/uploads\//, "");
+    const storagePath = decodeStoragePath(encodedPath);
+    if (!storagePath || !isAvatarStoragePath(storagePath)) {
+      return fail(c, "invalid_path", "Invalid path", 400);
+    }
+    const file = await fileStorage.read(storagePath);
+    if (!file) return fail(c, "not_found", "File not found", 404);
+    return new Response(file.content, {
+      headers: {
+        "Content-Type": file.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  });
 
   // Everything below requires a session.
   const guard = new Hono<Env>();
@@ -143,8 +167,60 @@ export function createApp(container: Container) {
     return ok(c, await tripService.addExpense(c.req.param("id"), input));
   });
 
+  guard.post(
+    "/users/avatar",
+    bodyLimit({
+      maxSize: MAX_AVATAR_REQUEST_BYTES,
+      onError: (c) => fail(c, "avatar_too_large", "Avatar request is too large", 413),
+    }),
+    async (c) => {
+      const user = c.get("user")!;
+      const body = await c.req.parseBody();
+      const file = body.avatar;
+      if (!(file instanceof File)) {
+        return fail(c, "avatar_missing", "Avatar file is required", 400);
+      }
+      const profile = new BetterAuthCurrentUserProfile(auth, c.req.raw.headers);
+      const url = await avatarService.replace(
+        user.id,
+        user.image ?? null,
+        {
+          content: new Uint8Array(await file.arrayBuffer()),
+          claimedMimeType: file.type,
+        },
+        profile,
+      );
+      return ok(c, { url }, 201);
+    },
+  );
+
+  guard.delete("/users/avatar", async (c) => {
+    const user = c.get("user")!;
+    const profile = new BetterAuthCurrentUserProfile(auth, c.req.raw.headers);
+    await avatarService.remove(user.image ?? null, profile);
+    return ok(c, { image: null });
+  });
+
   app.route("/api", guard);
 
   app.onError(handleError);
   return app;
+}
+
+function decodeStoragePath(path: string): string | null {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+}
+
+function isAvatarStoragePath(path: string): boolean {
+  const parts = path.split("/");
+  if (parts.length !== 3 || parts[0] !== "avatars" || !/^[0-9a-f]+$/i.test(parts[1]!)) {
+    return false;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(png|jpg|webp)$/i.test(
+    parts[2]!,
+  );
 }

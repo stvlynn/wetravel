@@ -1,31 +1,18 @@
 import { useEffect, useId, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleUserRound,
+  Info,
+  LogOut,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { signOut, useSession } from "@/shared/auth";
-import { LanguageSwitch } from "@/shared/i18n/LanguageSwitch";
+import { useSettings, type SettingsPane } from "@/features/settings";
 import { Avatar } from "@/shared/ui/avatar";
-import { cn } from "@/shared/lib";
-
-/** Deterministic avatar palette so a given user keeps a stable color. */
-const PALETTE: Array<{ bg: string; fg: string }> = [
-  { bg: "#dde7fb", fg: "#2b4d93" },
-  { bg: "#d9efe6", fg: "#1f6b4d" },
-  { bg: "#f3e8d3", fg: "#7a5a1e" },
-  { bg: "#f0dceb", fg: "#82397a" },
-  { bg: "#dde2ee", fg: "#3c4760" },
-];
-
-function hashIndex(seed: string, mod: number): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  return Math.abs(h) % mod;
-}
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
+import { cn, initialsOf, avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
 
 export interface UserMenuProps {
   /** Compact top-bar trigger: just an avatar, no name/chevron. */
@@ -33,10 +20,11 @@ export interface UserMenuProps {
 }
 
 /** Sidebar footer: avatar trigger that opens an upward menu holding account
- * info, the language switch, and sign out. Mirrors Kalmia's UserMenu pattern. */
+ * info, settings panes, and sign out. Mirrors Kalmia's UserMenu pattern. */
 export function UserMenu({ compact }: UserMenuProps) {
   const { t } = useTranslation("common");
   const { data: session } = useSession();
+  const { openPane } = useSettings();
   const [open, setOpen] = useState(false);
   const [renderOpen, setRenderOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,11 +55,17 @@ export function UserMenu({ compact }: UserMenuProps) {
     };
   }, [open]);
 
+  const openSettings = (pane: SettingsPane) => {
+    setOpen(false);
+    openPane(pane);
+  };
+
   const user = session?.user;
   const name = user?.name?.trim() || user?.email || "";
   const email = user?.email ?? "";
+  const image = user?.image ?? null;
   const seed = user?.id ?? name;
-  const color = PALETTE[hashIndex(seed || "?", PALETTE.length)]!;
+  const color = AVATAR_PALETTE[avatarHashIndex(seed || "?", AVATAR_PALETTE.length)]!;
 
   return (
     <div ref={containerRef} className="relative flex-none p-2">
@@ -91,7 +85,7 @@ export function UserMenu({ compact }: UserMenuProps) {
           <div>
             <div className="wf-enter" style={{ animationDelay: "0ms" }}>
               <div className="flex items-center gap-2.5 px-2 py-2">
-                <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} size={32} />
+                <Avatar initials={initialsOf(name)} name={name} bg={color.bg} fg={color.fg} src={image} size={32} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{name}</p>
                   {email && email !== name ? (
@@ -104,12 +98,21 @@ export function UserMenu({ compact }: UserMenuProps) {
             </div>
 
             <div className="wf-enter" style={{ animationDelay: "100ms" }}>
-              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {t("language")}
-                </span>
-                <LanguageSwitch />
-              </div>
+              <MenuItem
+                icon={CircleUserRound}
+                label={t("settings.userMenu.profile")}
+                onClick={() => openSettings("profile")}
+              />
+              <MenuItem
+                icon={Settings2}
+                label={t("settings.userMenu.preferences")}
+                onClick={() => openSettings("preferences")}
+              />
+              <MenuItem
+                icon={Info}
+                label={t("settings.userMenu.about")}
+                onClick={() => openSettings("about")}
+              />
 
               <div className="my-1 h-px bg-border" />
             </div>
@@ -124,20 +127,7 @@ export function UserMenu({ compact }: UserMenuProps) {
                 }}
                 className="flex min-h-10 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 py-2 text-left text-sm font-medium text-foreground transition-[background-color,color,scale] duration-100 hover:bg-accent active:scale-[0.96]"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="size-4 text-muted-foreground"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <path d="m16 17 5-5-5-5" />
-                  <path d="M21 12H9" />
-                </svg>
+                <LogOut aria-hidden="true" className="size-4 text-muted-foreground" />
                 {t("actions.signOut")}
               </button>
             </div>
@@ -164,6 +154,7 @@ export function UserMenu({ compact }: UserMenuProps) {
           name={name}
           bg={color.bg}
           fg={color.fg}
+          src={image}
           size={compact ? 30 : 32}
           className={compact ? "ring-2 ring-card" : undefined}
         />
@@ -176,34 +167,20 @@ export function UserMenu({ compact }: UserMenuProps) {
               ) : null}
             </div>
             <span className="relative size-4 flex-none text-muted-foreground" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
+              <ChevronDown
+                aria-hidden="true"
                 className={cn(
                   "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
                   open ? "scale-[0.25] opacity-0 blur-[4px]" : "scale-100 opacity-100",
                 )}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m7 15 5 5 5-5" />
-              </svg>
-              <svg
-                viewBox="0 0 24 24"
+              />
+              <ChevronUp
+                aria-hidden="true"
                 className={cn(
                   "absolute inset-0 transition-[scale,opacity,filter] duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
                   open ? "scale-100 opacity-100" : "scale-[0.25] opacity-0 blur-[4px]",
                 )}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m7 9 5-5 5 5" />
-              </svg>
+              />
             </span>
           </>
         )}
@@ -211,3 +188,23 @@ export function UserMenu({ compact }: UserMenuProps) {
     </div>
   );
 }
+
+const MenuItem = ({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    role="menuitem"
+    onClick={onClick}
+    className="flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition-[background-color,color,scale] duration-100 hover:bg-accent active:scale-[0.96]"
+  >
+    <Icon aria-hidden="true" className="size-4 text-muted-foreground" />
+    <span className="flex-1">{label}</span>
+  </button>
+);

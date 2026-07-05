@@ -17,7 +17,8 @@ infrastructure  --- implements ----|
 - **application** (`src/application`) — use cases orchestrating the domain
   through ports; returns DTOs.
 - **infrastructure** (`src/infrastructure`) — PostgreSQL repository adapters,
-  the database pool, Better Auth, and runtime composition (Node + Workers).
+  the database pool, Better Auth, filesystem/S3 storage adapters, and runtime
+  composition (Node + Workers).
 - **interfaces** (`src/interfaces/http`) — Hono routes: parse input, call a use
   case, format output. Thin.
 
@@ -29,6 +30,10 @@ cases). Two entry points share it:
 - `src/node-server.ts` — `@hono/node-server` for Docker/local.
 - `src/worker.ts` — Workers `fetch` entry for Cloudflare (connection string
   from the Hyperdrive binding).
+
+Both entry points inject storage through an application port. Node supports
+explicit `fs` or `s3` configuration; Workers require `s3` so their dependency
+graph never imports the Node filesystem adapter.
 
 ## Related
 

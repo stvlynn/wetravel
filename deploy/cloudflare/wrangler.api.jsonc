@@ -22,6 +22,12 @@
   // TRUSTED_ORIGINS to your Pages origin. Secrets go through `wrangler secret put`.
   "vars": {
     "BASE_URL": "https://wetravel-api.<your-subdomain>.workers.dev",
-    "TRUSTED_ORIGINS": "https://wetravel-web.pages.dev"
+    "TRUSTED_ORIGINS": "https://wetravel-web.pages.dev",
+    "STORAGE_BACKEND": "s3",
+    "STORAGE_ROOT": "uploads",
+    "S3_BUCKET": "wetravel-uploads",
+    "S3_REGION": "auto",
+    "S3_ENDPOINT": "https://<account-id>.r2.cloudflarestorage.com",
+    "S3_FORCE_PATH_STYLE": "false"
   }
 }

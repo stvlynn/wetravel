@@ -92,6 +92,18 @@
   --sidebar-accent-foreground: var(--ink-800);
   --sidebar-border: color-mix(in srgb, var(--ink-900) 7%, transparent);
 
+  /* Deterministic avatar fallbacks */
+  --avatar-1-bg: var(--corn-100);
+  --avatar-1-fg: var(--corn-700);
+  --avatar-2-bg: color-mix(in srgb, var(--success) 18%, var(--card));
+  --avatar-2-fg: var(--success-foreground);
+  --avatar-3-bg: color-mix(in srgb, var(--warning) 22%, var(--card));
+  --avatar-3-fg: var(--warning-foreground);
+  --avatar-4-bg: color-mix(in srgb, var(--destructive) 14%, var(--card));
+  --avatar-4-fg: var(--destructive-foreground);
+  --avatar-5-bg: var(--ink-200);
+  --avatar-5-fg: var(--ink-700);
+
   /* Charts — cornflower-led cool sequence */
   --chart-1: var(--corn-500);
   --chart-2: var(--corn-300);
@@ -136,6 +148,17 @@
   --sidebar-accent: color-mix(in srgb, var(--white) 6%, transparent);
   --sidebar-accent-foreground: var(--ink-100);
   --sidebar-border: color-mix(in srgb, var(--white) 6%, transparent);
+
+  --avatar-1-bg: color-mix(in srgb, var(--corn-400) 24%, var(--card));
+  --avatar-1-fg: var(--corn-200);
+  --avatar-2-bg: color-mix(in srgb, var(--success) 22%, var(--card));
+  --avatar-2-fg: var(--success);
+  --avatar-3-bg: color-mix(in srgb, var(--warning) 22%, var(--card));
+  --avatar-3-fg: var(--warning);
+  --avatar-4-bg: color-mix(in srgb, var(--destructive) 20%, var(--card));
+  --avatar-4-fg: var(--destructive);
+  --avatar-5-bg: var(--ink-700);
+  --avatar-5-fg: var(--ink-200);
 
   /* Shadow-as-border on dark: a single white ring — layered depth shadows are
      invisible on dark surfaces. */

@@ -33,7 +33,9 @@ Reusable composite blocks used by more than one page:
   collapse control sits at the sidebar's top-right; collapsing hides it and shows
   a floating expand control over the panel. The state persists in localStorage.
 - `widgets/user-menu` — avatar trigger docked at the sidebar bottom. Opens an
-  upward popover holding account info, the language switch, and sign out.
+  upward popover holding account info, settings entry points, and sign out.
+- `widgets/settings-dialog` — responsive account settings composition for
+  profile, language, appearance, and application information.
 
 There is no top bar; global chrome lives in the sidebar. Most planner blocks
 stay page-private under `pages/travel-planner/ui` until reuse emerges.

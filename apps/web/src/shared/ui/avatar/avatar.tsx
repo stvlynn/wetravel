@@ -6,6 +6,8 @@ export interface AvatarProps {
   name: string;
   bg: string;
   fg: string;
+  /** Optional image URL. When provided and loadable, it replaces the initials. */
+  src?: string | null;
   size?: number;
   /** Stacked index: >0 applies a negative margin + card ring for clustering. */
   stackIndex?: number;
@@ -21,6 +23,7 @@ export function Avatar({
   name,
   bg,
   fg,
+  src,
   size = 26,
   stackIndex,
   zIndex,
@@ -34,7 +37,7 @@ export function Avatar({
       title={name}
       aria-label={name}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-visible rounded-full font-semibold select-none",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold select-none",
         stacked && "ring-2 ring-card",
         className,
       )}
@@ -45,6 +48,13 @@ export function Avatar({
         zIndex,
       }}
     >
+      {src ? (
+        <AvatarPrimitive.Image
+          src={src}
+          alt={name}
+          className="size-full object-cover"
+        />
+      ) : null}
       <AvatarPrimitive.Fallback
         data-slot="avatar-fallback"
         className="flex size-full items-center justify-center rounded-full"

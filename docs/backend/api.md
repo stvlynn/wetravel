@@ -9,7 +9,7 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 - JSON only. Success envelope: `{ "data": <payload> }`.
 - Error envelope: `{ "error": { "code": string, "message": string } }`.
 - Status codes: `200` ok, `400` validation, `401` unauthenticated,
-  `404` not found, `500` unexpected.
+  `404` not found, `413` upload too large, `500` unexpected.
 - Business routes require an authenticated session; unauthenticated -> `401`.
 - Input is validated with `zod` at the edge before reaching a use case.
 
@@ -27,6 +27,9 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 | POST | `/api/trips/:id/stops/:stopId/vote` | Toggle current-user vote |
 | POST | `/api/trips/:id/stops/:stopId/comments` | Add a comment `{ text }` |
 | POST | `/api/trips/:id/expenses` | Add expense `{ description, amount, currency?, payer, participants }`; `currency` is the ISO code for `amount` and defaults to the trip currency |
+| POST | `/api/users/avatar` | Upload the current user's PNG/JPEG/WebP avatar as multipart field `avatar` (maximum file size 2 MiB); updates Better Auth and cleans up the previous managed avatar |
+| DELETE | `/api/users/avatar` | Remove the current user's managed avatar and clear the Better Auth image field |
+| GET | `/api/uploads/*` | Public immutable delivery for managed uploaded avatars |
 
 ## Dates
 

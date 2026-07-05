@@ -25,8 +25,13 @@ semantic tokens, never raw palette values.
 Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
-`avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`. Each exposes a
+`avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
+`dialog`. Each exposes a
 public `index.ts`.
+
+Application icons come from `lucide-react`; feature and widget code does not
+duplicate handwritten SVG paths. Decorative icons are hidden from assistive
+technology while icon-only controls retain localized labels.
 Variants/sizes come from props, not ad-hoc overrides. Icon-only buttons require
 `aria-label`; form controls set an explicit `type`.
 
