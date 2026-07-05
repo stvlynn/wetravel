@@ -1,6 +1,6 @@
 import type React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import { cn } from "@/shared/lib";
+import { cn, popupMotionClasses } from "@/shared/lib";
 
 /** coss-style Select adapted to wetravel tokens (Base UI under the hood).
  * Inline icons and theme tokens replace the coss registry / lucide deps. */
@@ -96,8 +96,9 @@ export function SelectPopup({
       >
         <SelectPrimitive.Popup
           className={cn(
-            "max-h-[min(var(--available-height),20rem)] min-w-(--anchor-width) origin-(--transform-origin) " +
+            "max-h-[min(var(--available-height),20rem)] min-w-(--anchor-width) " +
               "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
+            popupMotionClasses,
             className,
           )}
           data-slot="select-popup"

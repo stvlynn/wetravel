@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { findDay } from "@/entities/trip";
-import { formatMoney } from "@/shared/lib";
-import { cn } from "@/shared/lib";
+import { formatMoney, cn, useEnterOnUpdate, usePresence } from "@/shared/lib";
 import { DayPills } from "./DayPills";
 import { StopDetail } from "./StopDetail";
 
@@ -28,27 +27,46 @@ export function Sidebar(props: SidebarProps) {
     ? trip.stops.find((s) => s.id === selectedStopId)
     : undefined;
 
+  const showDetail = !!selectedStop;
+  const { mounted: detailMounted, exiting: detailExiting } = usePresence(showDetail);
+  const listEnter = useEnterOnUpdate(selectedStopId);
+
   const visibleDays = day === 0 ? trip.days : trip.days.filter((d) => d.number === day);
   const visibleCount =
     day === 0
       ? trip.stops.length
       : trip.stops.filter((s) => s.day === day).length;
 
+  let stopIndex = 0;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {selectedStop ? (
-        <StopDetail
-          trip={trip}
-          stop={selectedStop}
-          currentUserId={props.currentUserId}
-          onClose={props.onCloseDetail}
-          onToggleVote={props.onToggleVote}
-          onComment={props.onComment}
-          commentPending={props.commentPending}
-        />
+      {detailMounted && selectedStop ? (
+        <div
+          className={cn(
+            "flex h-full min-h-0 flex-col",
+            detailExiting ? "wf-exit" : "wf-enter",
+          )}
+        >
+          <StopDetail
+            trip={trip}
+            stop={selectedStop}
+            currentUserId={props.currentUserId}
+            onClose={props.onCloseDetail}
+            onToggleVote={props.onToggleVote}
+            onComment={props.onComment}
+            commentPending={props.commentPending}
+          />
+        </div>
       ) : (
         <>
-          <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-2.5">
+          <div
+            className={cn(
+              "flex flex-col gap-2.5 px-4 pt-3.5 pb-2.5",
+              listEnter && "wf-enter",
+            )}
+            style={listEnter ? { animationDelay: "0ms" } : undefined}
+          >
             <div className="flex items-baseline gap-2">
               <span className="font-heading text-lg font-semibold tracking-tight">
                 {t("itinerary.title")}
@@ -60,7 +78,7 @@ export function Sidebar(props: SidebarProps) {
             <DayPills trip={trip} day={day} onDayChange={props.onDayChange} />
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto" key={day}>
             {visibleDays.map((d) => {
               const dayStops = trip.stops.filter((s) => s.day === d.number);
               return (
@@ -80,15 +98,17 @@ export function Sidebar(props: SidebarProps) {
                   {dayStops.map((s) => {
                     const voted = s.votes.includes(props.currentUserId);
                     const selected = s.id === selectedStopId;
+                    const index = stopIndex++;
                     return (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => props.onSelectStop(s.id)}
                         className={cn(
-                          "flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-[background-color,color,scale] duration-100 active:scale-[0.96]",
+                          "wf-enter flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-[background-color,color,scale] duration-100 active:scale-[0.96]",
                           selected ? "bg-brand-muted" : "hover:bg-muted",
                         )}
+                        style={{ animationDelay: `${index * 90}ms` }}
                       >
                         <span
                           className={cn(

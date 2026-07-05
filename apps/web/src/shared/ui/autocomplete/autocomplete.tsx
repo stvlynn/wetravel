@@ -1,6 +1,6 @@
 import type React from "react";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { cn } from "@/shared/lib";
+import { cn, popupMotionClasses } from "@/shared/lib";
 
 /** coss-style Autocomplete adapted to wetravel tokens (Base UI under the hood).
  * Uses a native styled input, a plain scroll popup, and inline icons so it has
@@ -102,6 +102,7 @@ export function AutocompletePopup({
           className={cn(
             "max-h-[min(var(--available-height),22rem)] w-(--anchor-width) max-w-(--available-width) " +
               "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)]",
+            popupMotionClasses,
             className,
           )}
           data-slot="autocomplete-popup"

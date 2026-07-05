@@ -50,49 +50,52 @@ export function AppSidebar({ top, children, className }: AppSidebarProps) {
     localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        onClick={() => setCollapsed(false)}
-        aria-label={t("actions.expandSidebar")}
-        title={t("actions.expandSidebar")}
-        className="fixed left-3 top-3 z-20 flex size-8 items-center justify-center rounded-lg border border-border bg-card/85 text-muted-foreground shadow-sm backdrop-blur-md transition-colors duration-150 hover:bg-accent hover:text-foreground"
-      >
-        <PanelToggleIcon className="size-4" />
-      </button>
-    );
-  }
-
   return (
-    <aside
-      className={cn(
-        "relative flex h-dvh w-[300px] flex-none flex-col bg-sidebar",
-        className,
-      )}
-    >
-      <div className="flex flex-none items-start gap-2 px-4 pt-4 pb-2">
-        <div className="min-w-0 flex-1">
-          {top ?? (
-            <span className="font-heading text-lg font-semibold">
-              {t("appName")}
-            </span>
-          )}
+    <>
+      <aside
+        className={cn(
+          "relative flex h-dvh flex-none flex-col overflow-hidden bg-sidebar transition-[width,opacity] duration-200 ease-[var(--ease-out)]",
+          collapsed ? "pointer-events-none w-0 opacity-0" : "w-[300px] opacity-100",
+          className,
+        )}
+        aria-hidden={collapsed}
+      >
+        <div className="flex flex-none items-start gap-2 px-4 pt-4 pb-2">
+          <div className="min-w-0 flex-1">{top ?? <BrandTitle />}</div>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            aria-label={t("actions.collapseSidebar")}
+            title={t("actions.collapseSidebar")}
+            className="-mr-1 flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 hover:bg-accent hover:text-foreground active:scale-[0.96]"
+          >
+            <PanelToggleIcon className="size-4" />
+          </button>
         </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+
+        <UserMenu />
+      </aside>
+
+      {collapsed ? (
         <button
           type="button"
-          onClick={() => setCollapsed(true)}
-          aria-label={t("actions.collapseSidebar")}
-          title={t("actions.collapseSidebar")}
-          className="-mr-1 flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
+          onClick={() => setCollapsed(false)}
+          aria-label={t("actions.expandSidebar")}
+          title={t("actions.expandSidebar")}
+          className="wf-enter fixed left-3 top-3 z-20 flex size-8 items-center justify-center rounded-lg border border-border bg-card/85 text-muted-foreground shadow-sm backdrop-blur-md transition-[background-color,color,scale] duration-150 hover:bg-accent hover:text-foreground active:scale-[0.96]"
         >
           <PanelToggleIcon className="size-4" />
         </button>
-      </div>
+      ) : null}
+    </>
+  );
+}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
-
-      <UserMenu />
-    </aside>
+function BrandTitle() {
+  const { t } = useTranslation("common");
+  return (
+    <span className="font-heading text-lg font-semibold">{t("appName")}</span>
   );
 }

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createTrip, fetchTrips } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
+import { cn } from "@/shared/lib";
 import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { useRouter } from "@/app/router";
@@ -41,14 +42,15 @@ export function TripsPage() {
             type="button"
             onClick={() => create.mutate()}
             disabled={creating}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-colors duration-100 hover:bg-accent disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-[background-color,color,scale] duration-150 hover:bg-accent active:scale-[0.96] disabled:opacity-50"
           >
-            {creating ? (
-              <Spinner className="size-4 text-corn-600" />
-            ) : (
+            <span
+              className="wf-icon-swap inline-flex size-4 items-center justify-center text-corn-600"
+              data-state={creating ? "active" : undefined}
+            >
               <svg
                 viewBox="0 0 24 24"
-                className="size-4 text-corn-600"
+                className="size-4"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -59,7 +61,8 @@ export function TripsPage() {
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
-            )}
+              <Spinner className="size-4" />
+            </span>
             {t("newTrip")}
           </button>
         </nav>
@@ -67,15 +70,15 @@ export function TripsPage() {
 
       <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
         <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
-          <div className="mb-8 flex flex-col gap-1">
-            <h1 className="text-3xl font-semibold tracking-[-0.02em]">
+          <div className="wf-enter-stagger mb-8 flex flex-col gap-1">
+            <h1 className="wf-enter text-3xl font-semibold tracking-[-0.02em]">
               {t("title")}
             </h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+            <p className="wf-enter text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
 
           {isPending ? (
-            <div className="flex justify-center py-16">
+            <div className="wf-enter flex justify-center py-16">
               <Spinner className="size-6" />
             </div>
           ) : isError ? (
@@ -116,8 +119,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center p-2">
-        <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
-          <p className="text-base font-semibold text-pretty">{t("empty.title")}</p>
+        <div className="wf-enter-stagger flex w-full max-w-[520px] flex-col items-center gap-5">
+          <p className="wf-enter text-base font-semibold text-pretty">{t("empty.title")}</p>
           <button
             type="button"
             onClick={onCreate}
@@ -169,7 +172,7 @@ function SkeletonCard() {
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation("common");
   return (
-    <div className="flex flex-col items-center gap-3 py-16">
+    <div className="wf-enter flex flex-col items-center gap-3 py-16">
       <p className="text-sm text-pretty text-muted-foreground">{t("state.error")}</p>
       <button
         type="button"

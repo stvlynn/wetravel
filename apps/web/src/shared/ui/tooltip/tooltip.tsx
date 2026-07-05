@@ -1,6 +1,6 @@
 import type React from "react";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import { cn } from "@/shared/lib";
+import { cn, popupMotionClasses } from "@/shared/lib";
 
 /** coss-style Tooltip adapted to wetravel tokens (Base UI under the hood). */
 export const Tooltip: typeof TooltipPrimitive.Root = TooltipPrimitive.Root;
@@ -47,10 +47,7 @@ export function TooltipPopup({
         <TooltipPrimitive.Popup
           className={cn(
             "max-w-48 rounded-md bg-foreground px-2 py-1 text-xs text-background text-pretty shadow-md",
-            "origin-(--transform-origin)",
-            "transition-[transform,opacity] duration-100 ease-[var(--ease-out)]",
-            "data-instant:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0",
-            "data-ending-style:scale-[0.98] data-ending-style:opacity-0",
+            popupMotionClasses,
             className,
           )}
           data-slot="tooltip-popup"

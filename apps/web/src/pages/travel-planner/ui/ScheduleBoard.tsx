@@ -151,8 +151,11 @@ export function ScheduleBoard({
                     <button
                       type="button"
                       onClick={() => onSelectStop(s.id)}
-                      className="flex flex-col gap-1 rounded-lg border border-border border-l-[3px] bg-card p-2.5 text-left shadow-xs transition-[border-color,box-shadow,scale] duration-150 hover:border-corn-300 hover:shadow-sm active:scale-[0.96]"
-                      style={{ borderLeftColor: d.color }}
+                      className="wf-enter flex flex-col gap-1 rounded-lg border border-border border-l-[3px] bg-card p-2.5 text-left shadow-xs transition-[border-color,box-shadow,scale] duration-150 hover:border-corn-300 hover:shadow-sm active:scale-[0.96]"
+                      style={{
+                        borderLeftColor: d.color,
+                        animationDelay: `${idx * 90}ms`,
+                      }}
                     >
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="font-mono text-[11px] text-muted-foreground tabular-nums">

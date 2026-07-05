@@ -1,6 +1,6 @@
 import type React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
-import { cn } from "@/shared/lib";
+import { cn, popupMotionClasses } from "@/shared/lib";
 
 /** coss-style ContextMenu adapted to wetravel tokens (Base UI under the hood).
  * Right-click / long-press a wrapped surface to open a pointer-anchored menu. */
@@ -48,7 +48,8 @@ export function ContextMenuPopup({
       >
         <ContextMenuPrimitive.Popup
           className={cn(
-            "min-w-44 origin-(--transform-origin) rounded-lg bg-popover p-1 text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
+            "min-w-44 rounded-lg bg-popover p-1 text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
+            popupMotionClasses,
             className,
           )}
           data-slot="context-menu-popup"

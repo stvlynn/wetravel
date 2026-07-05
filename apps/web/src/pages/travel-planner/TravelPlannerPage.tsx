@@ -8,6 +8,7 @@ import { stopNumbers } from "@/entities/trip";
 import type { Trip } from "@/entities/trip";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
+import { cn, useEnterOnUpdate } from "@/shared/lib";
 import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tabs } from "@/shared/ui/tabs";
@@ -54,6 +55,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     () => (trip ? stopNumbers(trip.stops) : new Map<string, number>()),
     [trip],
   );
+  const tabEnter = useEnterOnUpdate(tab);
 
   // Bias place search toward the trip's existing footprint for local relevance.
   const bias = useMemo(() => {
@@ -157,7 +159,9 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   if (isPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
-        <Spinner className="size-6" />
+        <div className="wf-enter">
+          <Spinner className="size-6" />
+        </div>
       </div>
     );
   }
@@ -166,7 +170,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     return (
       <div className="flex h-dvh bg-sidebar">
         <AppSidebar top={<BackButton onBack={() => navigate("/")} />} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background">
+        <div className="wf-enter flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background">
           <p className="text-sm text-pretty text-muted-foreground">{tc("state.error")}</p>
           <button
             type="button"
@@ -237,7 +241,13 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
 
       <div className="flex min-w-0 flex-1 overflow-hidden rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
         <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1 overflow-auto">
+          <div
+            key={tab}
+            className={cn(
+              "relative min-h-0 flex-1 overflow-auto",
+              tabEnter && "wf-enter",
+            )}
+          >
             {tab === "map" ? (
               <TripMapView
                 trip={trip}
