@@ -6,7 +6,7 @@ import { useSettings, type SettingsPane } from "@/features/settings";
 import { ThemeModeSelect } from "@/features/toggle-theme";
 import { config } from "@/shared/config";
 import { LanguageSwitch } from "@/shared/i18n/LanguageSwitch";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 import {
   Dialog,
   DialogBackdrop,
@@ -40,7 +40,7 @@ export function SettingsDialog(): React.ReactElement {
             <SettingsNavigation pane={pane} onSelect={setPane} />
 
             <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-              <DialogClose type="button" className="absolute right-3 top-3 z-10 inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,color,scale] duration-150 hover:bg-accent hover:text-foreground active:scale-[0.96]">
+              <DialogClose type="button" className={cn("absolute right-3 top-3 z-10 inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground", interactive)}>
                 <X aria-hidden="true" className="size-5" />
                 <span className="sr-only">{t("actions.close")}</span>
               </DialogClose>
@@ -118,7 +118,7 @@ function SettingsNavItem({
       aria-current={active ? "page" : undefined}
       onClick={onClick}
       className={cn(
-        "flex min-h-10 flex-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-[background-color,color,scale] active:scale-[0.96] md:w-full",
+        `flex min-h-10 flex-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs ${interactive} md:w-full`,
         active
           ? "bg-card font-semibold text-foreground shadow-xs"
           : "font-medium text-muted-foreground hover:bg-accent hover:text-foreground",

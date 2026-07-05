@@ -60,11 +60,9 @@ function routeMapForTrip(trip: TripSummary): { path: string; points: { x: number
 
 export function TripCard({
   trip,
-  index,
   onOpen,
 }: {
   trip: TripSummary;
-  index: number;
   onOpen: () => void;
 }) {
   const { t } = useTranslation("trips");
@@ -86,8 +84,7 @@ export function TripCard({
 
   return (
     <Card
-      className="wf-enter group cursor-pointer overflow-hidden border border-border p-0 transition-[border-color,box-shadow,scale] duration-150 ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-md active:scale-[0.96]"
-      style={{ animationDelay: `${index * 100}ms` }}
+      className="wf-enter group cursor-pointer overflow-hidden border border-border p-0 transition-[border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-md active:scale-[var(--press-scale)]"
       onClick={onOpen}
       role="button"
       tabIndex={0}

@@ -90,7 +90,7 @@ export function AuthForm() {
 
       <button
         type="button"
-        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
+        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
         onClick={() => {
           setMode(isSignUp ? "signIn" : "signUp");
           setError(null);

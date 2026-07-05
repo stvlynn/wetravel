@@ -171,7 +171,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           <button
             type="button"
             onClick={() => void refetch()}
-            className="inline-flex h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
+            className="inline-flex h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
           >
             {tc("state.retry")}
           </button>
@@ -322,7 +322,7 @@ function BackButton({
         onClick={onBack}
         aria-label={t("actions.back")}
         title={t("actions.back")}
-        className="relative inline-flex size-8 flex-none items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 after:absolute after:-inset-1 after:content-[''] hover:bg-accent hover:text-foreground active:scale-[0.96]"
+        className="relative inline-flex size-8 flex-none items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] after:absolute after:-inset-1 after:content-[''] hover:bg-accent hover:text-foreground active:scale-[var(--press-scale)]"
       >
         <svg
           viewBox="0 0 24 24"
@@ -363,7 +363,7 @@ function BackButton({
             type="button"
             onClick={() => onRename && setEditing(true)}
             title={onRename ? tp("header.renameAria") : title}
-            className="truncate text-left font-heading text-base font-semibold leading-tight tracking-tight transition-[background-color,color,scale] duration-100 hover:text-corn-600 active:scale-[0.96]"
+            className="truncate text-left font-heading text-base font-semibold leading-tight tracking-tight transition-[color,scale] duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:text-corn-600 active:scale-[var(--press-scale)]"
           >
             {title}
           </button>

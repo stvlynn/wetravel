@@ -83,13 +83,12 @@ export function TripsPage() {
           ) : data.length === 0 && !creating ? (
             <EmptyState onCreate={() => create.mutate()} />
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="wf-enter-stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {creating && <SkeletonCard />}
-              {data.map((trip, i) => (
+              {data.map((trip) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}
-                  index={i}
                   onOpen={() => navigate(`/trips/${trip.id}`)}
                 />
               ))}
@@ -121,7 +120,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
           <button
             type="button"
             onClick={onCreate}
-            className="wf-enter group flex w-full items-center gap-3 rounded-xl bg-card/85 px-3.5 py-3 text-left shadow-[var(--shadow-border)] backdrop-blur-md transition-[background-color,color,scale,box-shadow] duration-150 hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
+            className="wf-enter group flex w-full items-center gap-3 rounded-xl bg-card/85 px-3.5 py-3 text-left shadow-[var(--shadow-border)] backdrop-blur-md transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[var(--press-scale)]"
           >
             <span className="flex size-10 flex-none items-center justify-center rounded-lg bg-accent text-corn-600 transition-[background-color] group-hover:bg-brand-muted">
               <svg
@@ -174,7 +173,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-150 hover:underline active:scale-[0.96]"
+        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
       >
         {t("state.retry")}
       </button>
