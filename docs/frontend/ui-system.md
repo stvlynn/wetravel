@@ -64,9 +64,41 @@ From make-interfaces-feel-better, applied consistently:
   `global.css`, and interactive surfaces convey focus through hover, border, and
   background changes (matching the Input/Autocomplete treatment).
 
+## Motion
+
+Motion has a single source of truth so effects are never re-implemented per
+component (derived from Emil Kowalski's craft bar; see the `review-animations`
+skill).
+
+- **Tokens** (`tokens/spacing.css`): `--press-scale`, `--ease-out` (the one UI
+  easing curve), and durations `--dur-fast` (120ms), `--dur-base` (150ms),
+  `--dur-slow` (200ms), `--dur-icon` (300ms). UI motion stays under 300ms; the
+  icon cross-fade is the only 300ms exception. Never hardcode milliseconds or a
+  raw `cubic-bezier`.
+- **Utilities** (`global.css`, referenced via `shared/lib` identifiers):
+  `pressable` (`.wf-pressable`) for press-scale only, `interactive`
+  (`.wf-interactive`) for background/color feedback + press, and `field`
+  (`.wf-field`) for input border/background. These replace the repeated
+  `transition-[...] active:scale-[0.96]` strings.
+- **Icon cross-fade**: use the `IconSwap` primitive (`shared/ui/icon-swap`), the
+  single implementation of opacity/scale/blur glyph swapping (`.wf-icon-swap`).
+  State-driven by default; pass `hoverSwap` for hover reveals (gated to fine
+  pointers).
+- **List entrance**: put `.wf-enter-stagger` on the parent and `.wf-enter` on
+  children; the stagger step is `--enter-stagger` (60ms). Children never
+  hardcode `animationDelay`.
+- **Popovers** (Select, ContextMenu, Autocomplete, Tooltip, Dialog) scale from
+  their trigger via `origin-(--transform-origin)` and Base UI
+  `data-starting-style`/`data-ending-style`; only modals stay centered.
+- **GPU-only**: animate `transform`/`opacity` — `box-shadow` is never placed in
+  a `transition`.
+
 ## Accessibility
 
 - Every interactive control is reachable and labeled; icons that are decorative
   use `aria-hidden`.
 - Color is never the only signal (status badges pair color with text).
-- Respect `prefers-reduced-motion`: staggered enters degrade to the base state.
+- Respect `prefers-reduced-motion`: movement (transform/translate) is dropped
+  while opacity/color transitions are kept — gentler, not zero. Hover-driven
+  motion is gated behind `@media (hover: hover) and (pointer: fine)` so touch
+  taps never fire false hover animations.
