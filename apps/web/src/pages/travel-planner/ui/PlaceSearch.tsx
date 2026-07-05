@@ -148,7 +148,7 @@ export function PlaceSearch({
         onClick={onPickOnMap}
         aria-label={t("pick.onMap")}
         title={t("pick.onMap")}
-        className="flex size-10 flex-none items-center justify-center rounded-lg bg-card text-muted-foreground shadow-[var(--shadow-border)] transition-[background-color,box-shadow,color,scale] duration-150 hover:bg-accent hover:text-corn-600 hover:shadow-[var(--shadow-border-hover)] active:scale-[0.96]"
+        className="flex size-10 flex-none items-center justify-center rounded-lg bg-card text-muted-foreground shadow-[var(--shadow-border)] transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-corn-600 hover:shadow-[var(--shadow-border-hover)] active:scale-[var(--press-scale)]"
       >
         <svg
           viewBox="0 0 24 24"

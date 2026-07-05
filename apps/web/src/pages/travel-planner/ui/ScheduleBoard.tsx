@@ -151,7 +151,7 @@ export function ScheduleBoard({
                     <button
                       type="button"
                       onClick={() => onSelectStop(s.id)}
-                      className="flex flex-col gap-1 rounded-lg border border-border border-l-[3px] bg-card p-2.5 text-left shadow-xs transition-[border-color,box-shadow,scale] duration-150 hover:border-corn-300 hover:shadow-sm active:scale-[0.96]"
+                      className="flex flex-col gap-1 rounded-lg border border-border border-l-[3px] bg-card p-2.5 text-left shadow-xs transition-[border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-sm active:scale-[var(--press-scale)]"
                       style={{ borderLeftColor: d.color }}
                     >
                       <div className="flex items-baseline justify-between gap-2">
@@ -197,7 +197,7 @@ export function ScheduleBoard({
             type="button"
             onClick={onAddDay}
             disabled={addingDay}
-            className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground transition-[border-color,background-color,color,scale] duration-150 hover:border-border-strong hover:bg-accent hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-60"
+            className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground transition-[border-color,background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-border-strong hover:bg-accent hover:text-foreground active:scale-[var(--press-scale)] disabled:pointer-events-none disabled:opacity-60"
           >
             <span className="flex size-8 items-center justify-center rounded-full bg-accent text-corn-600 transition-[background-color] group-hover:bg-brand-muted">
               <svg
@@ -332,7 +332,7 @@ function InsertComposer({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="relative flex h-8 w-fit items-center gap-1 rounded-md pl-1.5 pr-2 text-xs font-medium text-muted-foreground transition-[color,scale] duration-100 after:absolute after:-inset-1 after:content-[''] hover:text-foreground active:scale-[0.96]"
+        className="relative flex h-8 w-fit items-center gap-1 rounded-md pl-1.5 pr-2 text-xs font-medium text-muted-foreground transition-[color,scale] duration-[var(--dur-fast)] ease-[var(--ease-out)] after:absolute after:-inset-1 after:content-[''] hover:text-foreground active:scale-[var(--press-scale)]"
       >
         <svg
           viewBox="0 0 24 24"

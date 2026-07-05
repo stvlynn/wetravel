@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { findDay } from "@/entities/trip";
 import { formatMoney } from "@/shared/lib";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 import { DayPills } from "./DayPills";
 import { StopDetail } from "./StopDetail";
 
@@ -86,7 +86,7 @@ export function Sidebar(props: SidebarProps) {
                         type="button"
                         onClick={() => props.onSelectStop(s.id)}
                         className={cn(
-                          "flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-[background-color,color,scale] duration-100 active:scale-[0.96]",
+                          `flex w-full items-center gap-2.5 px-4 py-2.5 text-left ${interactive}`,
                           selected ? "bg-brand-muted" : "hover:bg-muted",
                         )}
                       >

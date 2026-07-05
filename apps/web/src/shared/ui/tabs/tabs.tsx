@@ -1,4 +1,4 @@
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 
 export interface TabItem {
   value: string;
@@ -42,7 +42,7 @@ export function Tabs({
             aria-selected={selected}
             onClick={() => onValueChange(item.value)}
             className={cn(
-              "h-8 flex-1 relative rounded-md px-3 text-xs font-medium transition-[background-color,color,box-shadow,scale] duration-150 active:scale-[0.96] after:absolute after:-inset-y-1 after:content-['']",
+              `h-8 flex-1 relative rounded-md px-3 text-xs font-medium ${interactive} after:absolute after:-inset-y-1 after:content-['']`,
               selected
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground",

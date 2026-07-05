@@ -1,6 +1,6 @@
 import type React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 
 /** coss-style Select adapted to wetravel tokens (Base UI under the hood).
  * Inline icons and theme tokens replace the coss registry / lucide deps. */
@@ -34,7 +34,7 @@ export function SelectTrigger({
     <SelectPrimitive.Trigger
       className={cn(
         "relative flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-left text-sm text-foreground",
-        "outline-none transition-[background-color,border-color,scale] duration-150 ease-[var(--ease-out)] active:scale-[0.96]",
+        "outline-none transition-[background-color,border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] active:scale-[var(--press-scale)]",
         "after:absolute after:-inset-0.5 after:content-['']",
         "hover:border-ring/50 hover:bg-accent/40 data-[popup-open]:border-ring",
         "data-disabled:pointer-events-none data-disabled:opacity-50",
@@ -97,7 +97,10 @@ export function SelectPopup({
         <SelectPrimitive.Popup
           className={cn(
             "max-h-[min(var(--available-height),20rem)] min-w-(--anchor-width) origin-(--transform-origin) " +
-              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none",
+              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] outline-none " +
+              "transition-[transform,opacity] duration-[var(--dur-slow)] ease-[var(--ease-out)] " +
+              "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 " +
+              "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
             className,
           )}
           data-slot="select-popup"
@@ -123,7 +126,7 @@ export function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "grid min-h-10 cursor-default select-none grid-cols-[1rem_1fr] items-center gap-2 rounded-sm py-2 pl-2 pr-3 text-sm outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
+        `grid min-h-10 cursor-default select-none grid-cols-[1rem_1fr] items-center gap-2 rounded-sm py-2 pl-2 pr-3 text-sm outline-none ${interactive}`,
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-50",
         className,

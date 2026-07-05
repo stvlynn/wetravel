@@ -58,8 +58,15 @@
   --ring-width: 3px;
   --ring-offset: 1px;
 
-  /* Motion — scale on press (tactile feedback); never below 0.95 */
+  /* Motion — single source of truth for durations, easing, and press scale.
+     Durations stay under 300ms for UI (Emil Kowalski craft bar); icon cross-
+     fades are the one 300ms exception. Consume these everywhere instead of
+     hardcoding milliseconds or cubic-beziers. */
   --press-scale: 0.96; /* @kind other */
-  --ease-out: cubic-bezier(0.2, 0, 0, 1); /* @kind other */
-  --enter-stagger: 90ms; /* @kind other */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1); /* @kind other — strong ease-out for UI */
+  --dur-fast: 120ms; /* @kind other — taps, color/background swaps */
+  --dur-base: 150ms; /* @kind other — default UI transition */
+  --dur-slow: 200ms; /* @kind other — popovers, dialogs, menus */
+  --dur-icon: 300ms; /* @kind other — icon cross-fade only */
+  --enter-stagger: 60ms; /* @kind other — list stagger step (30-80ms) */
 }

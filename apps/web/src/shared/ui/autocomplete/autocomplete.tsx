@@ -1,6 +1,6 @@
 import type React from "react";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import { cn } from "@/shared/lib";
+import { cn, interactive } from "@/shared/lib";
 
 /** coss-style Autocomplete adapted to wetravel tokens (Base UI under the hood).
  * Uses a native styled input, a plain scroll popup, and inline icons so it has
@@ -10,7 +10,7 @@ export const Autocomplete: typeof AutocompletePrimitive.Root =
 
 const inputBase =
   "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground " +
-  "placeholder:text-muted-foreground/70 transition-[background-color,border-color] duration-150 " +
+  "placeholder:text-muted-foreground/70 transition-[background-color,border-color] duration-[var(--dur-base)] " +
   "ease-[var(--ease-out)] outline-none hover:border-ring/50 hover:bg-accent/40 " +
   "focus:border-ring focus:bg-background focus-visible:outline-none " +
   "disabled:cursor-not-allowed disabled:opacity-50";
@@ -52,7 +52,10 @@ export function AutocompleteInput({
       />
       {showClear && (
         <AutocompletePrimitive.Clear
-          className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-80 outline-none transition-[background-color,color,opacity,scale] hover:bg-accent hover:opacity-100 active:scale-[0.96]"
+          className={cn(
+            "absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-80 outline-none hover:bg-accent hover:opacity-100",
+            interactive,
+          )}
           data-slot="autocomplete-clear"
           {...clearProps}
         >
@@ -100,8 +103,11 @@ export function AutocompletePopup({
       >
         <AutocompletePrimitive.Popup
           className={cn(
-            "max-h-[min(var(--available-height),22rem)] w-(--anchor-width) max-w-(--available-width) " +
-              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)]",
+            "max-h-[min(var(--available-height),22rem)] w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) " +
+              "overflow-hidden rounded-lg bg-popover text-foreground shadow-[var(--shadow-border),var(--shadow-lg)] " +
+              "transition-[transform,opacity] duration-[var(--dur-slow)] ease-[var(--ease-out)] " +
+              "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 " +
+              "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
             className,
           )}
           data-slot="autocomplete-popup"
@@ -135,7 +141,7 @@ export function AutocompleteItem({
   return (
     <AutocompletePrimitive.Item
       className={cn(
-        "flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.96]",
+        `flex min-h-10 cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none ${interactive}`,
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         "data-disabled:pointer-events-none data-disabled:opacity-60",
         className,
