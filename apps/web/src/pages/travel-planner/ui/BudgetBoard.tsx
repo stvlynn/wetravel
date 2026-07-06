@@ -175,6 +175,7 @@ export function BudgetBoard({
                   bg={m.avatarBg}
                   fg={m.avatarFg}
                   src={m.image}
+                  seed={m.id}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -225,6 +226,7 @@ export function BudgetBoard({
                   bg={m.avatarBg}
                   fg={m.avatarFg}
                   src={m.image}
+                  seed={m.id}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -274,6 +276,7 @@ export function BudgetBoard({
                   bg={from.avatarBg}
                   fg={from.avatarFg}
                   src={from.image}
+                  seed={from.id}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
@@ -303,6 +306,7 @@ export function BudgetBoard({
                   bg={to.avatarBg}
                   fg={to.avatarFg}
                   src={to.image}
+                  seed={to.id}
                   size={30}
                 />
               </div>
@@ -344,6 +348,7 @@ function MemberChoice({
         bg={member.avatarBg}
         fg={member.avatarFg}
         src={member.image}
+        seed={member.id}
         size={22}
         className={selected ? "ring-1 ring-primary-foreground/30" : undefined}
       />

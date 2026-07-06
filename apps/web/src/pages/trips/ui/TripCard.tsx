@@ -147,6 +147,7 @@ export function TripCard({
                   bg={m.avatarBg}
                   fg={m.avatarFg}
                   src={m.image}
+                  seed={m.id}
                   size={24}
                   stackIndex={i}
                   zIndex={shown.length - i}

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_AVATAR_URL,
-  resolveInitialAvatar,
-} from "../src/application/user/user-initializer";
+import { resolveInitialAvatar } from "../src/application/user/user-initializer";
 import { mapGoogleProfileToDto } from "../src/infrastructure/auth/oauth-profile-mapper";
 
 describe("resolveInitialAvatar", () => {
@@ -17,7 +14,7 @@ describe("resolveInitialAvatar", () => {
     expect(url).toBe("https://example.com/avatar.png");
   });
 
-  it("falls back to the default avatar when the OAuth image is missing", () => {
+  it("returns null when the OAuth image is missing so the client generates one", () => {
     const url = resolveInitialAvatar({
       provider: "google",
       providerAccountId: "123",
@@ -25,11 +22,11 @@ describe("resolveInitialAvatar", () => {
       name: "A",
       image: null,
     });
-    expect(url).toBe(DEFAULT_AVATAR_URL);
+    expect(url).toBeNull();
   });
 
-  it("falls back to the default avatar for email sign-ups", () => {
-    expect(resolveInitialAvatar(null)).toBe(DEFAULT_AVATAR_URL);
+  it("returns null for email sign-ups so the client generates one", () => {
+    expect(resolveInitialAvatar(null)).toBeNull();
   });
 });
 

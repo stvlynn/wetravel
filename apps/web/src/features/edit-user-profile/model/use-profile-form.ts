@@ -108,6 +108,7 @@ export function useProfileForm() {
     }, []);
 
     return {
+        userId: user?.id ?? null,
         displayName,
         setDisplayName,
         image,

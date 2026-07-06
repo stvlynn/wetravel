@@ -7,7 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { getStoredTheme, setStoredTheme, type ThemeMode } from "../lib/theme-persistence";
+import {
+  getStoredTheme,
+  setStoredTheme,
+  type ThemeMode,
+} from "@/shared/lib/theme";
 import { applyTheme } from "../lib/apply-theme";
 
 export function ThemeModeSelect(): React.ReactElement {

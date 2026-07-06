@@ -1,5 +1,7 @@
 declare const __WETRAVEL_BASE_URL__: string;
 declare const __WETRAVEL_VERSION__: string;
+declare const __WETRAVEL_CAPTCHA_PROVIDER__: string;
+declare const __WETRAVEL_TURNSTILE_SITE_KEY__: string;
 
 function requireBaseUrl(value: string): string {
   const trimmed = value.trim().replace(/\/$/, "");
@@ -15,11 +17,20 @@ function requireBaseUrl(value: string): string {
   return url.origin;
 }
 
+export type CaptchaProvider =
+  | ""
+  | "cloudflare-turnstile"
+  | "google-recaptcha"
+  | "hcaptcha"
+  | "captchafox";
+
 /** Runtime configuration injected from the root `.env` by Vite. */
 export const config = {
   /** Public origin for API/auth calls. */
   baseUrl: requireBaseUrl(__WETRAVEL_BASE_URL__),
   version: __WETRAVEL_VERSION__,
+  captchaProvider: __WETRAVEL_CAPTCHA_PROVIDER__ as CaptchaProvider,
+  turnstileSiteKey: __WETRAVEL_TURNSTILE_SITE_KEY__,
 } as const;
 
 /** React Query keys, centralized to avoid string drift. */

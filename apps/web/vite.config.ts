@@ -18,12 +18,18 @@ export default defineConfig(({ mode }) => {
     const baseUrl = process.env.BASE_URL ?? env.BASE_URL ?? "";
     const webPort = Number(env.WEB_PORT ?? process.env.WEB_PORT ?? 5170);
     const apiPort = Number(env.PORT ?? process.env.PORT ?? 8780);
+    const captchaProvider =
+        env.CAPTCHA_PROVIDER ?? process.env.CAPTCHA_PROVIDER ?? "";
+    const turnstileSiteKey =
+        env.TURNSTILE_SITE_KEY ?? process.env.TURNSTILE_SITE_KEY ?? "";
 
     return {
         envDir: repoRoot,
         define: {
             __WETRAVEL_BASE_URL__: JSON.stringify(baseUrl),
             __WETRAVEL_VERSION__: JSON.stringify(packageJson.version),
+            __WETRAVEL_CAPTCHA_PROVIDER__: JSON.stringify(captchaProvider),
+            __WETRAVEL_TURNSTILE_SITE_KEY__: JSON.stringify(turnstileSiteKey),
         },
         plugins: [
             {

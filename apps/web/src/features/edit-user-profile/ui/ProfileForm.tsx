@@ -8,6 +8,7 @@ import { useProfileForm } from "../model/use-profile-form";
 export function ProfileForm(): React.ReactElement {
     const { t } = useTranslation("common");
     const {
+        userId,
         displayName,
         setDisplayName,
         image,
@@ -32,6 +33,7 @@ export function ProfileForm(): React.ReactElement {
                     bg={color.bg}
                     fg={color.fg}
                     src={image}
+                    seed={userId ?? undefined}
                     size={64}
                 />
                 <div className="flex flex-wrap items-center gap-2">

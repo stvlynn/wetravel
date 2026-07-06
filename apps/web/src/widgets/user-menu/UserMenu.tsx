@@ -86,7 +86,7 @@ export function UserMenu({ compact }: UserMenuProps) {
           <div className="wf-enter-stagger">
             <div className="wf-enter">
               <div className="flex items-center gap-2.5 px-2 py-2">
-                <Avatar name={name} bg={color.bg} fg={color.fg} src={image} size={32} />
+                <Avatar name={name} bg={color.bg} fg={color.fg} src={image} seed={seed} size={32} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{name}</p>
                   {email && email !== name ? (
@@ -158,6 +158,7 @@ export function UserMenu({ compact }: UserMenuProps) {
           bg={color.bg}
           fg={color.fg}
           src={image}
+          seed={seed}
           size={compact ? 30 : 32}
           className={compact ? "ring-2 ring-card" : undefined}
         />

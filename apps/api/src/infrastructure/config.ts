@@ -3,6 +3,17 @@ export interface GoogleOAuthConfig {
     clientSecret: string;
 }
 
+export type CaptchaProvider =
+    | "cloudflare-turnstile"
+    | "google-recaptcha"
+    | "hcaptcha"
+    | "captchafox";
+
+export interface CaptchaConfig {
+    provider: CaptchaProvider;
+    secretKey: string;
+}
+
 export interface AppConfig {
     databaseUrl: string;
     betterAuthSecret: string;
@@ -10,6 +21,7 @@ export interface AppConfig {
     trustedOrigins: string[];
     storage: StorageConfig;
     googleOAuth: GoogleOAuthConfig | null;
+    captcha: CaptchaConfig | null;
 }
 
 interface StorageConfigBase {
@@ -41,6 +53,8 @@ export interface RawEnv {
     TRUSTED_ORIGINS?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
+    CAPTCHA_PROVIDER?: string;
+    CAPTCHA_SECRET_KEY?: string;
     STORAGE_BACKEND?: string;
     STORAGE_ROOT?: string;
     STORAGE_PUBLIC_URL?: string;
@@ -50,6 +64,33 @@ export interface RawEnv {
     S3_ACCESS_KEY_ID?: string;
     S3_SECRET_ACCESS_KEY?: string;
     S3_FORCE_PATH_STYLE?: string;
+}
+
+const CAPTCHA_PROVIDERS: CaptchaProvider[] = [
+    "cloudflare-turnstile",
+    "google-recaptcha",
+    "hcaptcha",
+    "captchafox",
+];
+
+function parseCaptchaConfig(env: RawEnv): CaptchaConfig | null {
+    const provider = env.CAPTCHA_PROVIDER?.trim();
+    if (!provider) return null;
+
+    if (!CAPTCHA_PROVIDERS.includes(provider as CaptchaProvider)) {
+        throw new Error(
+            `CAPTCHA_PROVIDER must be one of ${CAPTCHA_PROVIDERS.join(", ")}`,
+        );
+    }
+
+    const secretKey = env.CAPTCHA_SECRET_KEY?.trim();
+    if (!secretKey) {
+        throw new Error(
+            "CAPTCHA_SECRET_KEY is required when CAPTCHA_PROVIDER is set",
+        );
+    }
+
+    return { provider: provider as CaptchaProvider, secretKey };
 }
 
 /** Build validated config from an env-like object. A Hyperdrive connection
@@ -87,6 +128,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
             googleClientId && googleClientSecret
                 ? { clientId: googleClientId, clientSecret: googleClientSecret }
                 : null,
+        captcha: parseCaptchaConfig(env),
     };
 }
 

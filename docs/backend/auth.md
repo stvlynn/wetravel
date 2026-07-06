@@ -21,7 +21,7 @@ export const auth = betterAuth({
             return {
               name: dto.name ?? undefined,
               email: dto.email ?? undefined,
-              image: resolveInitialAvatar(dto),
+              image: resolveInitialAvatar(dto) ?? undefined,
             };
           },
         },
@@ -32,15 +32,6 @@ export const auth = betterAuth({
     additionalFields: {
       // User preference: default currency for new stop costs.
       defaultCurrency: { type: "string", required: false, defaultValue: "JPY", input: true },
-    },
-  },
-  databaseHooks: {
-    user: {
-      create: {
-        before: async (data) => {
-          if (!data.image) data.image = DEFAULT_AVATAR_URL;
-        },
-      },
     },
   },
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
@@ -56,13 +47,47 @@ are set. The redirect URI registered in Google Cloud Console must be
 Google profiles are normalized through the shared `OAuthProfileDto`
 (`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers
 use the same mapping path. The provider's avatar URL is written to `user.image`
-during sign-up; email sign-ups fall back to `DEFAULT_AVATAR_URL`.
+during sign-up. Email sign-ups (and OAuth profiles without a picture) leave
+`user.image` unset; the client renders a deterministic planet-style avatar
+seeded by the user id via the shared `Avatar` component (`planet-avatar`).
 
 ### User preferences
 
 `user.additionalFields.defaultCurrency` is stored on the `user` table
 (`0005_currency.sql`) and surfaced on every session as `session.user.defaultCurrency`.
 The planner uses it as the preselected currency when composing a stop cost.
+
+## Captcha
+
+Bot protection is provided by the Better Auth Captcha plugin. It is enabled
+whenever `CAPTCHA_PROVIDER` is set; the local `.env.example` ships with
+Cloudflare Turnstile test keys.
+
+```ts
+// apps/api/src/infrastructure/auth/auth.ts
+plugins: config.captcha
+  ? [
+      captcha({
+        provider: config.captcha.provider,
+        secretKey: config.captcha.secretKey,
+      }),
+    ]
+  : [],
+```
+
+The plugin intercepts `POST` requests to Better Auth's default protected
+endpoints (`/sign-up/email`, `/sign-in/email`, `/request-password-reset`) and
+verifies the `x-captcha-response` token server-side. No custom controller or
+application code is required.
+
+### Environment
+
+- `CAPTCHA_PROVIDER` — one of `cloudflare-turnstile`, `google-recaptcha`,
+  `hcaptcha`, `captchafox`.
+- `CAPTCHA_SECRET_KEY` — provider secret key (server-side only).
+
+The public site key (`TURNSTILE_SITE_KEY`) is consumed by the Vite build and
+exposed to the browser through `shared/config`; it never reaches the backend.
 
 ## Environment
 

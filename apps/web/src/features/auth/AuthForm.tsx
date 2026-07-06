@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { signIn, signUp } from "@/shared/auth";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { toastManager } from "@/shared/ui/toast";
+import { config } from "@/shared/config";
+import { CaptchaField, type CaptchaFieldRef } from "./ui/CaptchaField";
 
 type Mode = "signIn" | "signUp";
 
@@ -37,6 +39,11 @@ export function AuthForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [pending, setPending] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const captchaRef = useRef<CaptchaFieldRef>(null);
+    const captchaEnabled =
+        config.captchaProvider === "cloudflare-turnstile" &&
+        !!config.turnstileSiteKey;
 
     const isSignUp = mode === "signUp";
 
@@ -50,14 +57,37 @@ export function AuthForm() {
 
     async function submit(e: React.FormEvent) {
         e.preventDefault();
+        if (captchaEnabled && !captchaToken) return;
+
         setPending(true);
         try {
             const result = isSignUp
-                ? await signUp.email({ name, email, password })
-                : await signIn.email({ email, password });
-            if (result.error) showAuthError();
+                ? await signUp.email({
+                      name,
+                      email,
+                      password,
+                      fetchOptions: {
+                          headers: {
+                              "x-captcha-response": captchaToken ?? "",
+                          },
+                      },
+                  })
+                : await signIn.email({
+                      email,
+                      password,
+                      fetchOptions: {
+                          headers: {
+                              "x-captcha-response": captchaToken ?? "",
+                          },
+                      },
+                  });
+            if (result.error) {
+                showAuthError();
+                captchaRef.current?.reset();
+            }
         } catch {
             showAuthError();
+            captchaRef.current?.reset();
         } finally {
             setPending(false);
         }
@@ -124,7 +154,17 @@ export function AuthForm() {
                 />
             </label>
 
-            <Button type="submit" size="lg" disabled={pending}>
+            <CaptchaField
+                key={mode}
+                ref={captchaRef}
+                onTokenChange={setCaptchaToken}
+            />
+
+            <Button
+                type="submit"
+                size="lg"
+                disabled={pending || (captchaEnabled && !captchaToken)}
+            >
                 {t(`${ns}.submit`)}
             </Button>
 

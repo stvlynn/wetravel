@@ -1,15 +1,13 @@
 import type { OAuthProfileDto } from "./oauth-profile";
 
-/** Default avatar for users created with email/password. */
-export const DEFAULT_AVATAR_URL =
-  "https://planet-avatar.vikingz.me/getting-started/";
-
 /** Pick the avatar URL for a newly-created user.
  *
- * OAuth providers supply an image from the profile; email sign-ups fall back
- * to the deterministic default avatar service. */
+ * OAuth providers supply an image from the profile; email sign-ups have no
+ * image and get a deterministic planet-style avatar generated on the client
+ * from their user id (see the shared `Avatar` component). Returning `null`
+ * here keeps generated avatars out of the database. */
 export function resolveInitialAvatar(
   oauthProfile: OAuthProfileDto | null,
-): string {
-  return oauthProfile?.image ?? DEFAULT_AVATAR_URL;
+): string | null {
+  return oauthProfile?.image ?? null;
 }

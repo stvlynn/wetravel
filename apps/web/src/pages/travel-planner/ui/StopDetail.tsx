@@ -201,6 +201,7 @@ export function StopDetail({
                 bg={addedBy.avatarBg}
                 fg={addedBy.avatarFg}
                 src={addedBy.image}
+                seed={addedBy.id}
                 size={20}
               />
               <span className="text-sm text-muted-foreground">
@@ -248,6 +249,7 @@ export function StopDetail({
                         bg={m.avatarBg}
                         fg={m.avatarFg}
                         src={m.image}
+                        seed={m.id}
                         size={24}
                         stackIndex={k}
                       />
@@ -316,6 +318,7 @@ export function StopDetail({
                   bg={m.avatarBg}
                   fg={m.avatarFg}
                   src={m.image}
+                  seed={m.id}
                   size={26}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -339,6 +342,7 @@ export function StopDetail({
                 bg={currentUser.avatarBg}
                 fg={currentUser.avatarFg}
                 src={currentUser.image}
+                seed={currentUser.id}
                 size={26}
               />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">

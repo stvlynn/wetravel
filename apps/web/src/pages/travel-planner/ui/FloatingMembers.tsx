@@ -23,6 +23,7 @@ export function FloatingMembers({ members }: { members: TripMember[] }) {
             bg={m.avatarBg}
             fg={m.avatarFg}
             src={m.image}
+            seed={m.id}
             size={30}
             stackIndex={i}
             online={i < 2}
