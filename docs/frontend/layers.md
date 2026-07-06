@@ -16,7 +16,10 @@ widgets and features. Two pages:
 - `pages/trips` — the trips home grid.
 - `pages/travel-planner` — the single-trip workspace. Because this is one large
   prototype surface, its map/schedule/budget/sidebar blocks live as
-  **page-private widgets** under `pages/travel-planner/ui`.
+  **page-private widgets** under `pages/travel-planner/ui`. The page composes the
+  `AppSidebar` and main content with the `shared/ui/splitter` primitive and
+  persists the resulting width/collapse state through the backend preferences
+  API.
 
 Pages may hold page-specific state and data fetching (Pages First).
 

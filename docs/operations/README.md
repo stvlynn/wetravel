@@ -69,9 +69,10 @@ and S3 credential values are set with `wrangler secret`.
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm db:migrate` | apply SQL migrations |
+| `pnpm db:migrate` | apply pending Prisma migrations |
 | `pnpm db:seed` | load prototype seed data |
-| `pnpm db:reset` | drop all tables, then migrate + seed |
+| `pnpm db:reset` | drop public schema, then migrate + seed |
+| `pnpm db:generate` | regenerate Prisma Client after schema changes |
 | `make help` | list Make targets |
 
 ## Deployment

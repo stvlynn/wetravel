@@ -18,6 +18,8 @@ export interface MemberSnapshot {
   initials: string;
   avatarBg: string;
   avatarFg: string;
+  /** Member avatar image URL. When absent the UI falls back to a colored circle. */
+  image?: string | null;
   isCurrentUser: boolean;
 }
 

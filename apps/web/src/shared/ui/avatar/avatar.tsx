@@ -2,11 +2,10 @@ import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { cn } from "@/shared/lib";
 
 export interface AvatarProps {
-  initials: string;
   name: string;
   bg: string;
   fg: string;
-  /** Optional image URL. When provided and loadable, it replaces the initials. */
+  /** Optional image URL. When provided and loadable, it replaces the fallback. */
   src?: string | null;
   size?: number;
   /** Stacked index: >0 applies a negative margin + card ring for clustering. */
@@ -19,7 +18,6 @@ export interface AvatarProps {
 }
 
 export function Avatar({
-  initials,
   name,
   bg,
   fg,
@@ -61,10 +59,9 @@ export function Avatar({
         style={{
           background: bg,
           color: fg,
-          fontSize: Math.round(size * 0.38),
         }}
       >
-        {initials}
+        <span className="sr-only">{name}</span>
       </AvatarPrimitive.Fallback>
       {online ? (
         <span

@@ -5,5 +5,6 @@ export interface TripMember {
   initials: string;
   avatarBg: string;
   avatarFg: string;
+  image?: string | null;
   isCurrentUser: boolean;
 }

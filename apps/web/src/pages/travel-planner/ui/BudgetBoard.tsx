@@ -171,10 +171,10 @@ export function BudgetBoard({
                 className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
               >
                 <Avatar
-                  initials={m.initials}
                   name={m.name}
                   bg={m.avatarBg}
                   fg={m.avatarFg}
+                  src={m.image}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -221,10 +221,10 @@ export function BudgetBoard({
                 className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
               >
                 <Avatar
-                  initials={m.initials}
                   name={m.name}
                   bg={m.avatarBg}
                   fg={m.avatarFg}
+                  src={m.image}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -270,10 +270,10 @@ export function BudgetBoard({
                 className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 last:border-b-0"
               >
                 <Avatar
-                  initials={from.initials}
                   name={from.name}
                   bg={from.avatarBg}
                   fg={from.avatarFg}
+                  src={from.image}
                   size={30}
                 />
                 <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
@@ -299,10 +299,10 @@ export function BudgetBoard({
                   </svg>
                 </div>
                 <Avatar
-                  initials={to.initials}
                   name={to.name}
                   bg={to.avatarBg}
                   fg={to.avatarFg}
+                  src={to.image}
                   size={30}
                 />
               </div>
@@ -340,10 +340,10 @@ function MemberChoice({
       )}
     >
       <Avatar
-        initials={member.initials}
         name={member.name}
         bg={member.avatarBg}
         fg={member.avatarFg}
+        src={member.image}
         size={22}
         className={selected ? "ring-1 ring-primary-foreground/30" : undefined}
       />

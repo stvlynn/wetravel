@@ -8,6 +8,7 @@ import {
   type TripRepository,
   type TripSummary,
 } from "../domain/trip";
+import { DEFAULT_AVATAR_URL } from "./user/user-initializer";
 import { toTripDto, type TripDto } from "./dto";
 
 async function load(repo: TripRepository, tripId: string) {
@@ -25,7 +26,10 @@ export class TripService {
   }
 
   async createTrip(draft: CreateTripDraft, owner: TripOwner): Promise<TripDto> {
-    const trip = Trip.create(draft, owner);
+    const trip = Trip.create(draft, {
+      ...owner,
+      image: owner.image ?? DEFAULT_AVATAR_URL,
+    });
     await this.repo.create(trip);
     return toTripDto(trip);
   }

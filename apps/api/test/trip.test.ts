@@ -22,9 +22,19 @@ describe("Trip aggregate", () => {
     expect(s.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(s.days[0]!.dateLabel).toBe("");
     expect(s.members).toEqual([
-      expect.objectContaining({ id: "u1", initials: "AL", isCurrentUser: true }),
+      expect.objectContaining({ id: "u1", initials: "AL", image: null, isCurrentUser: true }),
     ]);
     expect(trip.currentMemberId()).toBe("u1");
+  });
+
+  it("carries the owner's avatar image into the member snapshot", () => {
+    const trip = Trip.create(
+      { title: "Hokkaido" },
+      { id: "u1", name: "Ada", image: "https://example.com/ada.png" },
+    );
+    expect(trip.toSnapshot().members[0]!).toMatchObject({
+      image: "https://example.com/ada.png",
+    });
   });
 
   it("appends a new empty day with the next number and a cycled color", () => {

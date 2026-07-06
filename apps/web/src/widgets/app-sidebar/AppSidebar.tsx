@@ -9,6 +9,11 @@ export interface AppSidebarProps {
   /** Scrollable middle content: page nav or the trip itinerary. */
   children?: ReactNode;
   className?: string;
+  /** Controlled collapsed state. When omitted, the sidebar manages its own
+   * localStorage-backed state for backward compatibility. */
+  collapsed?: boolean;
+  /** Called when the collapse/expand button is activated. */
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 const STORAGE_KEY = "wf.sidebar.collapsed";
@@ -37,18 +42,38 @@ function PanelToggleIcon({ className }: { className?: string }) {
  * The sidebar is the base layer; the main panel floats above it with rounded
  * left corners (see the page layouts). A collapse control sits at the sidebar's
  * top-right; when collapsed, a floating expand control appears over the panel.
- * The collapsed preference persists in localStorage. */
-export function AppSidebar({ top, children, className }: AppSidebarProps) {
+ *
+ * When `collapsed`/`onCollapsedChange` are provided the parent controls the
+ * state (used by the resizable travel-planner layout). Otherwise the sidebar
+ * falls back to its own localStorage-backed state. */
+export function AppSidebar({
+  top,
+  children,
+  className,
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+}: AppSidebarProps) {
   const { t } = useTranslation("common");
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
+  const [internalCollapsed, setInternalCollapsed] = useState<boolean>(() => {
     if (typeof localStorage === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "1";
   });
 
+  const isControlled = controlledCollapsed !== undefined;
+  const collapsed = isControlled ? controlledCollapsed : internalCollapsed;
+
   useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
-  }, [collapsed]);
+    if (isControlled || typeof localStorage === "undefined") return;
+    localStorage.setItem(STORAGE_KEY, internalCollapsed ? "1" : "0");
+  }, [isControlled, internalCollapsed]);
+
+  const setCollapsed = (next: boolean) => {
+    if (isControlled) {
+      onCollapsedChange?.(next);
+    } else {
+      setInternalCollapsed(next);
+    }
+  };
 
   if (collapsed) {
     return (
@@ -67,7 +92,8 @@ export function AppSidebar({ top, children, className }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex h-dvh w-[300px] flex-none flex-col bg-sidebar",
+        "relative flex h-dvh flex-none flex-col bg-sidebar",
+        isControlled ? "w-full" : "w-[300px]",
         className,
       )}
     >

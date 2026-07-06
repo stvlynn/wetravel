@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(6)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @db.Timestamptz(6)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([accountId, providerId], map: "account_provider_account_unique")
+  @@index([userId], map: "account_user_id_idx")
+}
+
+model expense_participants {
+  expense_id String
+  member_id  String
+  expenses   expenses @relation(fields: [expense_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([expense_id, member_id])
+}
+
+model expenses {
+  id                   String                 @id
+  trip_id              String
+  description          String
+  payer_id             String
+  amount               Int
+  when_label           String
+  sort_order           Int                    @default(0)
+  currency             String                 @default("")
+  expense_participants expense_participants[]
+  trips                trips                  @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([trip_id], map: "expenses_trip_idx")
+}
+
+model schema_migrations {
+  name       String   @id
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamptz(6)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "session_user_id_idx")
+}
+
+model stop_comments {
+  id         BigInt   @id @default(autoincrement())
+  stop_id    String
+  author_id  String
+  text       String
+  time_label String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  stops      stops    @relation(fields: [stop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([stop_id], map: "stop_comments_stop_idx")
+}
+
+model stop_votes {
+  stop_id   String
+  member_id String
+  stops     stops  @relation(fields: [stop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([stop_id, member_id])
+}
+
+model stops {
+  id            String          @id
+  trip_id       String
+  day           Int
+  time          String
+  duration      String
+  name          String
+  area          String
+  category      String
+  lat           Float
+  lng           Float
+  cost          Int             @default(0)
+  created_by    String
+  transit       Boolean         @default(false)
+  note          String          @default("")
+  sort_order    Int             @default(0)
+  cost_currency String          @default("")
+  stop_comments stop_comments[]
+  stop_votes    stop_votes[]
+  trips         trips           @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([trip_id], map: "stops_trip_idx")
+}
+
+model trip_days {
+  trip_id    String
+  number     Int
+  date_label String
+  city       String
+  color      String
+  trips      trips  @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([trip_id, number])
+}
+
+model trip_members {
+  id              String  @id
+  trip_id         String
+  name            String
+  short_name      String
+  initials        String
+  avatar_bg       String
+  avatar_fg       String
+  is_current_user Boolean @default(false)
+  sort_order      Int     @default(0)
+  image           String?
+  trips           trips   @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([trip_id], map: "trip_members_trip_idx")
+}
+
+model trips {
+  id           String         @id
+  title        String
+  start_date   String
+  end_date     String
+  status       String
+  currency     String         @default("JPY")
+  cover_color  String         @default("#3f6fc9")
+  owner_id     String?
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  expenses     expenses[]
+  stops        stops[]
+  trip_days    trip_days[]
+  trip_members trip_members[]
+}
+
+model user {
+  id               String            @id
+  name             String
+  email            String            @unique
+  emailVerified    Boolean           @default(false)
+  image            String?
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @default(now()) @db.Timestamptz(6)
+  defaultCurrency  String            @default("JPY")
+  account          account[]
+  session          session[]
+  user_preferences user_preferences?
+}
+
+model user_preferences {
+  user_id                   String   @id
+  planner_sidebar_width     Decimal  @default(30) @db.Decimal
+  planner_sidebar_collapsed Boolean  @default(false)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+  user                      user     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([identifier])
+}

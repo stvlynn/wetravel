@@ -16,6 +16,14 @@ export const auth = betterAuth({
         google: {
           clientId: config.googleOAuth.clientId,
           clientSecret: config.googleOAuth.clientSecret,
+          mapProfileToUser: (profile) => {
+            const dto = mapGoogleProfileToDto(profile);
+            return {
+              name: dto.name ?? undefined,
+              email: dto.email ?? undefined,
+              image: resolveInitialAvatar(dto),
+            };
+          },
         },
       }
     : undefined,
@@ -24,6 +32,15 @@ export const auth = betterAuth({
     additionalFields: {
       // User preference: default currency for new stop costs.
       defaultCurrency: { type: "string", required: false, defaultValue: "JPY", input: true },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (data) => {
+          if (!data.image) data.image = DEFAULT_AVATAR_URL;
+        },
+      },
     },
   },
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
@@ -35,6 +52,11 @@ export const auth = betterAuth({
 Google OAuth is enabled when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 are set. The redirect URI registered in Google Cloud Console must be
 `{BASE_URL}/api/auth/callback/google`.
+
+Google profiles are normalized through the shared `OAuthProfileDto`
+(`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers
+use the same mapping path. The provider's avatar URL is written to `user.image`
+during sign-up; email sign-ups fall back to `DEFAULT_AVATAR_URL`.
 
 ### User preferences
 

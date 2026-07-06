@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Avatar } from "@/shared/ui/avatar";
-import { initialsOf, avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
+import { avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
 import { useProfileForm } from "../model/use-profile-form";
 
 export function ProfileForm(): React.ReactElement {
@@ -28,7 +28,6 @@ export function ProfileForm(): React.ReactElement {
         <div className="flex max-w-[520px] flex-col gap-7">
             <div className="flex items-center gap-4">
                 <Avatar
-                    initials={initialsOf(displayName)}
                     name={displayName || "?"}
                     bg={color.bg}
                     fg={color.fg}

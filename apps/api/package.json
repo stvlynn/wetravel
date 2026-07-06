@@ -11,13 +11,24 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "migrate": "tsx --env-file-if-exists=../../.env src/scripts/migrate.ts",
-    "seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts",
-    "reset": "tsx --env-file-if-exists=../../.env src/scripts/reset.ts"
+    "db:generate": "dotenv -e ../../.env -- prisma generate",
+    "db:pull": "dotenv -e ../../.env -- prisma db pull --force",
+    "db:push": "dotenv -e ../../.env -- prisma db push",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate deploy",
+    "db:migrate-dev": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "db:seed": "dotenv -e ../../.env -- prisma db seed",
+    "db:reset": "dotenv -e ../../.env -- tsx prisma/reset.ts",
+    "db:snapshot": "dotenv -e ../../.env -- prisma db pull --force"
+  },
+  "prisma": {
+    "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",
     "@hono/node-server": "^1.13.7",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "better-auth": "^1.2.7",
     "hono": "^4.6.15",
     "pg": "^8.13.1",
@@ -29,8 +40,10 @@
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
+    "prisma": "^7.8.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.19.0",
     "vitest": "^2.1.8"

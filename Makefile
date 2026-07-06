@@ -7,7 +7,7 @@ POSTGRES_USER ?= wetravel
 POSTGRES_DB ?= wetravel
 
 .PHONY: help install env setup postgres-up postgres-down dev dev-nodb dev-web dev-api
-.PHONY: db-init db-reset db-migrate db-seed
+.PHONY: db-init db-reset db-migrate db-seed db-generate db-pull db-push db-studio db-snapshot
 .PHONY: deploy-up deploy-down deploy-logs
 .PHONY: build test lint typecheck check docs clean deploy
 
@@ -34,11 +34,17 @@ help:
 	@echo "  make dev-web         Start Vite only (http://localhost:5170)"
 	@echo "  make dev-api         Start API only (http://localhost:8780)"
 	@echo ""
-	@echo "Database:"
+	@echo "Database (Prisma):"
+	@echo "  make db-generate     Generate Prisma Client from schema.prisma"
+	@echo "  make db-pull         Regenerate prisma/schema.prisma from the live database"
+	@echo "  make db-snapshot     Alias for db-pull; snapshot the current DB schema"
+	@echo "  make db-push         Push schema changes to the database (dev/hack only)"
+	@echo "  make db-migrate      Apply pending Prisma migrations"
+	@echo "  make db-migrate-dev  Create a new Prisma migration from schema changes"
+	@echo "  make db-seed         Seed demo data via Prisma"
+	@echo "  make db-reset        Drop public schema, re-migrate, and re-seed"
 	@echo "  make db-init         Run migrations then seed demo data"
-	@echo "  make db-reset        Drop all tables, re-migrate, and re-seed"
-	@echo "  make db-migrate      Apply SQL migrations"
-	@echo "  make db-seed         Load prototype seed data"
+	@echo "  make db-studio       Open Prisma Studio"
 	@echo ""
 	@echo "Build & QA:"
 	@echo "  make build           Build all packages"
@@ -107,8 +113,23 @@ dev-web: env
 dev-api: env postgres-up db-migrate
 	pnpm --filter @wetravel/api dev
 
+db-generate:
+	pnpm --filter @wetravel/api db:generate
+
+db-pull:
+	pnpm --filter @wetravel/api db:pull
+
+db-snapshot: db-pull
+	@echo "Schema snapshot updated in apps/api/prisma/schema.prisma."
+
+db-push:
+	pnpm --filter @wetravel/api db:push
+
 db-migrate:
 	pnpm db:migrate
+
+db-migrate-dev:
+	pnpm --filter @wetravel/api db:migrate-dev
 
 db-seed:
 	pnpm db:seed
@@ -118,6 +139,9 @@ db-init: db-migrate db-seed
 
 db-reset:
 	pnpm db:reset
+
+db-studio:
+	pnpm db:studio
 
 deploy-up:
 	@if [ ! -f deploy/docker/.env ]; then \

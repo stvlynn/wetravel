@@ -98,6 +98,9 @@
     "everyonePaid": "Everyone paid, nothing else owed once these clear.",
     "owes": "owes"
   },
+  "splitter": {
+    "sidebarLabel": "Resize itinerary sidebar"
+  },
   "members": {
     "title": "Travelers"
   }

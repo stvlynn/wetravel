@@ -96,6 +96,9 @@
     "everyonePaid": "结清后互不欠款。",
     "owes": "应付给"
   },
+  "splitter": {
+    "sidebarLabel": "调整行程侧边栏大小"
+  },
   "members": {
     "title": "同行者"
   }

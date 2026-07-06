@@ -48,6 +48,7 @@ export interface CreateTripDraft {
 export interface TripOwner {
   id: string;
   name: string;
+  image?: string | null;
 }
 
 /** Avatar palette for auto-created members, cycling by a stable index. */
@@ -138,6 +139,7 @@ export class Trip {
           initials: initialsOf(owner.name),
           avatarBg: palette.bg,
           avatarFg: palette.fg,
+          image: owner.image ?? null,
           isCurrentUser: true,
         },
       ],

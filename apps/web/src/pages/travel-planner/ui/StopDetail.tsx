@@ -197,10 +197,10 @@ export function StopDetail({
             ) : null}
             <div className="flex items-center gap-2">
               <Avatar
-                initials={addedBy.initials}
                 name={addedBy.name}
                 bg={addedBy.avatarBg}
                 fg={addedBy.avatarFg}
+                src={addedBy.image}
                 size={20}
               />
               <span className="text-sm text-muted-foreground">
@@ -244,10 +244,10 @@ export function StopDetail({
                     return (
                       <Avatar
                         key={id}
-                        initials={m.initials}
                         name={m.name}
                         bg={m.avatarBg}
                         fg={m.avatarFg}
+                        src={m.image}
                         size={24}
                         stackIndex={k}
                       />
@@ -312,10 +312,10 @@ export function StopDetail({
                 )}
               >
                 <Avatar
-                  initials={m.initials}
                   name={m.name}
                   bg={m.avatarBg}
                   fg={m.avatarFg}
+                  src={m.image}
                   size={26}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -335,10 +335,10 @@ export function StopDetail({
           {pendingText ? (
             <div className="flex gap-2.5 wf-enter opacity-60">
               <Avatar
-                initials={currentUser.initials}
                 name={currentUser.name}
                 bg={currentUser.avatarBg}
                 fg={currentUser.avatarFg}
+                src={currentUser.image}
                 size={26}
               />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">

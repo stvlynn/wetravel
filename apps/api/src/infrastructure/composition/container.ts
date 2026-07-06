@@ -1,7 +1,8 @@
-import { TripService } from "../../application";
+import { TripService, PreferenceService } from "../../application";
 import { AvatarService, type FileStorage } from "../../application/avatar";
 import { createPool, type Pool } from "../persistence/pool";
 import { PgTripRepository } from "../persistence/trip-repository.pg";
+import { PgUserPreferenceRepository } from "../persistence/user-preference-repository.pg";
 import { createAuth, type Auth } from "../auth/auth";
 import type { AppConfig } from "../config";
 
@@ -10,6 +11,7 @@ export interface Container {
   pool: Pool;
   auth: Auth;
   tripService: TripService;
+  preferenceService: PreferenceService;
   fileStorage: FileStorage;
   avatarService: AvatarService;
 }
@@ -19,6 +21,15 @@ export function createContainer(config: AppConfig, fileStorage: FileStorage): Co
   const pool = createPool(config.databaseUrl);
   const auth = createAuth(config, pool);
   const tripService = new TripService(new PgTripRepository(pool));
+  const preferenceService = new PreferenceService(new PgUserPreferenceRepository(pool));
   const avatarService = new AvatarService(fileStorage);
-  return { config, pool, auth, tripService, fileStorage, avatarService };
+  return {
+    config,
+    pool,
+    auth,
+    tripService,
+    preferenceService,
+    fileStorage,
+    avatarService,
+  };
 }

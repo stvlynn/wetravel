@@ -16,11 +16,17 @@
         "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm ui:check && pnpm build",
         "docs:check": "node scripts/docs-check.mjs",
         "ui:check": "node scripts/ui-check.mjs",
-        "db:migrate": "pnpm --filter @wetravel/api migrate",
-        "db:seed": "pnpm --filter @wetravel/api seed",
-        "db:reset": "pnpm --filter @wetravel/api reset"
+        "db:migrate": "pnpm --filter @wetravel/api db:migrate",
+        "db:seed": "pnpm --filter @wetravel/api db:seed",
+        "db:reset": "pnpm --filter @wetravel/api db:reset",
+        "db:generate": "pnpm --filter @wetravel/api db:generate",
+        "db:pull": "pnpm --filter @wetravel/api db:pull",
+        "db:studio": "pnpm --filter @wetravel/api db:studio"
     },
     "devDependencies": {
         "typescript": "^5.7.3"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": ["@prisma/engines", "prisma", "esbuild"]
     }
 }

@@ -1,8 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchTrip, renameTrip, reversePlace } from "@/shared/api";
+import {
+  fetchTrip,
+  renameTrip,
+  reversePlace,
+  fetchPreferences,
+  updatePreferences,
+} from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { stopNumbers } from "@/entities/trip";
 import type { Trip } from "@/entities/trip";
@@ -11,6 +23,7 @@ import { useSession } from "@/shared/auth";
 import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tabs } from "@/shared/ui/tabs";
+import { Splitter, clamp } from "@/shared/ui/splitter";
 import { useTripActions } from "./model/useTripActions";
 import { Sidebar } from "./ui/Sidebar";
 import { TripMapView } from "./ui/TripMapView";
@@ -19,6 +32,11 @@ import { BudgetBoard } from "./ui/BudgetBoard";
 import { FloatingMembers } from "./ui/FloatingMembers";
 
 type Tab = "map" | "schedule" | "budget";
+
+const MIN_SIDEBAR_WIDTH = 0;
+const MAX_SIDEBAR_WIDTH = 55;
+const DEFAULT_SIDEBAR_WIDTH = 30;
+const SIDEBAR_STEP = 1;
 
 export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const { t } = useTranslation("planner");
@@ -41,6 +59,73 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     queryFn: () => fetchTrip(tripId),
   });
   const actions = useTripActions(tripId);
+
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const previousSidebarWidthRef = useRef(DEFAULT_SIDEBAR_WIDTH);
+  const sidebarCollapsed = sidebarWidth <= MIN_SIDEBAR_WIDTH;
+
+  const { data: preferences } = useQuery({
+    queryKey: queryKeys.preferences,
+    queryFn: fetchPreferences,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const updatePreferencesMutation = useMutation({
+    mutationFn: updatePreferences,
+    onSuccess: async (data) => {
+      queryClient.setQueryData(queryKeys.preferences, data);
+    },
+  });
+
+  useEffect(() => {
+    if (!preferences) return;
+    const width = clamp(
+      preferences.plannerSidebar?.width ?? DEFAULT_SIDEBAR_WIDTH,
+      MIN_SIDEBAR_WIDTH,
+      MAX_SIDEBAR_WIDTH,
+    );
+    setSidebarWidth(width);
+    if (width > MIN_SIDEBAR_WIDTH) {
+      previousSidebarWidthRef.current = width;
+    }
+  }, [preferences]);
+
+  useEffect(() => {
+    if (sidebarWidth > MIN_SIDEBAR_WIDTH) {
+      previousSidebarWidthRef.current = sidebarWidth;
+    }
+  }, [sidebarWidth]);
+
+  const handleSidebarChange = useCallback((value: number) => {
+    setSidebarWidth(value);
+  }, []);
+
+  const persistSidebar = useCallback(
+    (value: number) => {
+      updatePreferencesMutation.mutate({
+        plannerSidebarWidth: value,
+        plannerSidebarCollapsed: value <= MIN_SIDEBAR_WIDTH,
+      });
+    },
+    [updatePreferencesMutation],
+  );
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarWidth((current) => {
+      let next: number;
+      if (current <= MIN_SIDEBAR_WIDTH) {
+        next = Math.min(
+          Math.max(previousSidebarWidthRef.current, MIN_SIDEBAR_WIDTH + SIDEBAR_STEP),
+          MAX_SIDEBAR_WIDTH,
+        );
+      } else {
+        previousSidebarWidthRef.current = current;
+        next = MIN_SIDEBAR_WIDTH;
+      }
+      persistSidebar(next);
+      return next;
+    });
+  }, [persistSidebar]);
 
   const rename = useMutation({
     mutationFn: (title: string) => renameTrip(tripId, title),
@@ -194,51 +279,64 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
 
   return (
     <div className="flex h-dvh bg-sidebar">
-      <AppSidebar
-        top={
-          <div className="flex flex-col gap-2">
-            <BackButton
-              onBack={() => navigate("/")}
-              title={trip.title}
-              subtitle={headerSubtitle}
-              onRename={(title) => rename.mutate(title)}
-            />
-            <div className="px-1 pb-1 pt-2">
-              <Tabs
-                items={tabItems}
-                value={tab}
-                onValueChange={(v) => setTab(v as Tab)}
-                aria-label={t("tabs.map")}
-                className="flex w-full"
-              />
-            </div>
-          </div>
-        }
+      <Splitter
+        orientation="horizontal"
+        value={sidebarWidth}
+        min={MIN_SIDEBAR_WIDTH}
+        max={MAX_SIDEBAR_WIDTH}
+        step={SIDEBAR_STEP}
+        primaryPaneId="planner-sidebar"
+        aria-label={t("splitter.sidebarLabel")}
+        onChange={handleSidebarChange}
+        onChangeEnd={persistSidebar}
       >
-        <Sidebar
-          trip={trip}
-          numbers={numbers}
-          day={day}
-          onDayChange={(d) => {
-            setDay(d);
-            setSelectedStopId(null);
-          }}
-          selectedStopId={selectedStopId}
-          onSelectStop={selectStop}
-          onCloseDetail={() => setSelectedStopId(null)}
-          currentUserId={currentUserId}
-          onToggleVote={(stopId) => actions.vote.mutate(stopId)}
-          onComment={(stopId, text) =>
-            actions.comment.mutate({ stopId, text })
+        <AppSidebar
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={toggleSidebarCollapsed}
+          top={
+            <div className="flex flex-col gap-2">
+              <BackButton
+                onBack={() => navigate("/")}
+                title={trip.title}
+                subtitle={headerSubtitle}
+                onRename={(title) => rename.mutate(title)}
+              />
+              <div className="px-1 pb-1 pt-2">
+                <Tabs
+                  items={tabItems}
+                  value={tab}
+                  onValueChange={(v) => setTab(v as Tab)}
+                  aria-label={t("tabs.map")}
+                  className="flex w-full"
+                />
+              </div>
+            </div>
           }
-          commentPending={actions.comment.isPending}
-        />
-      </AppSidebar>
+        >
+          <Sidebar
+            trip={trip}
+            numbers={numbers}
+            day={day}
+            onDayChange={(d) => {
+              setDay(d);
+              setSelectedStopId(null);
+            }}
+            selectedStopId={selectedStopId}
+            onSelectStop={selectStop}
+            onCloseDetail={() => setSelectedStopId(null)}
+            currentUserId={currentUserId}
+            onToggleVote={(stopId) => actions.vote.mutate(stopId)}
+            onComment={(stopId, text) =>
+              actions.comment.mutate({ stopId, text })
+            }
+            commentPending={actions.comment.isPending}
+          />
+        </AppSidebar>
 
-      <div className="flex min-w-0 flex-1 overflow-hidden rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
-        <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1 overflow-auto">
-            {tab === "map" ? (
+        <div className="flex min-w-0 flex-1 overflow-hidden rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
+          <main className="relative flex min-w-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1 overflow-auto">
+              {tab === "map" ? (
               <TripMapView
                 trip={trip}
                 numbers={numbers}
@@ -286,6 +384,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           <FloatingMembers members={trip.members} />
         </main>
       </div>
+      </Splitter>
     </div>
   );
 }

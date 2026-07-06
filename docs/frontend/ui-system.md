@@ -26,8 +26,12 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
-`dialog`. Each exposes a
+`dialog`, `splitter`. Each exposes a
 public `index.ts`.
+
+`splitter` implements the WAI-ARIA APG Window Splitter pattern: a focusable
+separator with `aria-valuenow/min/max`, `aria-controls`, keyboard arrow-key
+resizing, `Enter` to collapse/restore, and `Home`/`End` to jump to extremes.
 
 Application icons come from `lucide-react`; feature and widget code does not
 duplicate handwritten SVG paths. Decorative icons are hidden from assistive

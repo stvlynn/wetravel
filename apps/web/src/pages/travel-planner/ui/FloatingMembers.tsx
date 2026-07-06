@@ -19,10 +19,10 @@ export function FloatingMembers({ members }: { members: TripMember[] }) {
         {members.map((m, i) => (
           <Avatar
             key={m.id}
-            initials={m.initials}
             name={m.name}
             bg={m.avatarBg}
             fg={m.avatarFg}
+            src={m.image}
             size={30}
             stackIndex={i}
             online={i < 2}

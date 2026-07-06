@@ -28,8 +28,8 @@ Services:
 ## 3. Migrate + seed
 
 ```bash
-docker compose exec api pnpm migrate
-docker compose exec api pnpm seed
+docker compose exec api pnpm db:migrate
+docker compose exec api pnpm db:seed
 ```
 
 ## 4. Verify

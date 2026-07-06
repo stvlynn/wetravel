@@ -12,7 +12,8 @@ only through aggregate methods.
 ### Contained entities / value objects
 
 - **TripMember** — `{ id, name, shortName, initials, avatarBg, avatarFg,
-  isCurrentUser }`.
+  image, isCurrentUser }`. `image` is an optional avatar URL; the UI falls back
+  to a colored circle when it is absent.
 - **TripDay** — `{ number, dateLabel, city, color }`.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
   lat, lng, cost, costCurrency, createdBy, transit, note, votes: MemberId[],
@@ -55,6 +56,19 @@ only through aggregate methods.
   transfer `min(debt, credit)` until cleared, producing the minimal transfer
   set. Matches the prototype algorithm.
 
+## User preferences
+
+`UserPreference` is a lightweight per-user read/write model for UI chrome, not a
+business aggregate. It lives in `domain/preferences`:
+
+- `PlannerSidebarPreference` — value object `{ width: number, collapsed: boolean }`.
+- `UserPreferenceSnapshot` — `{ userId, plannerSidebar, updatedAt }`.
+
+The repository port (`UserPreferenceRepository`) is implemented by
+`PgUserPreferenceRepository`. Preferences are exposed through the application
+layer as DTOs; there are no domain invariants beyond clamping the width to the
+allowed range at the edge.
+
 ## Repository ports
 
 Defined in `domain/trip/ports`:
@@ -62,7 +76,12 @@ Defined in `domain/trip/ports`:
 - `TripRepository` — `findSummaries()`, `findById(id)`, `create(trip)`,
   `rename(id, title)`, `addDay(tripId, day)`, `save(trip)`.
 
-One repository per aggregate. Adapters live in `infrastructure/persistence`.
+`domain/preferences/ports`:
+
+- `UserPreferenceRepository` — `findByUserId(userId)`,
+  `updatePlannerSidebar(userId, width, collapsed)`.
+
+One repository per aggregate/model. Adapters live in `infrastructure/persistence`.
 
 ## Determinism
 

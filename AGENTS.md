@@ -95,6 +95,37 @@ See [`docs/frontend/README.md`](docs/frontend/README.md).
 
 See [`docs/backend/README.md`](docs/backend/README.md).
 
+## Database: Prisma
+
+- **Every database schema change must ship its snapshot.** `apps/api/prisma/schema.prisma`
+  is the committed snapshot of the database structure. If a change touches the
+  schema, the same change set must include an updated `schema.prisma` produced by
+  command — never by hand.
+- **Never edit `schema.prisma` by hand.** Always regenerate it from the live
+  database with `make db-pull` (alias `make db-snapshot`). If you used
+  `make db-migrate-dev` to create a migration, run `make db-pull && make db-generate`
+  afterwards and commit both the migration directory and the updated snapshot.
+- **Never hand-write migrations.** Create migration files with
+  `pnpm --filter @wetravel/api db:migrate-dev` (or `make db-migrate-dev`).
+- **Generate the client after every schema change.** Run `make db-generate`
+  (equivalent to `pnpm --filter @wetravel/api db:generate`) after pulling or
+  migrating.
+- **Configuration lives in `apps/api/prisma.config.ts`.** It points to the
+  schema, migrations directory, and seed command; `DATABASE_URL` is loaded from
+  the root `.env` via `dotenv-cli`.
+- **Use the pg driver adapter.** Construct `PrismaClient` with `PrismaPg`
+  (`@prisma/adapter-pg`) and a `pg.Pool`. Use `createPrismaClient` in
+  `infrastructure/persistence/prisma.ts`.
+- **Seed via `prisma/seed.ts`.** Run `make db-seed` or
+  `pnpm --filter @wetravel/api db:seed`.
+- **Reset via `make db-reset`.** Drops the `public` schema, reapplies Prisma
+  migrations, and re-seeds.
+
+Legacy plain-SQL migrations remain in `apps/api/migrations/` for historical
+reference; new schema changes go through Prisma Migrate.
+
+See [`docs/backend/database.md`](docs/backend/database.md).
+
 ---
 
 ## Commit conventions

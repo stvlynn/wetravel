@@ -67,8 +67,13 @@ const MAX_AVATAR_REQUEST_BYTES = MAX_AVATAR_BYTES + MAX_MULTIPART_OVERHEAD_BYTES
 
 /** Build the Hono app for a wired container. Shared by the Node and Workers
  * entry points. */
+const preferenceSchema = z.object({
+  plannerSidebarWidth: z.number().min(0).max(100),
+  plannerSidebarCollapsed: z.boolean(),
+});
+
 export function createApp(container: Container) {
-  const { auth, tripService, avatarService, fileStorage, config } = container;
+  const { auth, tripService, preferenceService, avatarService, fileStorage, config } = container;
   const app = new Hono<Env>();
 
   app.use(
@@ -199,6 +204,23 @@ export function createApp(container: Container) {
     const profile = new BetterAuthCurrentUserProfile(auth, c.req.raw.headers);
     await avatarService.remove(user.image ?? null, profile);
     return ok(c, { image: null });
+  });
+
+  guard.get("/users/preferences", async (c) =>
+    ok(c, await preferenceService.getPreferences(c.get("user")!.id)),
+  );
+
+  guard.put("/users/preferences", async (c) => {
+    const user = c.get("user")!;
+    const input = preferenceSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await preferenceService.updatePlannerSidebar(
+        user.id,
+        input.plannerSidebarWidth,
+        input.plannerSidebarCollapsed,
+      ),
+    );
   });
 
   app.route("/api", guard);

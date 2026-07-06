@@ -19,3 +19,9 @@ export {
   type InsertStopInput,
   type AddExpenseInput,
 } from "./trips";
+export {
+  fetchPreferences,
+  updatePreferences,
+  type UserPreference,
+  type UpdatePreferencesInput,
+} from "./preferences";

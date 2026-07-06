@@ -143,10 +143,10 @@ export function TripCard({
               {shown.map((m, i) => (
                 <Avatar
                   key={m.id}
-                  initials={m.initials}
                   name={m.name}
                   bg={m.avatarBg}
                   fg={m.avatarFg}
+                  src={m.image}
                   size={24}
                   stackIndex={i}
                   zIndex={shown.length - i}

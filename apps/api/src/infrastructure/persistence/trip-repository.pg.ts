@@ -46,9 +46,10 @@ export class PgTripRepository implements TripRepository {
       initials: string;
       avatar_bg: string;
       avatar_fg: string;
+      image: string | null;
       is_current_user: boolean;
     }>(
-      `SELECT trip_id, id, name, initials, avatar_bg, avatar_fg, is_current_user
+      `SELECT trip_id, id, name, initials, avatar_bg, avatar_fg, image, is_current_user
        FROM trip_members WHERE trip_id = ANY($1) ORDER BY sort_order ASC`,
       [rows.map((r) => r.id)],
     );
@@ -62,6 +63,7 @@ export class PgTripRepository implements TripRepository {
         initials: m.initials,
         avatarBg: m.avatar_bg,
         avatarFg: m.avatar_fg,
+        image: m.image,
         isCurrentUser: m.is_current_user,
       });
       membersByTrip.set(m.trip_id, list);
@@ -110,7 +112,7 @@ export class PgTripRepository implements TripRepository {
     const [members, days, stops, votes, comments, expenses, parts] =
       await Promise.all([
         this.pool.query(
-          `SELECT id, name, short_name, initials, avatar_bg, avatar_fg, is_current_user
+          `SELECT id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user
            FROM trip_members WHERE trip_id = $1 ORDER BY sort_order ASC`,
           [id],
         ),
@@ -242,6 +244,7 @@ export class PgTripRepository implements TripRepository {
         initials: m.initials as string,
         avatarBg: m.avatar_bg as string,
         avatarFg: m.avatar_fg as string,
+        image: m.image as string | null,
         isCurrentUser: m.is_current_user as boolean,
       })),
       days: (days.rows as Array<Record<string, unknown>>).map((d) => ({
@@ -269,9 +272,9 @@ export class PgTripRepository implements TripRepository {
       );
       for (const [i, m] of s.members.entries()) {
         await client.query(
-          `INSERT INTO trip_members (id, trip_id, name, short_name, initials, avatar_bg, avatar_fg, is_current_user, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [m.id, s.id, m.name, m.shortName, m.initials, m.avatarBg, m.avatarFg, m.isCurrentUser, i],
+          `INSERT INTO trip_members (id, trip_id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [m.id, s.id, m.name, m.shortName, m.initials, m.avatarBg, m.avatarFg, m.image ?? null, m.isCurrentUser, i],
         );
       }
       for (const d of s.days) {
