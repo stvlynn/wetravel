@@ -43,6 +43,26 @@ const insertStopSchema = z.object({
   note: z.string().max(20_000).optional(),
 });
 
+const moveStopSchema = z.object({
+  day: z.number().int().positive(),
+  index: z.number().int().min(0),
+});
+
+const updateStopSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160),
+    time: z.string().trim().max(20),
+    duration: z.string().trim().max(20),
+    area: z.string().trim().max(120),
+    category: stopCategorySchema,
+    cost: z.number().min(0).max(100_000_000),
+    costCurrency: z.string().trim().min(1).max(8),
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one stop field is required",
+  });
+
 const commentSchema = z.object({ text: z.string().min(1) });
 
 const createTripSchema = z.object({
@@ -56,6 +76,8 @@ const renameTripSchema = z.object({
 
 const dayNumberSchema = z.coerce.number().int().positive();
 
+const hexColorSchema = z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/);
+
 const updateDaySchema = z
   .object({
     date: z
@@ -66,8 +88,9 @@ const updateDaySchema = z
       .optional(),
     dateLabel: z.string().trim().max(40).optional(),
     city: z.string().trim().max(80).optional(),
+    color: hexColorSchema.optional(),
   })
-  .refine((value) => value.date !== undefined || value.dateLabel !== undefined || value.city !== undefined, {
+  .refine((value) => value.date !== undefined || value.dateLabel !== undefined || value.city !== undefined || value.color !== undefined, {
     message: "At least one day field is required",
   });
 
@@ -83,6 +106,19 @@ const expenseSchema = z.object({
   participants: z.array(z.string().min(1)).min(1),
 });
 
+const createInviteSchema = z
+  .object({
+    accessScope: z.enum(["anyone", "restricted_emails"]),
+    allowedEmails: z.array(z.string().trim().email()).max(50).optional().default([]),
+    role: z.enum(["editor", "viewer"]),
+    canInvite: z.boolean().optional().default(false),
+    expiresAt: z.string().datetime().nullable().optional().default(null),
+  })
+  .refine(
+    (v) => v.accessScope !== "restricted_emails" || v.allowedEmails.length > 0,
+    { message: "At least one email is required for a restricted invite" },
+  );
+
 const MAX_MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 const MAX_AVATAR_REQUEST_BYTES = MAX_AVATAR_BYTES + MAX_MULTIPART_OVERHEAD_BYTES;
 
@@ -94,7 +130,22 @@ const preferenceSchema = z.object({
 });
 
 export function createApp(container: Container) {
-  const { auth, tripService, preferenceService, avatarService, fileStorage, config } = container;
+  const {
+    auth,
+    tripService,
+    tripInviteService,
+    preferenceService,
+    avatarService,
+    fileStorage,
+    config,
+  } = container;
+
+  const inviteActor = (u: Session["user"]) => ({
+    id: u.id,
+    name: u.name || u.email,
+    email: u.email,
+    image: u.image ?? null,
+  });
   const app = new Hono<Env>();
 
   app.use(
@@ -117,6 +168,19 @@ export function createApp(container: Container) {
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   app.get("/api/health", (c) => ok(c, { status: "ok" }));
+
+  // Invite preview is public so unauthenticated users can see what they were
+  // invited to before signing in. Membership/email checks apply on accept.
+  app.get("/api/trip-invites/:token", async (c) => {
+    const user = c.get("user");
+    return ok(
+      c,
+      await tripInviteService.previewInvite(
+        c.req.param("token"),
+        user ? inviteActor(user) : null,
+      ),
+    );
+  });
 
   // Serve uploaded files publicly (avatars, etc.).
   app.get("/api/uploads/*", async (c) => {
@@ -143,7 +207,9 @@ export function createApp(container: Container) {
     await next();
   });
 
-  guard.get("/trips", async (c) => ok(c, await tripService.listTrips()));
+  guard.get("/trips", async (c) =>
+    ok(c, await tripService.listTrips(c.get("user")!.id)),
+  );
 
   guard.post("/trips", async (c) => {
     const user = c.get("user")!;
@@ -151,43 +217,98 @@ export function createApp(container: Container) {
     const dto = await tripService.createTrip(input, {
       id: user.id,
       name: user.name || user.email,
+      image: user.image ?? null,
     });
     return ok(c, dto, 201);
   });
 
   guard.get("/trips/:id", async (c) =>
-    ok(c, await tripService.getTrip(c.req.param("id"))),
+    ok(c, await tripService.getTrip(c.req.param("id"), c.get("user")!.id)),
   );
 
   guard.patch("/trips/:id", async (c) => {
     const { title } = renameTripSchema.parse(await c.req.json());
-    return ok(c, await tripService.renameTrip(c.req.param("id"), title));
+    return ok(
+      c,
+      await tripService.renameTrip(c.req.param("id"), title, c.get("user")!.id),
+    );
   });
 
   guard.post("/trips/:id/days", async (c) =>
-    ok(c, await tripService.addDay(c.req.param("id")), 201),
+    ok(c, await tripService.addDay(c.req.param("id"), c.get("user")!.id), 201),
   );
 
   guard.put("/trips/:id/days/order", async (c) => {
     const { order } = reorderDaysSchema.parse(await c.req.json());
-    return ok(c, await tripService.reorderDays(c.req.param("id"), order));
+    return ok(
+      c,
+      await tripService.reorderDays(c.req.param("id"), order, c.get("user")!.id),
+    );
+  });
+
+  guard.delete("/trips/:id/days/:day", async (c) => {
+    const dayNumber = dayNumberSchema.parse(c.req.param("day"));
+    return ok(
+      c,
+      await tripService.deleteDay(c.req.param("id"), dayNumber, c.get("user")!.id),
+    );
   });
 
   guard.patch("/trips/:id/days/:day", async (c) => {
     const dayNumber = dayNumberSchema.parse(c.req.param("day"));
     const input = updateDaySchema.parse(await c.req.json());
-    return ok(c, await tripService.updateDay(c.req.param("id"), dayNumber, input));
+    return ok(
+      c,
+      await tripService.updateDay(
+        c.req.param("id"),
+        dayNumber,
+        input,
+        c.get("user")!.id,
+      ),
+    );
   });
 
   guard.post("/trips/:id/stops", async (c) => {
     const input = insertStopSchema.parse(await c.req.json());
-    return ok(c, await tripService.insertStop(c.req.param("id"), input));
+    return ok(
+      c,
+      await tripService.insertStop(c.req.param("id"), input, c.get("user")!.id),
+    );
+  });
+
+  guard.patch("/trips/:id/stops/:stopId", async (c) => {
+    const input = updateStopSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await tripService.updateStop(
+        c.req.param("id"),
+        c.req.param("stopId"),
+        input,
+        c.get("user")!.id,
+      ),
+    );
+  });
+
+  guard.put("/trips/:id/stops/:stopId/position", async (c) => {
+    const input = moveStopSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await tripService.moveStop(
+        c.req.param("id"),
+        { stopId: c.req.param("stopId"), ...input },
+        c.get("user")!.id,
+      ),
+    );
   });
 
   guard.post("/trips/:id/stops/:stopId/vote", async (c) =>
     ok(
       c,
-      await tripService.toggleVote(c.req.param("id"), c.req.param("stopId")),
+      await tripService.toggleVote(
+        c.req.param("id"),
+        c.req.param("stopId"),
+        c.get("user")!.id,
+      ),
     ),
   );
 
@@ -195,13 +316,43 @@ export function createApp(container: Container) {
     const { text } = commentSchema.parse(await c.req.json());
     return ok(
       c,
-      await tripService.addComment(c.req.param("id"), c.req.param("stopId"), text),
+      await tripService.addComment(
+        c.req.param("id"),
+        c.req.param("stopId"),
+        text,
+        c.get("user")!.id,
+      ),
     );
   });
 
   guard.post("/trips/:id/expenses", async (c) => {
     const input = expenseSchema.parse(await c.req.json());
-    return ok(c, await tripService.addExpense(c.req.param("id"), input));
+    return ok(
+      c,
+      await tripService.addExpense(c.req.param("id"), input, c.get("user")!.id),
+    );
+  });
+
+  guard.post("/trips/:id/invites", async (c) => {
+    const user = c.get("user")!;
+    const input = createInviteSchema.parse(await c.req.json());
+    const created = await tripInviteService.createInvite(
+      c.req.param("id"),
+      inviteActor(user),
+      input,
+    );
+    const origin = c.req.header("origin") ?? config.trustedOrigins[0] ?? "";
+    const url = `${origin.replace(/\/$/, "")}/invite/${created.token}`;
+    return ok(c, { url, token: created.token, expiresAt: created.expiresAt }, 201);
+  });
+
+  guard.post("/trip-invites/:token/accept", async (c) => {
+    const user = c.get("user")!;
+    const result = await tripInviteService.acceptInvite(
+      c.req.param("token"),
+      inviteActor(user),
+    );
+    return ok(c, result);
   });
 
   guard.post(

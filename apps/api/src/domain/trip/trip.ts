@@ -4,10 +4,19 @@ import type {
   Budget,
   DaySnapshot,
   ExpenseSnapshot,
+  MemberRole,
+  MemberSnapshot,
   StopCategory,
   StopSnapshot,
   TripSnapshot,
 } from "./types";
+
+/** Effective permissions a user has against a trip. */
+export interface TripPermissions {
+  isMember: boolean;
+  canEdit: boolean;
+  canInvite: boolean;
+}
 
 export interface InsertStopDraft {
   day: number;
@@ -31,6 +40,27 @@ export interface InsertStopDraft {
   note?: string;
 }
 
+export interface MoveStopDraft {
+  stopId: string;
+  day: number;
+  /** Zero-based position within the target day's stops after removing the stop. */
+  index: number;
+}
+
+/** Partial edit of an existing stop's display metadata. Only provided fields
+ * are applied; positional day changes go through `moveStop`. */
+export interface UpdateStopDraft {
+  name?: string;
+  time?: string;
+  duration?: string;
+  area?: string;
+  category?: StopCategory;
+  /** Estimated cost per person; 0 clears the cost and its currency. */
+  cost?: number;
+  /** ISO currency code for `cost`. Ignored when the effective cost is 0. */
+  costCurrency?: string;
+}
+
 export interface AddExpenseDraft {
   description: string;
   amount: number;
@@ -47,6 +77,8 @@ export interface UpdateDayDraft {
   dateLabel?: string;
   /** Optional city or route label for the day header. */
   city?: string;
+  /** Optional hex theme color (e.g. `#3f6fc9`) for the day header. */
+  color?: string;
 }
 
 export interface CreateTripDraft {
@@ -94,6 +126,15 @@ function dayColorFor(number: number): string {
   return DAY_COLORS[(number - 1) % DAY_COLORS.length]!;
 }
 
+/** Validate and normalize a user-supplied day color. Returns null for invalid
+ * or missing values. */
+function normalizeDayColor(color: string | undefined): string | null {
+  if (color == null) return null;
+  const trimmed = color.trim();
+  if (!HEX_COLOR.test(trimmed)) return null;
+  return trimmed.toLowerCase();
+}
+
 /** Today's date as an ISO `YYYY-MM-DD` string (server local time). */
 function todayIso(): string {
   const now = new Date();
@@ -104,6 +145,7 @@ function todayIso(): string {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 
 function addDaysIso(date: string, days: number): string {
   if (!ISO_DATE.test(date)) return "";
@@ -163,6 +205,9 @@ export class Trip {
           avatarBg: palette.bg,
           avatarFg: palette.fg,
           image: owner.image ?? null,
+          userId: owner.id,
+          role: "owner",
+          canInvite: true,
           isCurrentUser: true,
         },
       ],
@@ -310,6 +355,65 @@ export class Trip {
     return stop;
   }
 
+  /** Edit an existing stop's display metadata. Applies only the provided
+   * fields, normalizing them the same way `insertStop` does. */
+  updateStop(stopId: string, draft: UpdateStopDraft): StopSnapshot {
+    const stop = this.requireStop(stopId);
+
+    if (draft.name !== undefined) {
+      const name = draft.name.trim();
+      if (!name) throw new DomainError("empty_stop_name", "Stop name is required");
+      stop.name = name;
+    }
+    if (draft.time !== undefined) stop.time = draft.time.trim() || "—";
+    if (draft.duration !== undefined) stop.duration = draft.duration.trim() || "1h";
+    if (draft.area !== undefined) stop.area = draft.area.trim() || "TBD";
+    if (draft.category !== undefined) stop.category = draft.category;
+
+    if (draft.cost !== undefined) {
+      const cost =
+        Number.isFinite(draft.cost) && draft.cost > 0 ? Math.round(draft.cost) : 0;
+      stop.cost = cost;
+      // A currency is only meaningful alongside a positive cost.
+      stop.costCurrency =
+        cost > 0
+          ? draft.costCurrency?.trim() || stop.costCurrency || this.snapshot.currency
+          : "";
+    } else if (draft.costCurrency !== undefined && stop.cost > 0) {
+      stop.costCurrency = draft.costCurrency.trim() || this.snapshot.currency;
+    }
+
+    return stop;
+  }
+
+  /** Move an existing stop to a position within any itinerary day. */
+  moveStop(draft: MoveStopDraft): StopSnapshot {
+    this.requireDay(draft.day);
+    const stop = this.requireStop(draft.stopId);
+    const rest = this.snapshot.stops.filter((s) => s.id !== stop.id);
+    const targetDayStops = rest.filter((s) => s.day === draft.day);
+    const index = Math.max(0, Math.min(draft.index, targetDayStops.length));
+    const prev = targetDayStops[index - 1];
+    const next = targetDayStops[index];
+
+    stop.day = draft.day;
+
+    let pos: number;
+    if (next) {
+      pos = rest.indexOf(next);
+    } else if (prev) {
+      pos = rest.indexOf(prev) + 1;
+    } else {
+      const firstLaterDayStop = rest.find((s) => s.day > draft.day);
+      pos = firstLaterDayStop ? rest.indexOf(firstLaterDayStop) : rest.length;
+    }
+
+    rest.splice(pos, 0, stop);
+    rest.forEach((s, i) => (s.order = i));
+    this.snapshot.stops = rest;
+    return stop;
+  }
+
   /** Add an equally-split expense. */
   addExpense(draft: AddExpenseDraft): ExpenseSnapshot {
     const description = draft.description.trim();
@@ -364,7 +468,44 @@ export class Trip {
     if (draft.date !== undefined) day.date = draft.date.trim();
     if (draft.dateLabel !== undefined) day.dateLabel = draft.dateLabel.trim();
     if (draft.city !== undefined) day.city = draft.city.trim();
+    if (draft.color !== undefined) {
+      const normalized = normalizeDayColor(draft.color);
+      if (!normalized) {
+        throw new DomainError("invalid_day_color", "Day color must be a hex color like #3f6fc9");
+      }
+      day.color = normalized;
+    }
     return day;
+  }
+
+  /** Delete an itinerary day and renumber the remaining days 1..N. Stops that
+   * belonged to the deleted day are removed; stops on remaining days keep their
+   * relative order and are remapped to the new day numbers. */
+  deleteDay(number: number): void {
+    this.requireDay(number);
+    const remaining = this.snapshot.days
+      .filter((d) => d.number !== number)
+      .sort((a, b) => a.number - b.number);
+
+    const oldToNew = new Map<number, number>();
+    const renumbered: DaySnapshot[] = remaining.map((day, i) => {
+      const newNumber = i + 1;
+      oldToNew.set(day.number, newNumber);
+      return {
+        number: newNumber,
+        date: addDaysIso(this.snapshot.startDate, newNumber - 1),
+        dateLabel: day.dateLabel,
+        city: day.city,
+        color: day.color,
+      };
+    });
+
+    this.snapshot.days = renumbered;
+    this.snapshot.stops = this.snapshot.stops
+      .filter((s) => oldToNew.has(s.day))
+      .map((s) => ({ ...s, day: oldToNew.get(s.day)! }))
+      .sort((a, b) => a.day - b.day || a.order - b.order)
+      .map((s, i) => ({ ...s, order: i }));
   }
 
   /** Reorder the itinerary to the given sequence of existing day numbers.
@@ -411,5 +552,74 @@ export class Trip {
   currentMemberId(): string {
     const me = this.snapshot.members.find((m) => m.isCurrentUser);
     return me?.id ?? this.snapshot.members[0]?.id ?? "";
+  }
+
+  /** Find the membership backing a Better Auth user, if any. */
+  memberByUserId(userId: string): MemberSnapshot | undefined {
+    return this.snapshot.members.find((m) => m.userId === userId);
+  }
+
+  /** True when no membership is backed by a real user (pure seed/demo trip).
+   * Such trips stay openly accessible so the seeded demo keeps working. */
+  private isLegacyDemo(): boolean {
+    return !this.snapshot.members.some((m) => !!m.userId);
+  }
+
+  /** Resolve the effective permissions a user has against this trip. */
+  permissionsFor(userId: string): TripPermissions {
+    const member = this.memberByUserId(userId);
+    if (member) {
+      return {
+        isMember: true,
+        canEdit: member.role !== "viewer",
+        canInvite: member.canInvite,
+      };
+    }
+    if (this.isLegacyDemo()) {
+      return { isMember: true, canEdit: true, canInvite: true };
+    }
+    return { isMember: false, canEdit: false, canInvite: false };
+  }
+
+  /** The trip-local member id that should author actions for this user.
+   * Falls back to the legacy current-user member on seed/demo trips. */
+  actingMemberId(userId: string): string {
+    const member = this.memberByUserId(userId);
+    if (member) return member.id;
+    return this.currentMemberId();
+  }
+
+  /** Add a real user as a trip member. Throws if the user is already a member. */
+  addMember(params: {
+    userId: string;
+    name: string;
+    image?: string | null;
+    role: MemberRole;
+    canInvite: boolean;
+  }): MemberSnapshot {
+    if (this.memberByUserId(params.userId)) {
+      throw new DomainError(
+        "already_member",
+        `User ${params.userId} is already a member`,
+      );
+    }
+    const name = params.name.trim() || "Traveler";
+    const palette =
+      MEMBER_PALETTE[this.snapshot.members.length % MEMBER_PALETTE.length]!;
+    const member: MemberSnapshot = {
+      id: `m${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      shortName: shortNameOf(name),
+      initials: initialsOf(name),
+      avatarBg: palette.bg,
+      avatarFg: palette.fg,
+      image: params.image ?? null,
+      userId: params.userId,
+      role: params.role,
+      canInvite: params.canInvite,
+      isCurrentUser: false,
+    };
+    this.snapshot.members.push(member);
+    return member;
   }
 }

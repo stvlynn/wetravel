@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { dayDateLabel, findDay } from "@/entities/trip";
+import type { UpdateStopInput } from "@/shared/api";
 import { DayPills } from "./DayPills";
 import { StopCard } from "./StopCard";
 import { StopDetail } from "./StopDetail";
@@ -13,9 +14,12 @@ export interface SidebarProps {
   onSelectStop: (id: string) => void;
   onCloseDetail: () => void;
   currentUserId: string;
+  canEdit: boolean;
   onToggleVote: (stopId: string) => void;
   onComment: (stopId: string, text: string) => void;
   commentPending?: boolean;
+  onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
+  onChangeStopDay: (stopId: string, day: number) => void;
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -39,10 +43,13 @@ export function Sidebar(props: SidebarProps) {
           trip={trip}
           stop={selectedStop}
           currentUserId={props.currentUserId}
+          canEdit={props.canEdit}
           onClose={props.onCloseDetail}
           onToggleVote={props.onToggleVote}
           onComment={props.onComment}
           commentPending={props.commentPending}
+          onUpdateStop={props.onUpdateStop}
+          onChangeStopDay={props.onChangeStopDay}
         />
       ) : (
         <>
@@ -84,7 +91,6 @@ export function Sidebar(props: SidebarProps) {
                         key={s.id}
                         trip={trip}
                         stop={s}
-                        color={d.color}
                         selected={s.id === selectedStopId}
                         onSelect={props.onSelectStop}
                       />

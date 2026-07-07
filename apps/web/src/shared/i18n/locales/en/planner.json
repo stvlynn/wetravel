@@ -36,7 +36,18 @@
     "postComment": "Post",
     "backToItinerary": "Itinerary",
     "justNow": "Just now",
-    "notes": "Notes"
+    "notes": "Notes",
+    "editName": "Edit name",
+    "editArea": "Edit area",
+    "editSchedule": "Edit day, time & duration",
+    "editCategory": "Change type",
+    "editCost": "Edit cost",
+    "namePlaceholder": "Stop name",
+    "areaPlaceholder": "Area or neighborhood",
+    "dayLabel": "Day",
+    "timeLabel": "Time",
+    "durationLabel": "Duration",
+    "costLabel": "Cost per person"
   },
   "schedule": {
     "insert": "Insert stop",
@@ -52,17 +63,29 @@
     "reorderAria": "Drag to reorder day {{n}}",
     "dayMenu": {
       "label": "Day {{n}}",
-      "edit": "Edit day details",
+      "edit": "Edit info",
+      "delete": "Delete",
       "useGeneratedLocation": "Use schedule location"
     },
     "dayDialog": {
       "title": "Edit day {{n}}",
-      "description": "Choose the real date and location stored on this schedule card.",
+      "description": "Choose the date, location, and color stored on this schedule card.",
       "date": "Date",
       "cityLabel": "Location",
       "cityPlaceholder": "Select location",
+      "colorLabel": "Color",
       "useGenerated": "Use schedule location: {{location}}",
       "save": "Save"
+    },
+    "deleteDialog": {
+      "title": "Delete day {{n}}?",
+      "description": "This will permanently remove this day and all its stops. This action cannot be undone.",
+      "confirm": "Delete"
+    },
+    "colorPicker": {
+      "presets": "Quick colors",
+      "custom": "Custom color",
+      "pick": "Pick color {{color}}"
     }
   },
   "category": {

@@ -1,0 +1,56 @@
+{
+  "dialog": {
+    "title": "邀请加入行程",
+    "description": "分享链接，邀请他人加入此行程。",
+    "access": {
+      "label": "谁可以加入",
+      "anyone": "任何持有链接的人",
+      "restricted_emails": "仅指定的人"
+    },
+    "emails": {
+      "label": "允许的邮箱",
+      "placeholder": "name@example.com, other@example.com",
+      "hint": "多个邮箱用逗号分隔。"
+    },
+    "role": {
+      "label": "他们的角色",
+      "editor": "编辑者 — 可以修改",
+      "viewer": "查看者 — 只读"
+    },
+    "canInvite": "允许他们邀请其他人",
+    "expiry": {
+      "label": "链接过期时间",
+      "hint": "留空表示链接永不过期。"
+    },
+    "create": "创建邀请链接",
+    "creating": "创建中…",
+    "copy": "复制链接",
+    "copied": "已复制 ✓",
+    "copyFallback": "请手动复制此链接：",
+    "errorTitle": "无法创建邀请",
+    "errorGeneric": "创建邀请链接失败。"
+  },
+  "accept": {
+    "loading": "正在加载邀请…",
+    "invalidTitle": "邀请不可用",
+    "notFound": "此邀请链接无效。",
+    "expired": "此邀请已过期。",
+    "revoked": "此邀请已被撤销。",
+    "emailRestricted": "此邀请仅限指定邮箱。请使用受邀账户登录以加入。",
+    "signInPrompt": "登录或注册以加入 {{trip}}。",
+    "heading": "加入 {{trip}}",
+    "invitedBy": "由 {{name}} 邀请",
+    "members_one": "{{count}} 位成员",
+    "members_other": "{{count}} 位成员",
+    "roleEditor": "你将以编辑者身份加入。",
+    "roleViewer": "你将以查看者身份加入。",
+    "expiresAt": "过期时间 {{date}}",
+    "join": "加入行程",
+    "joining": "加入中…",
+    "open": "打开行程",
+    "alreadyMember": "你已经是此行程的成员。",
+    "errorTitle": "无法加入",
+    "errorGeneric": "加入此行程失败。",
+    "back": "返回我的行程"
+  }
+}

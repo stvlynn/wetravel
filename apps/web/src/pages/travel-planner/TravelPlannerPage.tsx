@@ -324,11 +324,19 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
             onSelectStop={selectStop}
             onCloseDetail={() => setSelectedStopId(null)}
             currentUserId={currentUserId}
+            canEdit={trip.permissions.canEdit}
             onToggleVote={(stopId) => actions.vote.mutate(stopId)}
             onComment={(stopId, text) =>
               actions.comment.mutate({ stopId, text })
             }
             commentPending={actions.comment.isPending}
+            onUpdateStop={(stopId, patch) =>
+              actions.stopUpdate.mutate({ stopId, patch })
+            }
+            onChangeStopDay={(stopId, targetDay) => {
+              const index = trip.stops.filter((s) => s.day === targetDay).length;
+              actions.stopMove.mutate({ stopId, day: targetDay, index });
+            }}
           />
         </AppSidebar>
 
@@ -371,8 +379,15 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
                 onUpdateDay={(dayNumber, patch) =>
                   actions.dayUpdate.mutate({ dayNumber, patch })
                 }
+                onDeleteDay={(dayNumber) => actions.dayDelete.mutate(dayNumber)}
                 onReorderDays={(order) => actions.dayReorder.mutate(order)}
+                onMoveStop={(input) => actions.stopMove.mutate(input)}
                 addingDay={actions.day.isPending}
+                deletingDayNumber={
+                  actions.dayDelete.isPending
+                    ? actions.dayDelete.variables
+                    : undefined
+                }
                 updatingDayNumber={
                   actions.dayUpdate.isPending
                     ? actions.dayUpdate.variables?.dayNumber
@@ -389,7 +404,11 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
             )}
           </div>
 
-          <FloatingMembers members={trip.members} />
+          <FloatingMembers
+            tripId={trip.id}
+            members={trip.members}
+            canInvite={trip.permissions.canInvite}
+          />
         </main>
       </div>
       </Splitter>

@@ -48,24 +48,60 @@ describe("Trip aggregate", () => {
     expect(trip.toSnapshot().days).toHaveLength(2);
   });
 
+
+
   it("updates itinerary day display metadata", () => {
     const trip = freshTrip();
     const day = trip.updateDay(4, {
       date: "2025-10-15",
       city: "  Kyoto  ",
+      color: "#FF5733",
     });
 
     expect(day).toMatchObject({
       number: 4,
       date: "2025-10-15",
       city: "Kyoto",
+      color: "#ff5733",
     });
     expect(trip.toSnapshot().days.find((d) => d.number === 4)).toBe(day);
+  });
+
+  it("rejects an invalid day color", () => {
+    const trip = freshTrip();
+    expect(() => trip.updateDay(1, { color: "not-a-color" })).toThrow();
+    expect(() => trip.updateDay(1, { color: "#fff" })).toThrow();
   });
 
   it("rejects updating a missing itinerary day", () => {
     const trip = freshTrip();
     expect(() => trip.updateDay(99, { city: "Kyoto" })).toThrow();
+  });
+
+  it("deletes a day, renumbers remaining days, and removes its stops", () => {
+    const trip = freshTrip();
+    const before = structuredClone(trip.toSnapshot());
+    const deletedNumber = 2;
+    const stopsOnDeletedDay = before.stops.filter((s) => s.day === deletedNumber);
+
+    trip.deleteDay(deletedNumber);
+    const after = trip.toSnapshot();
+
+    expect(after.days).toHaveLength(before.days.length - 1);
+    expect(after.days.map((d) => d.number)).toEqual(
+      before.days.filter((d) => d.number !== deletedNumber).map((_, i) => i + 1),
+    );
+    expect(after.stops).toHaveLength(before.stops.length - stopsOnDeletedDay.length);
+    expect(after.stops.some((s) => stopsOnDeletedDay.map((stop) => stop.id).includes(s.id))).toBe(false);
+    expect(after.stops.every((s) => s.day >= 1 && s.day <= after.days.length)).toBe(true);
+    expect(after.stops.map((s) => s.order)).toEqual(
+      after.stops.map((_, i) => i),
+    );
+  });
+
+  it("rejects deleting a missing itinerary day", () => {
+    const trip = freshTrip();
+    expect(() => trip.deleteDay(99)).toThrow();
   });
 
   it("reorders days, renumbering sequentially and remapping stops", () => {
@@ -153,6 +189,45 @@ describe("Trip aggregate", () => {
     expect(orders).toEqual([...orders].sort((a, b) => a - b));
   });
 
+  it("moves a stop across days and keeps ordering contiguous", () => {
+    const trip = freshTrip();
+    const before = trip.toSnapshot();
+    const source = before.stops.find((s) => s.day === 1)!;
+    const targetDay = before.days.find(
+      (d) => d.number !== source.day && before.stops.some((s) => s.day === d.number),
+    )!.number;
+    const targetIndex = Math.min(
+      1,
+      before.stops.filter((s) => s.day === targetDay).length,
+    );
+
+    trip.moveStop({ stopId: source.id, day: targetDay, index: targetIndex });
+    const after = trip.toSnapshot();
+    const targetStops = after.stops.filter((s) => s.day === targetDay);
+
+    expect(targetStops[targetIndex]!.id).toBe(source.id);
+    expect(after.stops.find((s) => s.id === source.id)!.day).toBe(targetDay);
+    expect(after.stops.map((s) => s.order)).toEqual(after.stops.map((_, i) => i));
+    expect(after.stops.map((s) => s.day)).toEqual(
+      [...after.stops.map((s) => s.day)].sort((a, b) => a - b),
+    );
+  });
+
+  it("moves a stop within the same day", () => {
+    const trip = freshTrip();
+    const dayStops = trip.toSnapshot().stops.filter((s) => s.day === 1);
+    const source = dayStops[0]!;
+
+    trip.moveStop({
+      stopId: source.id,
+      day: source.day,
+      index: dayStops.length - 1,
+    });
+    const afterDayStops = trip.toSnapshot().stops.filter((s) => s.day === source.day);
+
+    expect(afterDayStops.at(-1)!.id).toBe(source.id);
+  });
+
   it("applies optional category, cost, and note on insert (defaults otherwise)", () => {
     const trip = freshTrip();
     trip.insertStop(
@@ -218,10 +293,89 @@ describe("Trip aggregate", () => {
   });
 });
 
+describe("Trip membership", () => {
+  it("makes the creator an owner who can edit and invite", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    const perms = trip.permissionsFor("u1");
+    expect(perms).toEqual({ isMember: true, canEdit: true, canInvite: true });
+    expect(trip.toSnapshot().members[0]!).toMatchObject({
+      userId: "u1",
+      role: "owner",
+      canInvite: true,
+    });
+  });
+
+  it("adds a real user as a member with the requested role", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    const member = trip.addMember({
+      userId: "u2",
+      name: "Grace Hopper",
+      role: "viewer",
+      canInvite: false,
+    });
+    expect(member).toMatchObject({
+      userId: "u2",
+      role: "viewer",
+      canInvite: false,
+      initials: "GH",
+    });
+    expect(trip.memberByUserId("u2")).toBe(member);
+  });
+
+  it("rejects adding the same user twice", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    trip.addMember({ userId: "u2", name: "Grace", role: "editor", canInvite: false });
+    expect(() =>
+      trip.addMember({ userId: "u2", name: "Grace", role: "editor", canInvite: false }),
+    ).toThrow();
+  });
+
+  it("gives viewers read access but no edit rights", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    trip.addMember({ userId: "u2", name: "Grace", role: "viewer", canInvite: false });
+    expect(trip.permissionsFor("u2")).toEqual({
+      isMember: true,
+      canEdit: false,
+      canInvite: false,
+    });
+  });
+
+  it("denies access to non-members on real trips", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    expect(trip.permissionsFor("stranger")).toEqual({
+      isMember: false,
+      canEdit: false,
+      canInvite: false,
+    });
+  });
+
+  it("keeps legacy/demo trips open to any signed-in user", () => {
+    const trip = freshTrip();
+    // Seed members have no backing userId, so anyone may act on the demo trip.
+    expect(trip.permissionsFor("anyone")).toEqual({
+      isMember: true,
+      canEdit: true,
+      canInvite: true,
+    });
+    expect(trip.actingMemberId("anyone")).toBe("lynn");
+  });
+
+  it("routes actions to the acting user's own membership", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    const member = trip.addMember({
+      userId: "u2",
+      name: "Grace",
+      role: "editor",
+      canInvite: false,
+    });
+    expect(trip.actingMemberId("u2")).toBe(member.id);
+  });
+});
+
 describe("computeBudget", () => {
   const members = [
-    { id: "a", name: "A", shortName: "A", initials: "A", avatarBg: "", avatarFg: "", isCurrentUser: true },
-    { id: "b", name: "B", shortName: "B", initials: "B", avatarBg: "", avatarFg: "", isCurrentUser: false },
+    { id: "a", name: "A", shortName: "A", initials: "A", avatarBg: "", avatarFg: "", userId: null, role: "editor" as const, canInvite: true, isCurrentUser: true },
+    { id: "b", name: "B", shortName: "B", initials: "B", avatarBg: "", avatarFg: "", userId: null, role: "editor" as const, canInvite: true, isCurrentUser: false },
   ];
 
   it("nets paid minus fair share", () => {

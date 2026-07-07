@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
 import { DomainError, NotFoundError } from "../../domain/shared/errors";
+import { ForbiddenError } from "../../application";
 import { AvatarError } from "../../application/avatar";
 import { fail } from "./response";
 
@@ -8,6 +9,9 @@ import { fail } from "./response";
 export function handleError(err: Error, c: Context) {
   if (err instanceof ZodError) {
     return fail(c, "validation_error", err.issues[0]?.message ?? "Invalid input", 400);
+  }
+  if (err instanceof ForbiddenError) {
+    return fail(c, err.code, err.message, 403);
   }
   if (err instanceof DomainError) {
     return fail(c, err.code, err.message, 400);

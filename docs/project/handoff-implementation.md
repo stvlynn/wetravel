@@ -41,7 +41,7 @@ as real cossUI React primitives.
 | Add expense | Persisted |
 | Balances + settlement | Computed server-side from persisted expenses |
 | Member presence dots | Demo (cosmetic, from seed) |
-| Invite ("Link copied") | Demo (client-only affordance) |
+| Invite | Persisted (configurable invite links with access scope, role, can-invite, and custom expiry; accepting adds a real member) |
 | Trip creation ("New trip") | Persisted (creates a planning trip owned by the current user as its first member) |
 
 ## Data parity

@@ -12,8 +12,13 @@ only through aggregate methods.
 ### Contained entities / value objects
 
 - **TripMember** — `{ id, name, shortName, initials, avatarBg, avatarFg,
-  image, isCurrentUser }`. `image` is an optional avatar URL; the UI falls back
-  to a colored circle when it is absent.
+  image, userId, role, canInvite, isCurrentUser }`. `image` is an optional
+  avatar URL; the UI falls back to a colored circle when it is absent. `userId`
+  is the Better Auth user backing the membership (null for legacy/demo members).
+  `role` is `owner | editor | viewer`; `canInvite` gates creating further
+  invites. `isCurrentUser` is computed per request (member `userId` equals the
+  requester) rather than stored, except on legacy demo members where the seeded
+  flag is used.
 - **TripDay** — `{ number, date, dateLabel, city, color }`, where `date` is
   ISO `YYYY-MM-DD` and `dateLabel` is a legacy fallback for imported labels.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
@@ -45,8 +50,20 @@ only through aggregate methods.
   conversion; mixed-currency expenses are preserved for display/future FX support
   while aggregate math still sums numeric amounts.
 - **create(draft, owner)** — new trip in `planning` status with the owner as its
-  first member, one empty day, and `startDate` set to today (ISO). Day labels are
-  derived from `startDate` on the read side, so days carry no fake "Day N" text.
+  first member (role `owner`, `canInvite` true, `userId` set), one empty day, and
+  `startDate` set to today (ISO). Day labels are derived from `startDate` on the
+  read side, so days carry no fake "Day N" text.
+- **addMember({ userId, name, image, role, canInvite })** — adds a real user as a
+  member with a generated trip-local id and cycled avatar palette. Rejects adding
+  a user who is already a member (the `(trip_id, user_id)` unique constraint backs
+  this at the database).
+- **permissionsFor(userId)** — resolves `{ isMember, canEdit, canInvite }`.
+  Viewers get `canEdit: false`. Non-members of a real trip get all-false. Legacy
+  demo trips (no user-backed members) stay open so the seeded planner keeps
+  working for any signed-in user.
+- **actingMemberId(userId)** — the trip-local member id that authors a user's
+  actions (votes, comments, inserts), falling back to the legacy current-user
+  member on demo trips.
 - **addDay()** — appends an empty day with the next number and a cycled color;
   its calendar date is derived from `startDate`.
 - **updateDay(number, draft)** — updates an existing day's structured metadata
@@ -77,9 +94,16 @@ allowed range at the edge.
 
 Defined in `domain/trip/ports`:
 
-- `TripRepository` — `findSummaries()`, `findById(id)`, `create(trip)`,
-  `rename(id, title)`, `addDay(tripId, day)`, `updateDay(tripId, day)`,
-  `save(trip)`.
+- `TripRepository` — `findSummaries(userId)`, `findById(id)`, `create(trip)`,
+  `addMember(tripId, member)`, `rename(id, title)`, `addDay(tripId, day)`,
+  `updateDay(tripId, day)`, `reorderDays(trip)`, `deleteDay(trip)`, `save(trip)`.
+  `findSummaries` returns trips the user belongs to plus legacy/demo trips with
+  no user-backed members.
+
+`domain/invite/ports`:
+
+- `TripInviteRepository` — `create(invite)`, `findByTokenHash(hash)`,
+  `recordAcceptance(inviteId, userId)`.
 
 `domain/preferences/ports`:
 
@@ -87,6 +111,22 @@ Defined in `domain/trip/ports`:
   `updatePlannerSidebar(userId, width, collapsed)`.
 
 One repository per aggregate/model. Adapters live in `infrastructure/persistence`.
+
+## Invites
+
+`domain/invite` holds the invite model, separate from the Trip aggregate:
+
+- **TripInviteSnapshot** — `{ id, tripId, tokenHash, createdBy, accessScope,
+  allowedEmails, role, canInvite, status, expiresAt, createdAt }`. Only the
+  SHA-256 hash of the opaque token is persisted; the plaintext is returned once.
+  `accessScope` is `anyone | restricted_emails`; `role` is `editor | viewer`.
+- **checkInviteUsable(invite, { email, now })** — pure guard rejecting revoked,
+  expired, or email-restricted redemptions.
+
+`TripInviteService` (application) coordinates the invite and trip aggregates:
+`createInvite` (requires `canInvite`), `previewInvite` (public, safe display
+data), and `acceptInvite` (validates usability, adds the member, records the
+acceptance; idempotent for existing members).
 
 ## Determinism
 

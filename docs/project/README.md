@@ -32,9 +32,10 @@ See [handoff-implementation.md](handoff-implementation.md).
 ## Non-goals (for this iteration)
 
 - Real-time multiplayer sync (presence dots are cosmetic).
-- Trip editing wizard beyond creating a named, empty trip (dates, cover, and
-  multi-member invites are not yet wired).
-- Email delivery (verification/reset emails are configuration hooks, not wired
-  to a provider).
+- Trip editing wizard beyond creating a named, empty trip (dates and cover are
+  not yet wired).
+- Email delivery (verification/reset emails and invite emails are not wired to a
+  provider; invites are shared as links). Members join via an invite link with a
+  configurable access scope, role, can-invite flag, and custom expiry.
 - Multi-currency conversion (amounts are stored and shown in JPY like the
   prototype).

@@ -1,1 +1,1 @@
-export type { TripMember } from "./model";
+export type { TripMember, MemberRole } from "./model";

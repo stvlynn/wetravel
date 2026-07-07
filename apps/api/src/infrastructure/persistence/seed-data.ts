@@ -34,6 +34,11 @@ function members(): TripSnapshot["members"] {
     initials: m.initials,
     avatarBg: m.bg,
     avatarFg: m.fg,
+    // Legacy/demo members are not backed by real users; they keep full access
+    // so the seeded planner stays fully interactive for any signed-in user.
+    userId: null,
+    role: m.me ? "owner" : "editor",
+    canInvite: true,
     isCurrentUser: !!m.me,
   }));
 }

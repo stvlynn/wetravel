@@ -3,6 +3,7 @@ import { Trip } from "../../domain/trip";
 import type {
   DaySnapshot,
   ExpenseSnapshot,
+  MemberSnapshot,
   StopSnapshot,
   TripRepository,
   TripSnapshot,
@@ -16,7 +17,7 @@ import type {
 export class PgTripRepository implements TripRepository {
   constructor(private pool: Pool) {}
 
-  async findSummaries(): Promise<TripSummary[]> {
+  async findSummaries(userId: string): Promise<TripSummary[]> {
     const { rows } = await this.pool.query<{
       id: string;
       title: string;
@@ -30,12 +31,23 @@ export class PgTripRepository implements TripRepository {
       member_count: string;
       stop_count: string;
     }>(
+      // Return trips the user belongs to, plus legacy/demo trips that have no
+      // real (user-backed) members yet so the seeded demo stays visible.
       `SELECT t.id, t.title, t.start_date, t.end_date, t.status, t.currency, t.cover_color,
               t.owner_id, t.created_at,
               (SELECT count(*) FROM trip_members m WHERE m.trip_id = t.id) AS member_count,
               (SELECT count(*) FROM stops s WHERE s.trip_id = t.id) AS stop_count
        FROM trips t
+       WHERE EXISTS (
+               SELECT 1 FROM trip_members m
+               WHERE m.trip_id = t.id AND m.user_id = $1
+             )
+          OR NOT EXISTS (
+               SELECT 1 FROM trip_members m
+               WHERE m.trip_id = t.id AND m.user_id IS NOT NULL
+             )
        ORDER BY t.created_at DESC`,
+      [userId],
     );
     if (rows.length === 0) return [];
 
@@ -112,7 +124,8 @@ export class PgTripRepository implements TripRepository {
     const [members, days, stops, votes, comments, expenses, parts] =
       await Promise.all([
         this.pool.query(
-          `SELECT id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user
+          `SELECT id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user,
+                  user_id, role, can_invite
            FROM trip_members WHERE trip_id = $1 ORDER BY sort_order ASC`,
           [id],
         ),
@@ -245,6 +258,9 @@ export class PgTripRepository implements TripRepository {
         avatarBg: m.avatar_bg as string,
         avatarFg: m.avatar_fg as string,
         image: m.image as string | null,
+        userId: (m.user_id as string | null) ?? null,
+        role: m.role as MemberSnapshot["role"],
+        canInvite: m.can_invite as boolean,
         isCurrentUser: m.is_current_user as boolean,
       })),
       days: (days.rows as Array<Record<string, unknown>>).map((d) => ({
@@ -273,9 +289,9 @@ export class PgTripRepository implements TripRepository {
       );
       for (const [i, m] of s.members.entries()) {
         await client.query(
-          `INSERT INTO trip_members (id, trip_id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [m.id, s.id, m.name, m.shortName, m.initials, m.avatarBg, m.avatarFg, m.image ?? null, m.isCurrentUser, i],
+          `INSERT INTO trip_members (id, trip_id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user, sort_order, user_id, role, can_invite)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          [m.id, s.id, m.name, m.shortName, m.initials, m.avatarBg, m.avatarFg, m.image ?? null, m.isCurrentUser, i, m.userId ?? null, m.role, m.canInvite],
         );
       }
       for (const d of s.days) {
@@ -294,6 +310,33 @@ export class PgTripRepository implements TripRepository {
     }
   }
 
+  async addMember(tripId: string, member: MemberSnapshot): Promise<void> {
+    // Place the new member after the current highest sort_order. The unique
+    // (trip_id, user_id) constraint makes concurrent double-joins a no-op.
+    await this.pool.query(
+      `INSERT INTO trip_members
+         (id, trip_id, name, short_name, initials, avatar_bg, avatar_fg, image, is_current_user, sort_order, user_id, role, can_invite)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,
+               COALESCE((SELECT max(sort_order) + 1 FROM trip_members WHERE trip_id = $2), 0),
+               $10,$11,$12)
+       ON CONFLICT (trip_id, user_id) DO NOTHING`,
+      [
+        member.id,
+        tripId,
+        member.name,
+        member.shortName,
+        member.initials,
+        member.avatarBg,
+        member.avatarFg,
+        member.image ?? null,
+        member.isCurrentUser,
+        member.userId ?? null,
+        member.role,
+        member.canInvite,
+      ],
+    );
+  }
+
   async rename(id: string, title: string): Promise<void> {
     await this.pool.query(`UPDATE trips SET title = $2 WHERE id = $1`, [id, title]);
   }
@@ -309,9 +352,9 @@ export class PgTripRepository implements TripRepository {
 
   async updateDay(tripId: string, day: DaySnapshot): Promise<void> {
     await this.pool.query(
-      `UPDATE trip_days SET date = $3, date_label = $4, city = $5
+      `UPDATE trip_days SET date = $3, date_label = $4, city = $5, color = $6
        WHERE trip_id = $1 AND number = $2`,
-      [tripId, day.number, day.date, day.dateLabel, day.city],
+      [tripId, day.number, day.date, day.dateLabel, day.city, day.color],
     );
   }
 
@@ -339,6 +382,12 @@ export class PgTripRepository implements TripRepository {
     } finally {
       client.release();
     }
+  }
+
+  async deleteDay(trip: Trip): Promise<void> {
+    // A deletion renumbers remaining days and remaps stops, so the persistence
+    // strategy is the same as a reorder: rewrite both child sets atomically.
+    return this.reorderDays(trip);
   }
 
   async save(trip: Trip): Promise<void> {

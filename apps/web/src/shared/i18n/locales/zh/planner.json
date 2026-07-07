@@ -35,7 +35,18 @@
     "postComment": "发送",
     "backToItinerary": "行程",
     "justNow": "刚刚",
-    "notes": "备注"
+    "notes": "备注",
+    "editName": "编辑名称",
+    "editArea": "编辑区域",
+    "editSchedule": "编辑天数、时间与时长",
+    "editCategory": "更改类型",
+    "editCost": "编辑花费",
+    "namePlaceholder": "地点名称",
+    "areaPlaceholder": "区域或街区",
+    "dayLabel": "天数",
+    "timeLabel": "时间",
+    "durationLabel": "时长",
+    "costLabel": "每人花费"
   },
   "schedule": {
     "insert": "插入地点",
@@ -51,17 +62,29 @@
     "reorderAria": "拖动以重新排序第 {{n}} 天",
     "dayMenu": {
       "label": "第 {{n}} 天",
-      "edit": "编辑日期和位置",
+      "edit": "编辑信息",
+      "delete": "删除",
       "useGeneratedLocation": "使用日程位置"
     },
     "dayDialog": {
       "title": "编辑第 {{n}} 天",
-      "description": "选择存储在这张日程卡片上的真实日期和位置。",
+      "description": "选择存储在这张日程卡片上的日期、位置和颜色。",
       "date": "日期",
       "cityLabel": "位置",
       "cityPlaceholder": "选择位置",
+      "colorLabel": "颜色",
       "useGenerated": "使用日程位置：{{location}}",
       "save": "保存"
+    },
+    "deleteDialog": {
+      "title": "删除第 {{n}} 天？",
+      "description": "这将永久删除这一天及其所有地点，无法撤销。",
+      "confirm": "删除"
+    },
+    "colorPicker": {
+      "presets": "快捷颜色",
+      "custom": "自定义颜色",
+      "pick": "选择颜色 {{color}}"
     }
   },
   "category": {

@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +15,10 @@ import type { PlaceResult, UpdateTripDayInput } from "@/shared/api";
 import { cn, CURRENCIES } from "@/shared/lib";
 import { Button } from "@/shared/ui/button";
 import {
+  DayColorPickerContent,
+  DEFAULT_DAY_COLOR_PRESETS,
+} from "@/shared/ui/day-color-picker";
+import {
   ContextMenu,
   ContextMenuGroup,
   ContextMenuGroupLabel,
@@ -22,6 +27,15 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/shared/ui/context-menu";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 import {
   Dialog,
   DialogBackdrop,
@@ -44,7 +58,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { PlaceSearch } from "./PlaceSearch";
-import { StopCard } from "./StopCard";
+import { StopCard, type StopCardDragHandleProps } from "./StopCard";
 
 const CATEGORY_OPTIONS: StopCategory[] = [
   "Sight",
@@ -103,9 +117,14 @@ interface ScheduleBoardProps {
   onAddDay: () => void;
   /** Update display metadata for an itinerary day. */
   onUpdateDay: (dayNumber: number, patch: UpdateTripDayInput) => void;
+  /** Delete an itinerary day and its stops. */
+  onDeleteDay: (dayNumber: number) => void;
   /** Persist a new day order (sequence of current day numbers). */
   onReorderDays: (order: number[]) => void;
+  /** Move a stop to a position within any itinerary day. */
+  onMoveStop: (input: { stopId: string; day: number; index: number }) => void;
   addingDay?: boolean;
+  deletingDayNumber?: number;
   updatingDayNumber?: number;
 }
 
@@ -123,16 +142,29 @@ export function ScheduleBoard({
   onSelectStop,
   onAddDay,
   onUpdateDay,
+  onDeleteDay,
   onReorderDays,
+  onMoveStop,
   addingDay = false,
+  deletingDayNumber,
   updatingDayNumber,
 }: ScheduleBoardProps) {
   const { t, i18n } = useTranslation("planner");
   const locale = i18n.language;
   const dayNumbers = trip.days.map((d) => d.number);
   const drag = useDayReorderDrag(dayNumbers, onReorderDays);
+  const stopDrag = useStopMoveDrag(trip, onMoveStop);
+  const setGridRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      drag.gridRef.current = el;
+      stopDrag.gridRef.current = el;
+    },
+    [drag.gridRef, stopDrag.gridRef],
+  );
   const [editingDayNumber, setEditingDayNumber] = useState<number | null>(null);
+  const [deleteDialogDayNumber, setDeleteDialogDayNumber] = useState<number | null>(null);
   const editingDay = trip.days.find((d) => d.number === editingDayNumber) ?? null;
+  const deletingDay = trip.days.find((d) => d.number === deleteDialogDayNumber) ?? null;
   const editingDayStops = editingDay
     ? trip.stops.filter((s) => s.day === editingDay.number)
     : [];
@@ -164,10 +196,10 @@ export function ScheduleBoard({
   return (
     <div className="h-full min-h-0 overflow-auto p-[62px_22px_20px]">
       <div
-        ref={drag.gridRef}
+        ref={setGridRef}
         className={cn(
           "relative grid min-w-[1180px] gap-3.5",
-          drag.active && "select-none",
+          (drag.active || stopDrag.active) && "select-none",
         )}
         style={{
           gridTemplateColumns: `repeat(${trip.days.length + 1}, minmax(228px, 1fr))`,
@@ -180,6 +212,17 @@ export function ScheduleBoard({
             style={{ left: drag.lineX }}
           />
         ) : null}
+        {stopDrag.line != null ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute z-40 h-0.5 rounded-full bg-brand"
+            style={{
+              left: stopDrag.line.left,
+              top: stopDrag.line.top,
+              width: stopDrag.line.width,
+            }}
+          />
+        ) : null}
         {trip.days.map((d, dayIndex) => {
           const dayStops = trip.stops.filter((s) => s.day === d.number);
           const date = dayDateLabel(trip, d, locale);
@@ -189,22 +232,29 @@ export function ScheduleBoard({
           return (
             <div
               key={d.number}
-              ref={drag.registerColumn(dayIndex)}
+              ref={(el) => {
+                drag.registerColumn(dayIndex)(el);
+                stopDrag.registerColumn(d.number)(el);
+              }}
               className={cn(
                 "relative flex min-w-[228px] flex-col gap-2.5",
+                drag.active &&
+                  "transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]",
                 isDragged &&
                   "z-30 opacity-90 shadow-[var(--shadow-lg)] transition-none",
               )}
-              style={drag.columnStyle(d.number)}
+              style={drag.columnStyle(dayIndex, d.number)}
             >
               <DayHeader
                 day={d}
                 headerMeta={headerMeta}
                 suggestedCity={suggestedCity}
                 saving={updatingDayNumber === d.number}
+                deleting={deletingDayNumber === d.number}
                 dragging={isDragged}
                 dragHandleProps={drag.handleProps(dayIndex, d.number)}
                 onEdit={() => setEditingDayNumber(d.number)}
+                onDelete={() => setDeleteDialogDayNumber(d.number)}
                 onUseSuggestedCity={() =>
                   onUpdateDay(d.number, { city: suggestedCity })
                 }
@@ -213,11 +263,17 @@ export function ScheduleBoard({
               <div className="flex flex-col">
                 {insertSlot(d.number, 0)}
                 {dayStops.map((s, idx) => (
-                  <div key={s.id} className="flex flex-col">
+                  <div
+                    key={s.id}
+                    ref={stopDrag.registerStop(s.id)}
+                    className="flex flex-col"
+                  >
                     <StopCard
                       trip={trip}
                       stop={s}
-                      color={d.color}
+                      dragging={stopDrag.draggedStopId === s.id}
+                      dragHandleProps={stopDrag.handleProps(s.id, d.number)}
+                      style={stopDrag.stopStyle(s.id)}
                       onSelect={onSelectStop}
                     />
                     {insertSlot(d.number, idx + 1)}
@@ -273,6 +329,18 @@ export function ScheduleBoard({
           setEditingDayNumber(null);
         }}
       />
+
+      <DeleteDayDialog
+        day={deletingDay}
+        deletingDayNumber={deleteDialogDayNumber}
+        onOpenChange={(open) => {
+          if (!open) setDeleteDialogDayNumber(null);
+        }}
+        onConfirm={(dayNumber) => {
+          onDeleteDay(dayNumber);
+          setDeleteDialogDayNumber(null);
+        }}
+      />
     </div>
   );
 }
@@ -322,6 +390,12 @@ function useDayReorderDrag(
     startY: number;
   } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+
+  const setDragState = useCallback((next: DragState | null) => {
+    dragRef.current = next;
+    setDrag(next);
+  }, []);
 
   const registerColumn = useCallback(
     (index: number) => (el: HTMLDivElement | null) => {
@@ -365,8 +439,8 @@ function useDayReorderDrag(
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
-    setDrag(null);
-  }, []);
+    setDragState(null);
+  }, [setDragState]);
 
   const handleProps = useCallback(
     (index: number, dayNumber: number): DayDragHandleProps => ({
@@ -386,14 +460,15 @@ function useDayReorderDrag(
         if (!p || p.pointerId !== e.pointerId) return;
         const dx = e.clientX - p.startX;
         const dy = e.clientY - p.startY;
+        const currentDrag = dragRef.current;
         if (
-          drag == null &&
+          currentDrag == null &&
           Math.hypot(dx, dy) < DRAG_THRESHOLD
         ) {
           return;
         }
-        if (drag == null) rects.current = snapshotRects();
-        setDrag({
+        if (currentDrag == null) rects.current = snapshotRects();
+        setDragState({
           dayNumber: p.dayNumber,
           index: p.index,
           dx,
@@ -403,8 +478,13 @@ function useDayReorderDrag(
       },
       onPointerUp: (e) => {
         const p = pending.current;
-        if (drag && p) {
-          const order = nextOrder(dayNumbers, drag.index, drag.targetIndex);
+        const activeDrag = dragRef.current;
+        if (activeDrag && p) {
+          const order = nextOrder(
+            dayNumbers,
+            activeDrag.index,
+            activeDrag.targetIndex,
+          );
           if (!sameOrder(order, dayNumbers)) onReorderDays(order);
         }
         reset(e);
@@ -412,21 +492,26 @@ function useDayReorderDrag(
       onPointerCancel: reset,
     }),
     [
-      drag,
       dayNumbers,
       snapshotRects,
       computeTargetIndex,
       onReorderDays,
       reset,
+      setDragState,
     ],
   );
 
   const columnStyle = useCallback(
-    (dayNumber: number): CSSProperties | undefined =>
-      drag && drag.dayNumber === dayNumber
-        ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` }
-        : undefined,
-    [drag],
+    (index: number, dayNumber: number): CSSProperties | undefined => {
+      if (!drag) return undefined;
+      if (drag.dayNumber === dayNumber) {
+        return { transform: `translate3d(${drag.dx}px, ${drag.dy}px, 0)` };
+      }
+
+      const x = previewOffsetX(dayNumbers, rects.current, index, drag);
+      return x === 0 ? undefined : { transform: `translate3d(${x}px, 0, 0)` };
+    },
+    [dayNumbers, drag],
   );
 
   const lineX = (() => {
@@ -447,6 +532,307 @@ function useDayReorderDrag(
   };
 }
 
+interface StopMoveTarget {
+  day: number;
+  /** Zero-based position within the target day's stops after removing the stop. */
+  index: number;
+}
+
+interface StopColumnRect {
+  day: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+interface StopRect {
+  id: string;
+  top: number;
+  bottom: number;
+}
+
+interface StopDragSnapshot {
+  gridLeft: number;
+  gridTop: number;
+  columns: StopColumnRect[];
+  stops: StopRect[];
+}
+
+interface StopDragState {
+  stopId: string;
+  sourceDay: number;
+  dx: number;
+  dy: number;
+  target: StopMoveTarget | null;
+}
+
+interface StopInsertionLine {
+  left: number;
+  top: number;
+  width: number;
+}
+
+/** Drag-to-move for itinerary stop cards. The target index is computed after
+ * removing the dragged card, matching the server and optimistic helper. */
+function useStopMoveDrag(
+  trip: Trip,
+  onMoveStop: (input: { stopId: string; day: number; index: number }) => void,
+) {
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const columnEls = useRef(new Map<number, HTMLDivElement>());
+  const stopEls = useRef(new Map<string, HTMLElement>());
+  const snapshot = useRef<StopDragSnapshot | null>(null);
+  const pending = useRef<{
+    stopId: string;
+    sourceDay: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const suppressClick = useRef<string | null>(null);
+  const [drag, setDrag] = useState<StopDragState | null>(null);
+  const dragRef = useRef<StopDragState | null>(null);
+
+  const setDragState = useCallback((next: StopDragState | null) => {
+    dragRef.current = next;
+    setDrag(next);
+  }, []);
+
+  const registerColumn = useCallback(
+    (day: number) => (el: HTMLDivElement | null) => {
+      if (el) columnEls.current.set(day, el);
+      else columnEls.current.delete(day);
+    },
+    [],
+  );
+
+  const registerStop = useCallback(
+    (stopId: string) => (el: HTMLElement | null) => {
+      if (el) stopEls.current.set(stopId, el);
+      else stopEls.current.delete(stopId);
+    },
+    [],
+  );
+
+  const snapshotRects = useCallback((): StopDragSnapshot | null => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const gridRect = grid.getBoundingClientRect();
+    const columns = trip.days.flatMap((day): StopColumnRect[] => {
+      const el = columnEls.current.get(day.number);
+      const r = el?.getBoundingClientRect();
+      return r
+        ? [
+            {
+              day: day.number,
+              left: r.left - gridRect.left,
+              right: r.right - gridRect.left,
+              top: r.top - gridRect.top,
+              bottom: r.bottom - gridRect.top,
+            },
+          ]
+        : [];
+    });
+    const stops = trip.stops.flatMap((stop): StopRect[] => {
+      const el = stopEls.current.get(stop.id);
+      const r = el?.getBoundingClientRect();
+      return r
+        ? [{ id: stop.id, top: r.top - gridRect.top, bottom: r.bottom - gridRect.top }]
+        : [];
+    });
+    return { gridLeft: gridRect.left, gridTop: gridRect.top, columns, stops };
+  }, [trip.days, trip.stops]);
+
+  const computeTarget = useCallback(
+    (clientX: number, clientY: number, stopId: string): StopMoveTarget | null => {
+      const snap = snapshot.current;
+      const column = snap
+        ? closestStopColumn(snap.columns, clientX - snap.gridLeft)
+        : null;
+      if (!snap || !column) return null;
+
+      const y = clientY - snap.gridTop;
+      let index = 0;
+      for (const stop of trip.stops) {
+        if (stop.day !== column.day || stop.id === stopId) continue;
+        const rect = snap.stops.find((r) => r.id === stop.id);
+        if (!rect) continue;
+        if (y < (rect.top + rect.bottom) / 2) {
+          return { day: column.day, index };
+        }
+        index += 1;
+      }
+      return { day: column.day, index };
+    },
+    [trip.stops],
+  );
+
+  const isSameStopPosition = useCallback(
+    (stopId: string, target: StopMoveTarget): boolean => {
+      const source = trip.stops.find((s) => s.id === stopId);
+      if (!source || source.day !== target.day) return false;
+      const sourceIndex = trip.stops
+        .filter((s) => s.day === source.day)
+        .findIndex((s) => s.id === stopId);
+      return sourceIndex === target.index;
+    },
+    [trip.stops],
+  );
+
+  const reset = useCallback(
+    (e: ReactPointerEvent<HTMLElement>) => {
+      pending.current = null;
+      snapshot.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      setDragState(null);
+    },
+    [setDragState],
+  );
+
+  const handleProps = useCallback(
+    (stopId: string, sourceDay: number): StopCardDragHandleProps => ({
+      onPointerDown: (e) => {
+        if (e.button !== 0) return;
+        pending.current = {
+          stopId,
+          sourceDay,
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+        };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      },
+      onPointerMove: (e) => {
+        const p = pending.current;
+        if (!p || p.pointerId !== e.pointerId) return;
+        const dx = e.clientX - p.startX;
+        const dy = e.clientY - p.startY;
+        const currentDrag = dragRef.current;
+        if (currentDrag == null && Math.hypot(dx, dy) < DRAG_THRESHOLD) {
+          return;
+        }
+        if (currentDrag == null) snapshot.current = snapshotRects();
+        e.preventDefault();
+        setDragState({
+          stopId: p.stopId,
+          sourceDay: p.sourceDay,
+          dx,
+          dy,
+          target: computeTarget(e.clientX, e.clientY, p.stopId),
+        });
+      },
+      onPointerUp: (e) => {
+        const activeDrag = dragRef.current;
+        if (
+          activeDrag?.target &&
+          !isSameStopPosition(activeDrag.stopId, activeDrag.target)
+        ) {
+          onMoveStop({ stopId: activeDrag.stopId, ...activeDrag.target });
+        }
+        if (activeDrag) suppressClick.current = activeDrag.stopId;
+        reset(e);
+      },
+      onPointerCancel: reset,
+      onClickCapture: (e: ReactMouseEvent<HTMLElement>) => {
+        if (suppressClick.current !== stopId) return;
+        suppressClick.current = null;
+        e.preventDefault();
+        e.stopPropagation();
+      },
+    }),
+    [
+      computeTarget,
+      isSameStopPosition,
+      onMoveStop,
+      reset,
+      setDragState,
+      snapshotRects,
+    ],
+  );
+
+  const stopStyle = useCallback(
+    (stopId: string): CSSProperties | undefined =>
+      drag?.stopId === stopId
+        ? { transform: `translate3d(${drag.dx}px, ${drag.dy}px, 0)` }
+        : undefined,
+    [drag],
+  );
+
+  const line =
+    drag?.target && !isSameStopPosition(drag.stopId, drag.target)
+      ? stopInsertionLine(snapshot.current, trip, drag.stopId, drag.target)
+      : null;
+
+  return {
+    gridRef,
+    registerColumn,
+    registerStop,
+    handleProps,
+    stopStyle,
+    draggedStopId: drag?.stopId ?? null,
+    active: drag != null,
+    line,
+  };
+}
+
+function closestStopColumn(
+  columns: StopColumnRect[],
+  x: number,
+): StopColumnRect | null {
+  let closest = columns[0] ?? null;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  for (const column of columns) {
+    if (x >= column.left && x <= column.right) return column;
+    const center = (column.left + column.right) / 2;
+    const distance = Math.abs(center - x);
+    if (distance < closestDistance) {
+      closest = column;
+      closestDistance = distance;
+    }
+  }
+  return closest;
+}
+
+function stopInsertionLine(
+  snapshot: StopDragSnapshot | null,
+  trip: Trip,
+  draggedStopId: string,
+  target: StopMoveTarget,
+): StopInsertionLine | null {
+  if (!snapshot) return null;
+  const column = snapshot.columns.find((c) => c.day === target.day);
+  if (!column) return null;
+  const remaining = trip.stops.filter(
+    (stop) => stop.day === target.day && stop.id !== draggedStopId,
+  );
+  const rects = remaining.flatMap((stop): StopRect[] => {
+    const rect = snapshot.stops.find((r) => r.id === stop.id);
+    return rect ? [rect] : [];
+  });
+  const gap =
+    rects.length > 1 ? Math.max(6, rects[1]!.top - rects[0]!.bottom) : 8;
+
+  let top: number;
+  if (rects.length === 0) {
+    top = column.top + 74;
+  } else if (target.index <= 0) {
+    top = rects[0]!.top - gap / 2;
+  } else if (target.index >= rects.length) {
+    top = rects[rects.length - 1]!.bottom + gap / 2;
+  } else {
+    top = (rects[target.index - 1]!.bottom + rects[target.index]!.top) / 2;
+  }
+
+  return {
+    left: column.left,
+    top,
+    width: column.right - column.left,
+  };
+}
+
 /** New day-number order after moving `index` to post-removal `targetIndex`. */
 function nextOrder(
   numbers: number[],
@@ -460,6 +846,25 @@ function nextOrder(
 
 function sameOrder(a: number[], b: number[]): boolean {
   return a.length === b.length && a.every((n, i) => n === b[i]);
+}
+
+/** Horizontal preview offset for a non-dragged column while another day is
+ * being inserted elsewhere. The DOM order stays stable until drop; transforms
+ * make neighboring columns visibly make room. */
+function previewOffsetX(
+  numbers: number[],
+  rects: ColumnRect[],
+  index: number,
+  drag: DragState,
+): number {
+  const dayNumber = numbers[index];
+  if (dayNumber == null || index === drag.index) return 0;
+  const order = nextOrder(numbers, drag.index, drag.targetIndex);
+  const nextIndex = order.indexOf(dayNumber);
+  const from = rects[index];
+  const to = rects[nextIndex];
+  if (nextIndex < 0 || !from || !to) return 0;
+  return to.left - from.left;
 }
 
 /** Pixel x (grid-content coords) of the insertion line between the columns
@@ -485,18 +890,22 @@ function DayHeader({
   headerMeta,
   suggestedCity,
   saving,
+  deleting,
   dragging,
   dragHandleProps,
   onEdit,
+  onDelete,
   onUseSuggestedCity,
 }: {
   day: TripDay;
   headerMeta: string;
   suggestedCity: string;
   saving: boolean;
+  deleting: boolean;
   dragging: boolean;
   dragHandleProps: DayDragHandleProps;
   onEdit: () => void;
+  onDelete: () => void;
   onUseSuggestedCity: () => void;
 }) {
   const { t } = useTranslation("planner");
@@ -535,6 +944,14 @@ function DayHeader({
           <ContextMenuItem closeOnClick onClick={onEdit}>
             {t("schedule.dayMenu.edit")}
           </ContextMenuItem>
+          <ContextMenuItem
+            closeOnClick
+            variant="destructive"
+            disabled={deleting}
+            onClick={onDelete}
+          >
+            {t("schedule.dayMenu.delete")}
+          </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
@@ -572,20 +989,20 @@ function DayEditorDialog({
   const { t: tc } = useTranslation("common");
   const [date, setDate] = useState("");
   const [city, setCity] = useState("");
+  const [color, setColor] = useState(day?.color ?? DEFAULT_DAY_COLOR_PRESETS[0]!);
   const cityOptions = includeOption(locationOptions, city, suggestedCity);
 
   useEffect(() => {
     setDate(day ? dayIsoValue(trip, day) : "");
     setCity(day?.city ?? "");
-  }, [day, trip]);
+    setColor(day?.color ?? DEFAULT_DAY_COLOR_PRESETS[0]!);
+  }, [day?.number, trip]);
 
   const submit = () => {
     if (!day) return;
-    onSubmit(day.number, {
-      date,
-      dateLabel: "",
-      city,
-    });
+    const patch: UpdateTripDayInput = { date, dateLabel: "", city };
+    if (color !== day.color) patch.color = color;
+    onSubmit(day.number, patch);
   };
 
   return (
@@ -635,6 +1052,13 @@ function DayEditorDialog({
                 </Select>
               </label>
 
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-foreground">
+                  {t("schedule.dayDialog.colorLabel")}
+                </span>
+                <DayColorPickerContent value={color} onChange={setColor} />
+              </div>
+
               {suggestedCity ? (
                 <button
                   type="button"
@@ -669,6 +1093,49 @@ function DayEditorDialog({
         </DialogViewport>
       </DialogPortal>
     </Dialog>
+  );
+}
+
+function DeleteDayDialog({
+  day,
+  deletingDayNumber,
+  onOpenChange,
+  onConfirm,
+}: {
+  day: TripDay | null;
+  deletingDayNumber: number | null;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (dayNumber: number) => void;
+}) {
+  const { t } = useTranslation("planner");
+  const { t: tc } = useTranslation("common");
+  const open = day != null;
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogPopup>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-heading text-xl font-semibold text-foreground">
+            {day ? t("schedule.deleteDialog.title", { n: day.number }) : ""}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-muted-foreground">
+            {t("schedule.deleteDialog.description")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="ghost" size="sm" />}>
+            {tc("actions.cancel")}
+          </AlertDialogClose>
+          <AlertDialogClose
+            render={<Button variant="destructive" size="sm" />}
+            onClick={() => {
+              if (deletingDayNumber != null) onConfirm(deletingDayNumber);
+            }}
+          >
+            {t("schedule.deleteDialog.confirm")}
+          </AlertDialogClose>
+        </AlertDialogFooter>
+      </AlertDialogPopup>
+    </AlertDialog>
   );
 }
 

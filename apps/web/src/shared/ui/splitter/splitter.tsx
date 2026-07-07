@@ -219,13 +219,15 @@ export function Splitter({
     };
   }, [isDragging]);
 
-  const gridTemplate = `minmax(0px, ${value}%) var(--space-3) minmax(0px, 1fr)`;
+  const gridTemplate = `minmax(0px, ${value}%) minmax(0px, 1fr)`;
 
   return (
     <div
       ref={containerRef}
       className={cn(
         "grid flex-1 min-h-0 min-w-0",
+        !isDragging &&
+          "transition-[grid-template-columns,grid-template-rows] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
         isDragging && "cursor-grabbing",
       )}
       style={{
@@ -240,48 +242,38 @@ export function Splitter({
         {children[0]}
       </div>
 
-      <Separator
-        orientation={separatorOrientation}
-        render={(props) => (
-          <div
-            {...props}
-            ref={separatorRef}
-            role="separator"
-            tabIndex={0}
-            aria-valuenow={Math.round(value)}
-            aria-valuemin={min}
-            aria-valuemax={max}
-            aria-orientation={separatorOrientation}
-            aria-controls={primaryId}
-            aria-label={ariaLabel}
-            aria-labelledby={ariaLabelledBy}
-            onKeyDown={handleKeyDown}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-            onPointerLeave={handlePointerMove}
-            className={cn(
-              "group relative flex focus:outline-none",
-              isHorizontalPanels
-                ? "h-full w-full cursor-col-resize"
-                : "h-full w-full cursor-row-resize",
-            )}
-          >
-            <span
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <Separator
+          orientation={separatorOrientation}
+          render={(props) => (
+            <div
+              {...props}
+              ref={separatorRef}
+              role="separator"
+              tabIndex={0}
+              aria-valuenow={Math.round(value)}
+              aria-valuemin={min}
+              aria-valuemax={max}
+              aria-orientation={separatorOrientation}
+              aria-controls={primaryId}
+              aria-label={ariaLabel}
+              aria-labelledby={ariaLabelledBy}
+              onKeyDown={handleKeyDown}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onPointerLeave={handlePointerMove}
               className={cn(
-                "pointer-events-none absolute block bg-border transition-[background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]",
+                "absolute z-10 flex focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isHorizontalPanels
-                  ? "inset-y-0 left-1/2 w-px -translate-x-1/2"
-                  : "inset-x-0 top-1/2 h-px -translate-y-1/2",
-                "group-hover:bg-ring group-focus-visible:bg-ring",
+                  ? "inset-y-0 left-0 h-full w-3 -translate-x-1/2 cursor-col-resize"
+                  : "inset-x-0 top-0 h-3 w-full -translate-y-1/2 cursor-row-resize",
               )}
             />
-          </div>
-        )}
-      />
+          )}
+        />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {children[1]}
       </div>
     </div>

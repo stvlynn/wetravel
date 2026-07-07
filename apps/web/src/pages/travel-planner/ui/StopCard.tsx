@@ -1,21 +1,46 @@
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { CategoryIcon, type Stop } from "@/entities/stop";
 import { cn, formatMoney } from "@/shared/lib";
 
+export interface StopCardDragHandleProps {
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
+  onClickCapture: (e: ReactMouseEvent<HTMLElement>) => void;
+}
+
 export interface StopCardProps {
   trip: Trip;
   stop: Stop;
-  /** Day color used for the left accent border. */
-  color: string;
   /** Highlight the card as the active selection. */
   selected?: boolean;
+  /** Visual and pointer state when the schedule board uses the card as a drag handle. */
+  dragging?: boolean;
+  dragHandleProps?: StopCardDragHandleProps;
+  className?: string;
+  style?: CSSProperties;
   onSelect: (id: string) => void;
 }
 
 /** Single itinerary stop rendered as a card. Shared between the schedule board
  * columns and the sidebar list so both surfaces stay visually identical. */
-export function StopCard({ trip, stop, color, selected, onSelect }: StopCardProps) {
+export function StopCard({
+  trip,
+  stop,
+  selected,
+  dragging = false,
+  dragHandleProps,
+  className,
+  style,
+  onSelect,
+}: StopCardProps) {
   const { t } = useTranslation("planner");
 
   const meta = [
@@ -35,12 +60,17 @@ export function StopCard({ trip, stop, color, selected, onSelect }: StopCardProp
   return (
     <button
       type="button"
+      {...dragHandleProps}
       onClick={() => onSelect(stop.id)}
       className={cn(
-        "flex flex-col gap-1 rounded-lg border border-border border-l-[3px] bg-card p-2.5 text-left shadow-xs transition-[border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-sm active:scale-[var(--press-scale)]",
-        selected && "border-corn-300 ring-1 ring-corn-300",
+        "flex flex-col gap-1 rounded-lg bg-card p-2.5 text-left shadow-[var(--shadow-border)] transition-[background-color,box-shadow,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[var(--press-scale)]",
+        selected && "bg-accent shadow-[var(--shadow-border-hover)]",
+        dragHandleProps &&
+          (dragging ? "touch-none cursor-grabbing" : "touch-none cursor-grab"),
+        dragging && "opacity-90 shadow-[var(--shadow-lg)] transition-none",
+        className,
       )}
-      style={{ borderLeftColor: color }}
+      style={style}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-mono text-[11px] text-muted-foreground tabular-nums">

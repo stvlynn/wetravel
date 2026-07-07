@@ -53,6 +53,9 @@ async function main() {
             avatar_fg: m.avatarFg,
             is_current_user: m.isCurrentUser,
             sort_order: i,
+            user_id: m.userId ?? null,
+            role: m.role,
+            can_invite: m.canInvite,
           },
         });
       }

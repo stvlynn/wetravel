@@ -1,0 +1,56 @@
+{
+  "dialog": {
+    "title": "Invite to trip",
+    "description": "Share a link so others can join this trip.",
+    "access": {
+      "label": "Who can join",
+      "anyone": "Anyone with the link",
+      "restricted_emails": "Only specific people"
+    },
+    "emails": {
+      "label": "Allowed emails",
+      "placeholder": "name@example.com, other@example.com",
+      "hint": "Separate multiple emails with commas."
+    },
+    "role": {
+      "label": "Their role",
+      "editor": "Editor — can make changes",
+      "viewer": "Viewer — read only"
+    },
+    "canInvite": "Allow them to invite others",
+    "expiry": {
+      "label": "Link expires",
+      "hint": "Leave empty for a link that never expires."
+    },
+    "create": "Create invite link",
+    "creating": "Creating…",
+    "copy": "Copy link",
+    "copied": "Copied ✓",
+    "copyFallback": "Copy this link manually:",
+    "errorTitle": "Could not create invite",
+    "errorGeneric": "Failed to create the invite link."
+  },
+  "accept": {
+    "loading": "Loading invite…",
+    "invalidTitle": "Invite unavailable",
+    "notFound": "This invite link is invalid.",
+    "expired": "This invite has expired.",
+    "revoked": "This invite has been revoked.",
+    "emailRestricted": "This invite is limited to specific email addresses. Sign in with an invited account to join.",
+    "signInPrompt": "Sign in or create an account to join {{trip}}.",
+    "heading": "Join {{trip}}",
+    "invitedBy": "Invited by {{name}}",
+    "members_one": "{{count}} member",
+    "members_other": "{{count}} members",
+    "roleEditor": "You will join as an editor.",
+    "roleViewer": "You will join as a viewer.",
+    "expiresAt": "Expires {{date}}",
+    "join": "Join trip",
+    "joining": "Joining…",
+    "open": "Open trip",
+    "alreadyMember": "You are already a member of this trip.",
+    "errorTitle": "Could not join",
+    "errorGeneric": "Failed to join this trip.",
+    "back": "Back to my trips"
+  }
+}

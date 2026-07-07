@@ -69,7 +69,7 @@ export function UserMenu({ compact }: UserMenuProps) {
   const color = AVATAR_PALETTE[avatarHashIndex(seed || "?", AVATAR_PALETTE.length)]!;
 
   return (
-    <div ref={containerRef} className="relative flex-none p-2">
+    <div ref={containerRef} className="relative z-10 flex-none p-2">
       {renderOpen && (
         <div
           role="menu"

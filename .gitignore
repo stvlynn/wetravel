@@ -24,3 +24,4 @@ pnpm-debug.log*
 worker-configuration.d.ts
 apps/api/src/infrastructure/cloudflare/worker-configuration.d.ts
 .workspace/
+.pnpm-store/

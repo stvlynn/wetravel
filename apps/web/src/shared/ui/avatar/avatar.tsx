@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { cn, planetAvatarUrl } from "@/shared/lib";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
 
 export interface AvatarProps {
   name: string;
@@ -15,12 +16,10 @@ export interface AvatarProps {
    */
   seed?: string;
   size?: number;
-  /** Stacked index: >0 applies a negative margin + card ring for clustering. */
+  /** Stacked index: >0 applies a negative margin for clustering. */
   stackIndex?: number;
   /** Explicit paint order within a stack (higher sits on top). */
   zIndex?: number;
-  /** Visual online presence dot (bottom-right). */
-  online?: boolean;
   className?: string;
 }
 
@@ -33,57 +32,55 @@ export function Avatar({
   size = 26,
   stackIndex,
   zIndex,
-  online,
   className,
 }: AvatarProps) {
   const stacked = stackIndex != null;
   const planetUri = useMemo(() => (seed ? planetAvatarUrl(seed) : null), [seed]);
   return (
-    <AvatarPrimitive.Root
-      data-slot="avatar"
-      title={name}
-      aria-label={name}
-      className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold select-none",
-        stacked && "ring-2 ring-card",
-        className,
-      )}
-      style={{
-        width: size,
-        height: size,
-        marginLeft: stacked && stackIndex > 0 ? -7 : 0,
-        zIndex,
-      }}
-    >
-      {src ? (
-        <AvatarPrimitive.Image
-          src={src}
-          alt={name}
-          className="size-full object-cover"
-        />
-      ) : null}
-      <AvatarPrimitive.Fallback
-        data-slot="avatar-fallback"
-        className="flex size-full items-center justify-center rounded-full"
-        style={planetUri ? undefined : { background: bg, color: fg }}
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <AvatarPrimitive.Root
+            data-slot="avatar"
+            aria-label={name}
+            className={cn(
+              "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold select-none",
+              className,
+            )}
+            style={{
+              width: size,
+              height: size,
+              marginLeft: stacked && stackIndex > 0 ? -7 : 0,
+              zIndex,
+            }}
+          />
+        }
       >
-        {planetUri ? (
-          <img
-            src={planetUri}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
+        {src ? (
+          <AvatarPrimitive.Image
+            src={src}
+            alt={name}
             className="size-full object-cover"
           />
         ) : null}
-        <span className="sr-only">{name}</span>
-      </AvatarPrimitive.Fallback>
-      {online ? (
-        <span
-          aria-hidden="true"
-          className="absolute -right-px -bottom-px size-[9px] rounded-full border-2 border-card bg-[oklch(0.62_0.13_162)]"
-        />
-      ) : null}
-    </AvatarPrimitive.Root>
+        <AvatarPrimitive.Fallback
+          data-slot="avatar-fallback"
+          className="flex size-full items-center justify-center rounded-full"
+          style={planetUri ? undefined : { background: bg, color: fg }}
+        >
+          {planetUri ? (
+            <img
+              src={planetUri}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              className="size-full object-cover"
+            />
+          ) : null}
+          <span className="sr-only">{name}</span>
+        </AvatarPrimitive.Fallback>
+      </TooltipTrigger>
+      <TooltipPopup>{name}</TooltipPopup>
+    </Tooltip>
   );
 }

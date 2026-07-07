@@ -115,13 +115,48 @@ model stops {
 model trip_days {
   trip_id    String
   number     Int
-  date       String  @default("")
   date_label String
   city       String
   color      String
+  date       String @default("")
   trips      trips  @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([trip_id, number])
+}
+
+model trip_invite_acceptances {
+  invite_id    String
+  user_id      String
+  accepted_at  DateTime     @default(now()) @db.Timestamptz(6)
+  trip_invites trip_invites @relation(fields: [invite_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([invite_id, user_id])
+}
+
+model trip_invite_allowed_emails {
+  invite_id    String
+  email        String
+  trip_invites trip_invites @relation(fields: [invite_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([invite_id, email])
+}
+
+model trip_invites {
+  id                         String                       @id
+  trip_id                    String
+  token_hash                 String                       @unique
+  created_by                 String
+  access_scope               String                       @default("anyone")
+  role                       String                       @default("editor")
+  can_invite                 Boolean                      @default(false)
+  status                     String                       @default("active")
+  expires_at                 DateTime?                    @db.Timestamptz(6)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  trip_invite_acceptances    trip_invite_acceptances[]
+  trip_invite_allowed_emails trip_invite_allowed_emails[]
+  trips                      trips                        @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([trip_id], map: "trip_invites_trip_idx")
 }
 
 model trip_members {
@@ -135,8 +170,12 @@ model trip_members {
   is_current_user Boolean @default(false)
   sort_order      Int     @default(0)
   image           String?
+  can_invite      Boolean @default(true)
+  role            String  @default("editor")
+  user_id         String?
   trips           trips   @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([trip_id, user_id], map: "trip_members_trip_user_unique")
   @@index([trip_id], map: "trip_members_trip_idx")
 }
 
@@ -153,6 +192,7 @@ model trips {
   expenses     expenses[]
   stops        stops[]
   trip_days    trip_days[]
+  trip_invites trip_invites[]
   trip_members trip_members[]
 }
 

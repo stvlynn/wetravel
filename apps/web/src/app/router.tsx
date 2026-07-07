@@ -61,3 +61,9 @@ export function matchTripId(path: string): string | null {
   const m = /^\/trips\/([^/]+)$/.exec(path);
   return m ? decodeURIComponent(m[1]!) : null;
 }
+
+/** Extracts an invite token from `/invite/:token`, else null. */
+export function matchInviteToken(path: string): string | null {
+  const m = /^\/invite\/([^/]+)$/.exec(path);
+  return m ? decodeURIComponent(m[1]!) : null;
+}

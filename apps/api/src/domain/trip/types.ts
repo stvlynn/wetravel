@@ -11,6 +11,9 @@ export type StopCategory =
   | "Transit"
   | "Plan";
 
+/** Collaboration role of a trip member. Owners always have full control. */
+export type MemberRole = "owner" | "editor" | "viewer";
+
 export interface MemberSnapshot {
   id: string;
   name: string;
@@ -20,6 +23,12 @@ export interface MemberSnapshot {
   avatarFg: string;
   /** Member avatar image URL. When absent the UI falls back to a colored circle. */
   image?: string | null;
+  /** Better Auth user id backing this membership. Null for legacy/demo members. */
+  userId?: string | null;
+  /** Collaboration role controlling what the member may mutate. */
+  role: MemberRole;
+  /** Whether this member may create further invitations. */
+  canInvite: boolean;
   isCurrentUser: boolean;
 }
 

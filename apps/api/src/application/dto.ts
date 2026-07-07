@@ -1,4 +1,4 @@
-import type { Trip } from "../domain/trip";
+import type { Trip, TripPermissions } from "../domain/trip";
 import type { TripSnapshot } from "../domain/trip";
 
 export interface TripDto {
@@ -9,6 +9,8 @@ export interface TripDto {
   /** ISO `YYYY-MM-DD` start date, or "" when unknown. */
   startDate: string;
   members: TripSnapshot["members"];
+  /** The requesting user's effective permissions on this trip. */
+  permissions: TripPermissions;
   days: TripSnapshot["days"];
   stops: Array<{
     id: string;
@@ -41,16 +43,22 @@ export interface TripDto {
 }
 
 /** Serialize the aggregate to the client DTO, dropping persistence-only fields
- * (order, createdOrder) and attaching the computed budget. */
-export function toTripDto(trip: Trip): TripDto {
+ * (order, createdOrder) and attaching the computed budget. `currentUserId`
+ * drives the per-request `isCurrentUser` flag and the returned permissions. */
+export function toTripDto(trip: Trip, currentUserId: string): TripDto {
   const s = trip.toSnapshot();
+  const members = s.members.map((m) => ({
+    ...m,
+    isCurrentUser: m.userId ? m.userId === currentUserId : m.isCurrentUser,
+  }));
   return {
     id: s.id,
     title: s.title,
     status: s.status,
     currency: s.currency,
     startDate: s.startDate,
-    members: s.members,
+    members,
+    permissions: trip.permissionsFor(currentUserId),
     days: s.days,
     stops: s.stops.map((st) => ({
       id: st.id,

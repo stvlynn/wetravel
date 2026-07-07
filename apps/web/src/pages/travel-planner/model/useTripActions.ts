@@ -1,15 +1,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { reorderTripDays as reorderDaysLocal, type Trip } from "@/entities/trip";
+import {
+  moveTripStop,
+  reorderTripDays as reorderDaysLocal,
+  type MoveTripStopInput,
+  type Trip,
+} from "@/entities/trip";
 import {
   addComment,
   addExpense,
   addTripDay,
+  deleteTripDay,
   insertStop,
+  moveStop,
   reorderTripDays,
   toggleVote,
+  updateStop,
   updateTripDay,
   type AddExpenseInput,
   type InsertStopInput,
+  type UpdateStopInput,
   type UpdateTripDayInput,
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
@@ -33,6 +42,31 @@ export function useTripActions(tripId: string) {
     mutationFn: (input: InsertStopInput) => insertStop(tripId, input),
     onSuccess,
   });
+  const stopUpdate = useMutation({
+    mutationFn: (v: { stopId: string; patch: UpdateStopInput }) =>
+      updateStop(tripId, v.stopId, v.patch),
+    onSuccess,
+  });
+  // Stop movement is optimistic for the same reason as day reorder: the board
+  // should reflect the drop immediately, then reconcile with the server trip.
+  const stopMove = useMutation({
+    mutationFn: (input: MoveTripStopInput) =>
+      moveStop(tripId, input.stopId, { day: input.day, index: input.index }),
+    onMutate: async (input: MoveTripStopInput) => {
+      await qc.cancelQueries({ queryKey: queryKeys.trip(tripId) });
+      const previous = qc.getQueryData<Trip>(queryKeys.trip(tripId));
+      if (previous) {
+        qc.setQueryData(queryKeys.trip(tripId), moveTripStop(previous, input));
+      }
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previous) {
+        qc.setQueryData(queryKeys.trip(tripId), context.previous);
+      }
+    },
+    onSuccess,
+  });
   const expense = useMutation({
     mutationFn: (input: AddExpenseInput) => addExpense(tripId, input),
     onSuccess,
@@ -48,6 +82,10 @@ export function useTripActions(tripId: string) {
   });
   // Reorder days optimistically so the board reflects the drop instantly, then
   // reconcile with the server-computed trip. On error, restore the snapshot.
+  const dayDelete = useMutation({
+    mutationFn: (dayNumber: number) => deleteTripDay(tripId, dayNumber),
+    onSuccess,
+  });
   const dayReorder = useMutation({
     mutationFn: (order: number[]) => reorderTripDays(tripId, order),
     onMutate: async (order: number[]) => {
@@ -66,5 +104,16 @@ export function useTripActions(tripId: string) {
     onSuccess,
   });
 
-  return { vote, comment, stop, expense, day, dayUpdate, dayReorder };
+  return {
+    vote,
+    comment,
+    stop,
+    stopUpdate,
+    stopMove,
+    expense,
+    day,
+    dayUpdate,
+    dayDelete,
+    dayReorder,
+  };
 }

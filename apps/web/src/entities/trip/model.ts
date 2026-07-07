@@ -42,6 +42,13 @@ export interface TripSummary {
   members: TripSummaryMember[];
 }
 
+/** The requesting user's effective permissions on a trip. */
+export interface TripPermissions {
+  isMember: boolean;
+  canEdit: boolean;
+  canInvite: boolean;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -51,6 +58,7 @@ export interface Trip {
    * derived from this by offsetting each day by (number - 1). */
   startDate: string;
   members: TripMember[];
+  permissions: TripPermissions;
   days: TripDay[];
   stops: Stop[];
   expenses: Expense[];

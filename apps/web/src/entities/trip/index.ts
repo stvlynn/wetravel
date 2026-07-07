@@ -1,5 +1,6 @@
 export type {
   Trip,
+  TripPermissions,
   TripSummary,
   TripSummaryMember,
   TripDay,
@@ -11,5 +12,7 @@ export {
   dayColor,
   findDay,
   dayDateLabel,
+  moveTripStop,
   reorderTripDays,
+  type MoveTripStopInput,
 } from "./lib";

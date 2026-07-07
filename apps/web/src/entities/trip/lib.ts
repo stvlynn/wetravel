@@ -27,6 +27,43 @@ export function findDay(trip: Trip, day: number): TripDay | undefined {
   return trip.days.find((d) => d.number === day);
 }
 
+export interface MoveTripStopInput {
+  stopId: string;
+  day: number;
+  /** Zero-based position within the target day's stops after removing the stop. */
+  index: number;
+}
+
+/** Move a stop to a position within any itinerary day. Mirrors the server
+ * aggregate so drag-and-drop can update optimistically before persistence
+ * resolves. Returns the input trip unchanged when the target is invalid. */
+export function moveTripStop(trip: Trip, input: MoveTripStopInput): Trip {
+  if (!trip.days.some((d) => d.number === input.day)) return trip;
+  const moving = trip.stops.find((s) => s.id === input.stopId);
+  if (!moving) return trip;
+
+  const rest = trip.stops.filter((s) => s.id !== input.stopId);
+  const targetStops = rest.filter((s) => s.day === input.day);
+  const index = Math.max(0, Math.min(input.index, targetStops.length));
+  const prev = targetStops[index - 1];
+  const next = targetStops[index];
+  const moved: Stop = { ...moving, day: input.day };
+
+  let pos: number;
+  if (next) {
+    pos = rest.indexOf(next);
+  } else if (prev) {
+    pos = rest.indexOf(prev) + 1;
+  } else {
+    const firstLaterDayStop = rest.find((s) => s.day > input.day);
+    pos = firstLaterDayStop ? rest.indexOf(firstLaterDayStop) : rest.length;
+  }
+
+  const stops = [...rest];
+  stops.splice(pos, 0, moved);
+  return { ...trip, stops };
+}
+
 /** Day palette, cycled by day number. Mirrors the backend `DAY_COLORS`. */
 const DAY_COLORS = [
   "#3f6fc9",

@@ -14,6 +14,9 @@ Route-level compositions. A page reads routing/session data and composes
 widgets and features. Two pages:
 
 - `pages/trips` — the trips home grid.
+- `pages/invite` — the `/invite/:token` accept surface. Previews the invite
+  (public), renders the auth form inline when signed out so the token survives
+  sign-in, then adds the user and routes into the planner on accept.
 - `pages/travel-planner` — the single-trip workspace. Because this is one large
   prototype surface, its map/schedule/budget/sidebar blocks live as
   **page-private widgets** under `pages/travel-planner/ui`. The page composes the
