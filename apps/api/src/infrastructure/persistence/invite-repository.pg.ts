@@ -88,6 +88,13 @@ export class PgTripInviteRepository implements TripInviteRepository {
     };
   }
 
+  async revoke(inviteId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE trip_invites SET status = 'revoked' WHERE id = $1`,
+      [inviteId],
+    );
+  }
+
   async recordAcceptance(inviteId: string, userId: string): Promise<void> {
     await this.pool.query(
       `INSERT INTO trip_invite_acceptances (invite_id, user_id)

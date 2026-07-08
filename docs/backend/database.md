@@ -94,8 +94,9 @@ migration directory and the updated `schema.prisma` together. Never edit
 - `stop_comments` — `id`, `stop_id`, `author_id`, `text`, `time_label`,
   `created_at`.
 - `expenses` — `id`, `trip_id`, `description`, `payer_id`, `amount`,
-  `currency`, `when_label`, `created_at`. `currency` preserves the selected ISO
-  code for display and future FX support.
+  `currency`, `category`, `when_label`, `created_at`. `currency` preserves the
+  selected ISO code for display and future FX support. `category` reuses the stop
+  category set and defaults to `Plan`.
 - `expense_participants` — `expense_id`, `member_id` (unique together).
 - `user_preferences` — `user_id` (PK, references `user`), `planner_sidebar_width`,
   `planner_sidebar_collapsed`, `updated_at`. Stores UI chrome such as the

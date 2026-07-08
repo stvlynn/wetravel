@@ -10,7 +10,12 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Trip, TripDay } from "@/entities/trip";
 import { dayDateLabel } from "@/entities/trip";
-import { CategoryIcon, type Stop, type StopCategory } from "@/entities/stop";
+import {
+  CategoryIcon,
+  STOP_CATEGORIES,
+  type Stop,
+  type StopCategory,
+} from "@/entities/stop";
 import type { PlaceResult, UpdateTripDayInput } from "@/shared/api";
 import { cn, CURRENCIES } from "@/shared/lib";
 import { Button } from "@/shared/ui/button";
@@ -61,17 +66,7 @@ import { PlaceSearch } from "./PlaceSearch";
 import { StopCard, type StopCardDragHandleProps } from "./StopCard";
 import { DayWeatherIcon } from "@/features/weather";
 
-const CATEGORY_OPTIONS: StopCategory[] = [
-  "Sight",
-  "Food",
-  "Stay",
-  "Shopping",
-  "Activity",
-  "Walk",
-  "Park",
-  "Transit",
-  "Plan",
-];
+const CATEGORY_OPTIONS = STOP_CATEGORIES;
 
 /** Half-hourly time options for the schedule time picker. */
 const TIME_OPTIONS: { label: string; value: string }[] = Array.from(
@@ -84,11 +79,26 @@ const TIME_OPTIONS: { label: string; value: string }[] = Array.from(
   },
 );
 
+/** Duration presets, matching the stop detail schedule editor. */
+const DURATION_OPTIONS = [
+  "0.5h",
+  "1h",
+  "1.5h",
+  "2h",
+  "2.5h",
+  "3h",
+  "4h",
+  "5h",
+  "6h",
+  "8h",
+];
+
 export interface ComposeDraft {
   day: number;
   index: number;
   name: string;
   time: string;
+  duration?: string;
   lat?: number;
   lng?: number;
   area?: string;
@@ -190,6 +200,10 @@ export function ScheduleBoard({
     ) : (
       <InsertTrigger
         label={t("schedule.insert")}
+        active={
+          stopDrag.dropTargetSlot?.day === day &&
+          stopDrag.dropTargetSlot?.index === index
+        }
         onClick={() => onOpen(day, index)}
       />
     );
@@ -211,17 +225,6 @@ export function ScheduleBoard({
             aria-hidden="true"
             className="pointer-events-none absolute top-0 bottom-0 z-40 w-0.5 -translate-x-1/2 rounded-full bg-brand"
             style={{ left: drag.lineX }}
-          />
-        ) : null}
-        {stopDrag.line != null ? (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute z-40 h-0.5 rounded-full bg-brand"
-            style={{
-              left: stopDrag.line.left,
-              top: stopDrag.line.top,
-              width: stopDrag.line.width,
-            }}
           />
         ) : null}
         {trip.days.map((d, dayIndex) => {
@@ -569,12 +572,6 @@ interface StopDragState {
   target: StopMoveTarget | null;
 }
 
-interface StopInsertionLine {
-  left: number;
-  top: number;
-  width: number;
-}
-
 /** Drag-to-move for itinerary stop cards. The target index is computed after
  * removing the dragged card, matching the server and optimistic helper. */
 function useStopMoveDrag(
@@ -763,9 +760,17 @@ function useStopMoveDrag(
     [drag],
   );
 
-  const line =
+  const dropTarget =
     drag?.target && !isSameStopPosition(drag.stopId, drag.target)
-      ? stopInsertionLine(snapshot.current, trip, drag.stopId, drag.target)
+      ? drag.target
+      : null;
+
+  const dropTargetSlot =
+    dropTarget && drag
+      ? {
+          day: dropTarget.day,
+          index: toDomInsertSlot(trip, drag.stopId, dropTarget),
+        }
       : null;
 
   return {
@@ -776,7 +781,7 @@ function useStopMoveDrag(
     stopStyle,
     draggedStopId: drag?.stopId ?? null,
     active: drag != null,
-    line,
+    dropTargetSlot,
   };
 }
 
@@ -798,41 +803,21 @@ function closestStopColumn(
   return closest;
 }
 
-function stopInsertionLine(
-  snapshot: StopDragSnapshot | null,
+/** Map a post-removal insert index to the DOM `InsertTrigger` slot for that day.
+ * While a card is lifted, the trigger elements keep their original indices. */
+function toDomInsertSlot(
   trip: Trip,
   draggedStopId: string,
   target: StopMoveTarget,
-): StopInsertionLine | null {
-  if (!snapshot) return null;
-  const column = snapshot.columns.find((c) => c.day === target.day);
-  if (!column) return null;
-  const remaining = trip.stops.filter(
-    (stop) => stop.day === target.day && stop.id !== draggedStopId,
-  );
-  const rects = remaining.flatMap((stop): StopRect[] => {
-    const rect = snapshot.stops.find((r) => r.id === stop.id);
-    return rect ? [rect] : [];
-  });
-  const gap =
-    rects.length > 1 ? Math.max(6, rects[1]!.top - rects[0]!.bottom) : 8;
+): number {
+  const source = trip.stops.find((s) => s.id === draggedStopId);
+  if (!source || source.day !== target.day) return target.index;
 
-  let top: number;
-  if (rects.length === 0) {
-    top = column.top + 74;
-  } else if (target.index <= 0) {
-    top = rects[0]!.top - gap / 2;
-  } else if (target.index >= rects.length) {
-    top = rects[rects.length - 1]!.bottom + gap / 2;
-  } else {
-    top = (rects[target.index - 1]!.bottom + rects[target.index]!.top) / 2;
-  }
+  const dayStops = trip.stops.filter((s) => s.day === target.day);
+  const sourceIndex = dayStops.findIndex((s) => s.id === draggedStopId);
+  if (sourceIndex < 0) return target.index;
 
-  return {
-    left: column.left,
-    top,
-    width: column.right - column.left,
-  };
+  return target.index <= sourceIndex ? target.index : target.index + 1;
 }
 
 /** New day-number order after moving `index` to post-removal `targetIndex`. */
@@ -1272,16 +1257,23 @@ function mostFrequent(values: readonly string[]): string | null {
 
 function InsertTrigger({
   label,
+  active = false,
   onClick,
 }: {
   label: string;
+  active?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-4 items-center opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100"
+      className={cn(
+        "flex h-4 items-center transition-opacity duration-150",
+        active
+          ? "pointer-events-none opacity-100"
+          : "opacity-0 hover:opacity-100 focus-visible:opacity-100",
+      )}
       aria-label={label}
     >
       <span className="h-0.5 flex-1 rounded-[1px] bg-corn-300" />
@@ -1327,7 +1319,11 @@ function InsertComposer({
   const { t: tc } = useTranslation("common");
   const located = compose.lat != null && compose.lng != null;
   const hasOptions =
-    compose.category != null || compose.cost != null || !!compose.note;
+    compose.category != null ||
+    compose.cost != null ||
+    !!compose.note ||
+    !!compose.duration ||
+    !!compose.area;
   const [expanded, setExpanded] = useState(hasOptions);
 
   return (
@@ -1436,6 +1432,28 @@ function InsertComposer({
                     <CategoryIcon category={c} />
                     {t(`category.${c}`)}
                   </span>
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+
+          <Select
+            items={DURATION_OPTIONS.map((d) => ({ value: d, label: d }))}
+            value={compose.duration ?? null}
+            onValueChange={(value) =>
+              onChange({ duration: (value as string) ?? undefined })
+            }
+          >
+            <SelectTrigger
+              className="rounded-lg tabular-nums"
+              aria-label={t("schedule.durationPlaceholder")}
+            >
+              <SelectValue placeholder={t("schedule.durationPlaceholder")} />
+            </SelectTrigger>
+            <SelectPopup>
+              {DURATION_OPTIONS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
                 </SelectItem>
               ))}
             </SelectPopup>

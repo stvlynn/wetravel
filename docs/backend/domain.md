@@ -27,8 +27,9 @@ only through aggregate methods.
   the ISO code for `cost` (empty string means "use the trip currency"); costs
   are display-only and never enter the budget.
 - **Comment** (value object) — `{ author, timeLabel, text }`.
-- **Expense** (entity) — `{ id, description, payer, amount, currency,
-  participants, whenLabel }`. `currency` is the ISO code for `amount`.
+- **Expense** (entity) — `{ id, description, payer, amount, currency, category,
+  participants, whenLabel }`. `currency` is the ISO code for `amount`; `category`
+  reuses the shared stop categories (defaults to `Plan`).
 - **Money** (value object) — integer minor units + currency (JPY); formats as
   `¥` + grouped integer.
 - **SettlementPlan** (value object) — the computed transfers.
@@ -41,12 +42,12 @@ only through aggregate methods.
   as a `Comment`; empty text is rejected.
 - **insertStop(day, index, draft)** — inserts a stop at a position within a
   day. Coordinates interpolate from neighbors, or fall back to the day center
-  (or use `draft.lat/lng` when provided). Optional `category`, `cost`, and
-  `note` default to `Plan`, `0`, and empty. `costCurrency` is recorded only when
-  there is a cost, defaulting to the trip currency when omitted.
+  (or use `draft.lat/lng` when provided). Optional `duration`, `category`,
+  `cost`, and `note` default to `1h`, `Plan`, `0`, and empty. `costCurrency` is
+  recorded only when there is a cost, defaulting to the trip currency when omitted.
   Ordering is preserved across the whole trip.
 - **addExpense(draft)** — records an equally split expense. `currency` defaults
-  to the trip currency when omitted. Current settlements do not perform FX
+  to the trip currency when omitted; `category` defaults to `Plan`. Current settlements do not perform FX
   conversion; mixed-currency expenses are preserved for display/future FX support
   while aggregate math still sums numeric amounts.
 - **create(draft, owner)** — new trip in `planning` status with the owner as its
@@ -124,9 +125,13 @@ One repository per aggregate/model. Adapters live in `infrastructure/persistence
   expired, or email-restricted redemptions.
 
 `TripInviteService` (application) coordinates the invite and trip aggregates:
-`createInvite` (requires `canInvite`), `previewInvite` (public, safe display
-data), and `acceptInvite` (validates usability, adds the member, records the
-acceptance; idempotent for existing members).
+`createInvite` (requires `canInvite`), `regenerateInvite` (issues a replacement
+link with the same settings, then revokes the previous token so its link stops
+working — the new link is created first so a failure leaves the old one intact),
+`previewInvite` (public, safe display data), and `acceptInvite` (validates
+usability, adds the member, records the acceptance; idempotent for existing
+members). The `TripInviteRepository` port exposes `revoke(inviteId)` to mark a
+link revoked.
 
 ## Determinism
 

@@ -120,6 +120,26 @@ export class TripInviteService {
     return { token, expiresAt };
   }
 
+  /**
+   * Issue a fresh invite link and retire the previous one. Creating the
+   * replacement first (which enforces permissions and validation) means a
+   * failure leaves the existing link intact; the old link is only revoked once
+   * the new one exists.
+   */
+  async regenerateInvite(
+    tripId: string,
+    actor: InviteActor,
+    previousToken: string,
+    input: CreateInviteInput,
+  ): Promise<CreatedInvite> {
+    const created = await this.createInvite(tripId, actor, input);
+    const previous = await this.invites.findByTokenHash(hashToken(previousToken));
+    if (previous && previous.tripId === tripId) {
+      await this.invites.revoke(previous.id);
+    }
+    return created;
+  }
+
   async previewInvite(
     token: string,
     actor: InviteActor | null,

@@ -78,6 +78,8 @@ export interface ExpenseSnapshot {
   amount: number;
   /** ISO currency code for `amount`. Empty string means "use the trip currency". */
   currency: string;
+  /** Expense type, reusing the shared stop categories. Defaults to "Plan". */
+  category: StopCategory;
   participants: string[];
   whenLabel: string;
   createdOrder: number;

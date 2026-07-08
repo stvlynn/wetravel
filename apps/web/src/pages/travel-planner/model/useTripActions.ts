@@ -8,6 +8,7 @@ import {
 import {
   addComment,
   addExpense,
+  updateExpense,
   addTripDay,
   deleteTripDay,
   insertStop,
@@ -71,6 +72,11 @@ export function useTripActions(tripId: string) {
     mutationFn: (input: AddExpenseInput) => addExpense(tripId, input),
     onSuccess,
   });
+  const expenseUpdate = useMutation({
+    mutationFn: (v: { expenseId: string; input: AddExpenseInput }) =>
+      updateExpense(tripId, v.expenseId, v.input),
+    onSuccess,
+  });
   const day = useMutation({
     mutationFn: () => addTripDay(tripId),
     onSuccess,
@@ -111,6 +117,7 @@ export function useTripActions(tripId: string) {
     stopUpdate,
     stopMove,
     expense,
+    expenseUpdate,
     day,
     dayUpdate,
     dayDelete,

@@ -169,6 +169,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           index: c.index,
           name,
           time: c.time.trim(),
+          duration: c.duration?.trim() || undefined,
           lat: c.lat,
           lng: c.lng,
           area: c.area,
@@ -399,7 +400,11 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
                 trip={trip}
                 currentUserId={currentUserId}
                 defaultCurrency={preferredCurrency || trip.currency}
+                canEdit={trip.permissions.canEdit}
                 onAddExpense={(input) => actions.expense.mutate(input)}
+                onUpdateExpense={(expenseId, input) =>
+                  actions.expenseUpdate.mutate({ expenseId, input })
+                }
               />
             )}
           </div>

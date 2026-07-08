@@ -26,8 +26,12 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
-`dialog`, `splitter`. Each exposes a
+`popover`, `preview-card`, `dialog`, `splitter`. Each exposes a
 public `index.ts`.
+
+`preview-card` is a hover/focus-triggered rich card (Base UI PreviewCard). Use
+it, rather than `tooltip`, when the hover content is structured (e.g. the
+settle-up transfer breakdown in the budget board) instead of a short hint.
 
 `splitter` implements the WAI-ARIA APG Window Splitter pattern: a focusable
 separator with `aria-valuenow/min/max`, `aria-controls`, keyboard arrow-key

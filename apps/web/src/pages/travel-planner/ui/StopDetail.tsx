@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Spinner } from "@/shared/ui/spinner";
+import { Textarea } from "@/shared/ui/textarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
 
 const CATEGORY_OPTIONS: StopCategory[] = [
@@ -234,6 +235,104 @@ function InlineText({
     >
       {display ?? value}
     </button>
+  );
+}
+
+/** Renders a stop note as Markdown, opening links in a new tab and lazy-loading
+ * images. */
+function NoteMarkdown({ value }: { value: string }) {
+  return (
+    <div className="wf-markdown text-sm leading-relaxed text-foreground/90">
+      <ReactMarkdown
+        components={{
+          a: ({ node, ...props }) => {
+            void node;
+            return <a {...props} target="_blank" rel="noreferrer noopener" />;
+          },
+          img: ({ node, ...props }) => {
+            void node;
+            return <img {...props} alt={props.alt ?? ""} loading="lazy" />;
+          },
+        }}
+      >
+        {value}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+/** Note block that turns into a textarea on click, committing on blur/Escape.
+ * Falls back to a read-only Markdown render when the user cannot edit. */
+function InlineNote({
+  value,
+  onCommit,
+  canEdit,
+  ariaLabel,
+  placeholder,
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+  canEdit: boolean;
+  ariaLabel: string;
+  placeholder: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  if (!canEdit) {
+    return value ? <NoteMarkdown value={value} /> : null;
+  }
+
+  const commit = () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (next !== value) onCommit(next);
+    else setDraft(value);
+  };
+
+  if (editing) {
+    return (
+      <Textarea
+        autoFocus
+        value={draft}
+        aria-label={ariaLabel}
+        placeholder={placeholder}
+        rows={4}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        className="rounded-lg"
+      />
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => setEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setEditing(true);
+        }
+      }}
+      title={ariaLabel}
+      className="cursor-text rounded-lg text-left"
+    >
+      {value ? (
+        <NoteMarkdown value={value} />
+      ) : (
+        <span className="text-sm text-muted-foreground">{placeholder}</span>
+      )}
+    </div>
   );
 }
 
@@ -663,27 +762,16 @@ export function StopDetail({
           </div>
         </div>
 
-        {stop.note ? (
+        {canEdit || stop.note ? (
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold text-balance">{t("detail.notes")}</h3>
-            <div className="wf-markdown text-sm leading-relaxed text-foreground/90">
-              <ReactMarkdown
-                components={{
-                  a: ({ node, ...props }) => {
-                    void node;
-                    return (
-                      <a {...props} target="_blank" rel="noreferrer noopener" />
-                    );
-                  },
-                  img: ({ node, ...props }) => {
-                    void node;
-                    return <img {...props} alt={props.alt ?? ""} loading="lazy" />;
-                  },
-                }}
-              >
-                {stop.note}
-              </ReactMarkdown>
-            </div>
+            <InlineNote
+              value={stop.note}
+              canEdit={canEdit}
+              ariaLabel={t("detail.editNote")}
+              placeholder={t("detail.notePlaceholder")}
+              onCommit={(note) => onUpdateStop(stop.id, { note })}
+            />
           </div>
         ) : null}
 

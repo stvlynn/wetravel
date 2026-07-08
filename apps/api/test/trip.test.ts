@@ -291,6 +291,44 @@ describe("Trip aggregate", () => {
     });
     expect(customCurrency.currency).toBe("USD");
   });
+
+  it("updates an existing expense", () => {
+    const trip = freshTrip();
+    const expense = trip.addExpense({
+      description: "Taxi",
+      amount: 2200,
+      payer: "lynn",
+      participants: ["lynn", "marco"],
+    });
+    trip.updateExpense(expense.id, {
+      description: "Airport taxi",
+      amount: 4800,
+      currency: "USD",
+      category: "Transit",
+      payer: "marco",
+      participants: ["lynn", "marco", "aiko"],
+    });
+    const updated = trip.toSnapshot().expenses.find((e) => e.id === expense.id)!;
+    expect(updated.description).toBe("Airport taxi");
+    expect(updated.amount).toBe(4800);
+    expect(updated.currency).toBe("USD");
+    expect(updated.category).toBe("Transit");
+    expect(updated.payer).toBe("marco");
+    expect(updated.participants).toEqual(["lynn", "marco", "aiko"]);
+    expect(updated.whenLabel).toBe("Just added");
+  });
+
+  it("rejects updating a missing expense", () => {
+    const trip = freshTrip();
+    expect(() =>
+      trip.updateExpense("missing", {
+        description: "x",
+        amount: 100,
+        payer: "lynn",
+        participants: ["lynn"],
+      }),
+    ).toThrow();
+  });
 });
 
 describe("Trip membership", () => {
@@ -380,7 +418,7 @@ describe("computeBudget", () => {
 
   it("nets paid minus fair share", () => {
     const budget = computeBudget(members, [
-      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
+      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", category: "Food", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
     ]);
     expect(budget.total).toBe(100);
     expect(budget.balances.find((x) => x.memberId === "a")!.net).toBe(50);
@@ -389,7 +427,7 @@ describe("computeBudget", () => {
 
   it("produces a minimal settlement transferring debtor -> creditor", () => {
     const budget = computeBudget(members, [
-      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
+      { id: "e1", description: "dinner", payer: "a", amount: 100, currency: "JPY", category: "Food", participants: ["a", "b"], whenLabel: "", createdOrder: 0 },
     ]);
     expect(budget.settlements).toEqual([{ from: "b", to: "a", amount: 50 }]);
   });

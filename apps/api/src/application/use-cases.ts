@@ -195,4 +195,16 @@ export class TripService {
     await this.repo.save(trip);
     return toTripDto(trip, userId);
   }
+
+  async updateExpense(
+    tripId: string,
+    expenseId: string,
+    draft: AddExpenseDraft,
+    userId: string,
+  ): Promise<TripDto> {
+    const trip = await this.loadEditable(tripId, userId);
+    trip.updateExpense(expenseId, draft);
+    await this.repo.save(trip);
+    return toTripDto(trip, userId);
+  }
 }

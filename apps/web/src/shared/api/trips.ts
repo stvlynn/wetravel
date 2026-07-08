@@ -73,6 +73,7 @@ export interface InsertStopInput {
   index: number;
   name: string;
   time: string;
+  duration?: string;
   lat?: number;
   lng?: number;
   area?: string;
@@ -97,6 +98,7 @@ export interface UpdateStopInput {
   category?: StopCategory;
   cost?: number;
   costCurrency?: string;
+  note?: string;
 }
 
 export function updateStop(
@@ -148,6 +150,7 @@ export interface AddExpenseInput {
   description: string;
   amount: number;
   currency?: string;
+  category?: StopCategory;
   payer: string;
   participants: string[];
 }
@@ -155,6 +158,17 @@ export interface AddExpenseInput {
 export function addExpense(tripId: string, input: AddExpenseInput): Promise<Trip> {
   return apiFetch<Trip>(`/api/trips/${tripId}/expenses`, {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateExpense(
+  tripId: string,
+  expenseId: string,
+  input: AddExpenseInput,
+): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}/expenses/${expenseId}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
   });
 }
@@ -207,6 +221,21 @@ export function createTripInvite(
   return apiFetch<CreatedInvite>(`/api/trips/${tripId}/invites`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Issue a fresh invite link with the same settings and expire the current one.
+ * `previousToken` is the token of the link being replaced.
+ */
+export function regenerateTripInvite(
+  tripId: string,
+  previousToken: string,
+  input: CreateInviteInput,
+): Promise<CreatedInvite> {
+  return apiFetch<CreatedInvite>(`/api/trips/${tripId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ ...input, previousToken }),
   });
 }
 

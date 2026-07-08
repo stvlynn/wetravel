@@ -24,6 +24,8 @@ export interface InsertStopDraft {
   index: number;
   name: string;
   time: string;
+  /** Optional planned duration (e.g. "1h"). Defaults to "1h" when omitted. */
+  duration?: string;
   /** Real coordinates from geocoding or a map pick. When absent, the stop's
    * position is interpolated from its neighbours. */
   lat?: number;
@@ -59,6 +61,8 @@ export interface UpdateStopDraft {
   cost?: number;
   /** ISO currency code for `cost`. Ignored when the effective cost is 0. */
   costCurrency?: string;
+  /** Free-form note (Markdown, may embed image URLs). Empty string clears it. */
+  note?: string;
 }
 
 export interface AddExpenseDraft {
@@ -66,6 +70,8 @@ export interface AddExpenseDraft {
   amount: number;
   /** ISO currency code for the amount. Defaults to the trip currency. */
   currency?: string;
+  /** Optional expense type. Defaults to "Plan" when omitted. */
+  category?: StopCategory;
   payer: string;
   participants: string[];
 }
@@ -256,6 +262,14 @@ export class Trip {
     }
   }
 
+  private requireExpense(expenseId: string): ExpenseSnapshot {
+    const expense = this.snapshot.expenses.find((e) => e.id === expenseId);
+    if (!expense) {
+      throw new DomainError("expense_not_found", `Expense ${expenseId} not found`);
+    }
+    return expense;
+  }
+
   /** Add the member to the stop's votes if absent, else remove. Idempotent. */
   toggleVote(stopId: string, memberId: string): void {
     this.requireMember(memberId);
@@ -327,7 +341,7 @@ export class Trip {
       id: `n${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       day: draft.day,
       time: draft.time.trim() || "—",
-      duration: "1h",
+      duration: draft.duration?.trim() || "1h",
       name,
       area: draft.area?.trim() || "TBD",
       category: draft.category ?? "Plan",
@@ -383,6 +397,8 @@ export class Trip {
       stop.costCurrency = draft.costCurrency.trim() || this.snapshot.currency;
     }
 
+    if (draft.note !== undefined) stop.note = draft.note.trim();
+
     return stop;
   }
 
@@ -431,11 +447,34 @@ export class Trip {
       payer: draft.payer,
       amount: Math.round(draft.amount),
       currency: draft.currency?.trim() || this.snapshot.currency,
+      category: draft.category ?? "Plan",
       participants: [...draft.participants],
       whenLabel: "Just added",
       createdOrder: this.snapshot.expenses.length,
     };
     this.snapshot.expenses.push(expense);
+    return expense;
+  }
+
+  /** Replace an existing expense's editable fields. Id, when label, and sort
+   * order are preserved. */
+  updateExpense(expenseId: string, draft: AddExpenseDraft): ExpenseSnapshot {
+    const expense = this.requireExpense(expenseId);
+    const description = draft.description.trim();
+    if (!description) throw new DomainError("empty_expense", "Description is required");
+    if (!(draft.amount > 0)) throw new DomainError("invalid_amount", "Amount must be positive");
+    if (draft.participants.length === 0) {
+      throw new DomainError("no_participants", "At least one participant is required");
+    }
+    this.requireMember(draft.payer);
+    for (const p of draft.participants) this.requireMember(p);
+
+    expense.description = description;
+    expense.payer = draft.payer;
+    expense.amount = Math.round(draft.amount);
+    expense.currency = draft.currency?.trim() || this.snapshot.currency;
+    expense.category = draft.category ?? "Plan";
+    expense.participants = [...draft.participants];
     return expense;
   }
 

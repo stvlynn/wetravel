@@ -103,17 +103,18 @@ interface RawExpense {
   amount: number;
   parts: string[];
   when: string;
+  cat: TripSnapshot["expenses"][number]["category"];
 }
 
 const RAW_EXPENSES: RawExpense[] = [
-  { id: "e1", desc: "Hotel — Shibuya Stream (2 nights)", payer: "lynn", amount: 84000, parts: ALL, when: "Day 1–2" },
-  { id: "e2", desc: "JR Pass × 4 (7-day)", payer: "marco", amount: 120000, parts: ALL, when: "Pre-trip" },
-  { id: "e3", desc: "teamLab Planets tickets", payer: "aiko", amount: 11100, parts: ["lynn", "aiko", "sam"], when: "Day 1" },
-  { id: "e4", desc: "Ichiran dinner", payer: "aiko", amount: 5600, parts: ALL, when: "Day 1" },
-  { id: "e5", desc: "Tsukiji breakfast crawl", payer: "lynn", amount: 7200, parts: ALL, when: "Day 2" },
-  { id: "e6", desc: "Kyoto machiya (2 nights)", payer: "sam", amount: 96000, parts: ALL, when: "Day 3–4" },
-  { id: "e7", desc: "Pontocho riverside dinner", payer: "marco", amount: 18400, parts: ALL, when: "Day 3" },
-  { id: "e8", desc: "Pocket wifi + Suica top-ups", payer: "sam", amount: 9600, parts: ALL, when: "Pre-trip" },
+  { id: "e1", desc: "Hotel — Shibuya Stream (2 nights)", payer: "lynn", amount: 84000, parts: ALL, when: "Day 1–2", cat: "Stay" },
+  { id: "e2", desc: "JR Pass × 4 (7-day)", payer: "marco", amount: 120000, parts: ALL, when: "Pre-trip", cat: "Transit" },
+  { id: "e3", desc: "teamLab Planets tickets", payer: "aiko", amount: 11100, parts: ["lynn", "aiko", "sam"], when: "Day 1", cat: "Activity" },
+  { id: "e4", desc: "Ichiran dinner", payer: "aiko", amount: 5600, parts: ALL, when: "Day 1", cat: "Food" },
+  { id: "e5", desc: "Tsukiji breakfast crawl", payer: "lynn", amount: 7200, parts: ALL, when: "Day 2", cat: "Food" },
+  { id: "e6", desc: "Kyoto machiya (2 nights)", payer: "sam", amount: 96000, parts: ALL, when: "Day 3–4", cat: "Stay" },
+  { id: "e7", desc: "Pontocho riverside dinner", payer: "marco", amount: 18400, parts: ALL, when: "Day 3", cat: "Food" },
+  { id: "e8", desc: "Pocket wifi + Suica top-ups", payer: "sam", amount: 9600, parts: ALL, when: "Pre-trip", cat: "Plan" },
 ];
 
 function buildJapan(): SeedTrip {
@@ -155,6 +156,7 @@ function buildJapan(): SeedTrip {
       payer: e.payer,
       amount: e.amount,
       currency: "JPY",
+      category: e.cat,
       participants: e.parts,
       whenLabel: e.when,
       createdOrder: i,

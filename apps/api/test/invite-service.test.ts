@@ -56,6 +56,11 @@ class FakeInviteRepository implements TripInviteRepository {
       this.invites.find((i) => i.tokenHash === tokenHash) ?? null,
     );
   }
+  revoke(inviteId: string): Promise<void> {
+    const invite = this.invites.find((i) => i.id === inviteId);
+    if (invite) invite.status = "revoked";
+    return Promise.resolve();
+  }
   recordAcceptance(inviteId: string, userId: string): Promise<void> {
     this.acceptances.push({ inviteId, userId });
     return Promise.resolve();
@@ -172,6 +177,35 @@ describe("TripInviteService", () => {
     const second = await service.acceptInvite(created.token, GUEST);
     expect(second).toEqual({ tripId: trip.id, joined: false });
     expect(trip.toSnapshot().members.filter((m) => m.userId === "guest")).toHaveLength(1);
+  });
+
+  it("regenerates an invite, issuing a new link and revoking the old one", async () => {
+    const { trip, invites, service } = setup();
+    const first = await service.createInvite(trip.id, OWNER, {
+      accessScope: "anyone",
+      allowedEmails: [],
+      role: "editor",
+      canInvite: false,
+      expiresAt: null,
+    });
+
+    const second = await service.regenerateInvite(trip.id, OWNER, first.token, {
+      accessScope: "anyone",
+      allowedEmails: [],
+      role: "editor",
+      canInvite: false,
+      expiresAt: null,
+    });
+
+    expect(second.token).not.toBe(first.token);
+    expect(invites.invites).toHaveLength(2);
+    expect(invites.invites.find((i) => i.tokenHash === hash(first.token))?.status).toBe(
+      "revoked",
+    );
+
+    await expect(service.acceptInvite(first.token, GUEST)).rejects.toThrow();
+    const joined = await service.acceptInvite(second.token, GUEST);
+    expect(joined.joined).toBe(true);
   });
 
   it("previews an invite for an unauthenticated visitor", async () => {

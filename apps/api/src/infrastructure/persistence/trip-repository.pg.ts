@@ -165,7 +165,7 @@ export class PgTripRepository implements TripRepository {
           [id],
         ),
         this.pool.query(
-          `SELECT id, description, payer_id, amount, currency, when_label, sort_order
+          `SELECT id, description, payer_id, amount, currency, category, when_label, sort_order
            FROM expenses WHERE trip_id = $1 ORDER BY sort_order ASC`,
           [id],
         ),
@@ -245,6 +245,7 @@ export class PgTripRepository implements TripRepository {
         payer_id: string;
         amount: number;
         currency: string | null;
+        category: string | null;
         when_label: string;
         sort_order: number;
       }>
@@ -254,6 +255,7 @@ export class PgTripRepository implements TripRepository {
       payer: e.payer_id,
       amount: Number(e.amount),
       currency: e.currency ?? "",
+      category: (e.category as ExpenseSnapshot["category"]) ?? "Plan",
       participants: partsByExpense.get(e.id) ?? [],
       whenLabel: e.when_label,
       createdOrder: e.sort_order,
@@ -418,8 +420,8 @@ export class PgTripRepository implements TripRepository {
 
       for (const e of s.expenses) {
         await client.query(
-          `INSERT INTO expenses (id, trip_id, description, payer_id, amount, currency, when_label, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          `INSERT INTO expenses (id, trip_id, description, payer_id, amount, currency, category, when_label, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           [
             e.id,
             s.id,
@@ -427,6 +429,7 @@ export class PgTripRepository implements TripRepository {
             e.payer,
             e.amount,
             e.currency,
+            e.category,
             e.whenLabel,
             e.createdOrder,
           ],

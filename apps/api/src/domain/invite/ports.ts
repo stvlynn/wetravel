@@ -6,6 +6,8 @@ export interface TripInviteRepository {
   create(invite: TripInviteSnapshot): Promise<void>;
   /** Look an invite up by its token hash, or null when unknown. */
   findByTokenHash(tokenHash: string): Promise<TripInviteSnapshot | null>;
+  /** Mark an invite revoked so its link can no longer be redeemed. Idempotent. */
+  revoke(inviteId: string): Promise<void>;
   /** Record that a user redeemed an invite. Idempotent per (invite, user). */
   recordAcceptance(inviteId: string, userId: string): Promise<void>;
 }

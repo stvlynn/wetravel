@@ -1,8 +1,11 @@
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   createTripInvite,
+  regenerateTripInvite,
   type CreatedInvite,
+  type CreateInviteInput,
   type InviteAccessScope,
   type InviteMemberRole,
 } from "@/shared/api";
@@ -10,6 +13,7 @@ import { ApiError } from "@/shared/api";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
+import { ScrambleText } from "@/shared/ui/scramble-text";
 import {
   Dialog,
   DialogBackdrop,
@@ -61,6 +65,7 @@ export function InviteDialog({ tripId }: { tripId: string }) {
   const [expiresAt, setExpiresAt] = useState("");
 
   const [pending, setPending] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [created, setCreated] = useState<CreatedInvite | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -73,6 +78,18 @@ export function InviteDialog({ tripId }: { tripId: string }) {
     setCreated(null);
     setCopied(false);
     setPending(false);
+    setRegenerating(false);
+  }
+
+  function buildInput(): CreateInviteInput {
+    return {
+      accessScope,
+      allowedEmails:
+        accessScope === "restricted_emails" ? parseEmails(emails) : [],
+      role,
+      canInvite,
+      expiresAt: toIsoExpiry(expiresAt),
+    };
   }
 
   function onOpenChange(next: boolean) {
@@ -93,13 +110,7 @@ export function InviteDialog({ tripId }: { tripId: string }) {
   async function submit() {
     setPending(true);
     try {
-      const invite = await createTripInvite(tripId, {
-        accessScope,
-        allowedEmails: accessScope === "restricted_emails" ? parseEmails(emails) : [],
-        role,
-        canInvite,
-        expiresAt: toIsoExpiry(expiresAt),
-      });
+      const invite = await createTripInvite(tripId, buildInput());
       setCreated(invite);
       void copy(invite.url);
     } catch (err) {
@@ -111,6 +122,29 @@ export function InviteDialog({ tripId }: { tripId: string }) {
       });
     } finally {
       setPending(false);
+    }
+  }
+
+  async function regenerate() {
+    if (!created) return;
+    setRegenerating(true);
+    try {
+      const invite = await regenerateTripInvite(
+        tripId,
+        created.token,
+        buildInput(),
+      );
+      setCreated(invite);
+      setCopied(false);
+    } catch (err) {
+      toastManager.add({
+        title: t("dialog.regenerateErrorTitle"),
+        description:
+          err instanceof ApiError ? err.message : t("dialog.errorGeneric"),
+        type: "error",
+      });
+    } finally {
+      setRegenerating(false);
     }
   }
 
@@ -209,11 +243,28 @@ export function InviteDialog({ tripId }: { tripId: string }) {
               </Field>
 
               {created ? (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs text-muted-foreground">
-                    {t("dialog.copyFallback")}
-                  </span>
-                  <Input readOnly value={created.url} onFocus={(e) => e.target.select()} />
+                <div className="flex items-center gap-2">
+                  <div className="flex h-10 min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-input bg-card px-3 font-mono text-sm text-foreground">
+                    <ScrambleText
+                      key={created.token}
+                      className="whitespace-nowrap"
+                    >
+                      {created.url}
+                    </ScrambleText>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={regenerating}
+                    aria-label={t("dialog.regenerate")}
+                    title={t("dialog.regenerate")}
+                    onClick={regenerate}
+                  >
+                    <RefreshCw
+                      className={regenerating ? "size-4 animate-spin" : "size-4"}
+                      aria-hidden="true"
+                    />
+                  </Button>
                 </div>
               ) : null}
             </DialogPanel>

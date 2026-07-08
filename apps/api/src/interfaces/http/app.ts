@@ -34,6 +34,7 @@ const insertStopSchema = z.object({
   index: z.number().int().min(0),
   name: z.string().min(1),
   time: z.string(),
+  duration: z.string().trim().max(20).optional(),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   area: z.string().max(120).optional(),
@@ -57,6 +58,7 @@ const updateStopSchema = z
     category: stopCategorySchema,
     cost: z.number().min(0).max(100_000_000),
     costCurrency: z.string().trim().min(1).max(8),
+    note: z.string().max(20_000),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
@@ -102,6 +104,7 @@ const expenseSchema = z.object({
   description: z.string().min(1),
   amount: z.number().positive(),
   currency: z.string().trim().min(1).max(8).optional(),
+  category: stopCategorySchema.optional(),
   payer: z.string().min(1),
   participants: z.array(z.string().min(1)).min(1),
 });
@@ -113,6 +116,8 @@ const createInviteSchema = z
     role: z.enum(["editor", "viewer"]),
     canInvite: z.boolean().optional().default(false),
     expiresAt: z.string().datetime().nullable().optional().default(null),
+    /** When present, the link with this token is revoked once the new one is issued. */
+    previousToken: z.string().min(1).optional(),
   })
   .refine(
     (v) => v.accessScope !== "restricted_emails" || v.allowedEmails.length > 0,
@@ -367,14 +372,33 @@ export function createApp(container: Container) {
     );
   });
 
+  guard.patch("/trips/:id/expenses/:expenseId", async (c) => {
+    const input = expenseSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await tripService.updateExpense(
+        c.req.param("id"),
+        c.req.param("expenseId"),
+        input,
+        c.get("user")!.id,
+      ),
+    );
+  });
+
   guard.post("/trips/:id/invites", async (c) => {
     const user = c.get("user")!;
-    const input = createInviteSchema.parse(await c.req.json());
-    const created = await tripInviteService.createInvite(
-      c.req.param("id"),
-      inviteActor(user),
-      input,
+    const { previousToken, ...input } = createInviteSchema.parse(
+      await c.req.json(),
     );
+    const tripId = c.req.param("id");
+    const created = previousToken
+      ? await tripInviteService.regenerateInvite(
+          tripId,
+          inviteActor(user),
+          previousToken,
+          input,
+        )
+      : await tripInviteService.createInvite(tripId, inviteActor(user), input);
     const origin = c.req.header("origin") ?? config.trustedOrigins[0] ?? "";
     const url = `${origin.replace(/\/$/, "")}/invite/${created.token}`;
     return ok(c, { url, token: created.token, expiresAt: created.expiresAt }, 201);

@@ -41,6 +41,8 @@
     "editSchedule": "编辑天数、时间与时长",
     "editCategory": "更改类型",
     "editCost": "编辑花费",
+    "editNote": "编辑备注",
+    "notePlaceholder": "添加备注 — 支持 Markdown 与图片",
     "namePlaceholder": "地点名称",
     "areaPlaceholder": "区域或街区",
     "dayLabel": "天数",
@@ -53,7 +55,9 @@
     "namePlaceholder": "新地点",
     "timePlaceholder": "时间 · 14:00",
     "moreOptions": "更多选项",
+    "durationPlaceholder": "时长",
     "categoryPlaceholder": "类型",
+    "areaPlaceholder": "区域或街区",
     "costPlaceholder": "预计花费",
     "currencyLabel": "货币",
     "notePlaceholder": "备注 — 支持 Markdown 与图片",
@@ -128,7 +132,10 @@
     "payer": "付款人",
     "splitWith": "分摊给",
     "currencyLabel": "货币",
+    "categoryLabel": "类型",
+    "categoryPlaceholder": "类型",
     "save": "保存花费",
+    "editExpense": "编辑花费 {{name}}",
     "paidBy": "由 {{name}} 支付 · {{when}} · {{count}} 人分摊",
     "paidByYou": "你",
     "each": "每人 {{amount}}",
@@ -138,7 +145,18 @@
     "settleUp": "结算",
     "transfersClear_other": "{{count}} 笔转账即可结清整趟行程",
     "everyonePaid": "结清后互不欠款。",
-    "owes": "应付给"
+    "owes": "应付给",
+    "derivation": {
+      "aria": "查看 {{from}} 付给 {{to}} {{amount}} 的计算过程",
+      "owesTitle": "{{name}} 应付给大家",
+      "owedTitle": "{{name}} 应收回",
+      "fairShare": "应摊",
+      "paid": "已付",
+      "owes": "应付",
+      "owed": "应收",
+      "transfer": "本笔转账",
+      "rule": "{{from}} 付给 {{to}} 两个未结金额中较小的一个："
+    }
   },
   "splitter": {
     "sidebarLabel": "调整行程侧边栏大小"

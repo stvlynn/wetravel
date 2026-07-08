@@ -23,3 +23,6 @@ const META: Record<StopCategory, CategoryMeta> = {
 export function categoryMeta(cat: StopCategory): CategoryMeta {
   return META[cat] ?? META.Plan;
 }
+
+/** Canonical ordered list of stop/expense categories for selectors. */
+export const STOP_CATEGORIES = Object.keys(META) as StopCategory[];

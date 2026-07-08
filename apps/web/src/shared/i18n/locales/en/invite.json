@@ -26,7 +26,8 @@
     "creating": "Creating…",
     "copy": "Copy link",
     "copied": "Copied ✓",
-    "copyFallback": "Copy this link manually:",
+    "regenerate": "Regenerate link",
+    "regenerateErrorTitle": "Could not regenerate invite",
     "errorTitle": "Could not create invite",
     "errorGeneric": "Failed to create the invite link."
   },

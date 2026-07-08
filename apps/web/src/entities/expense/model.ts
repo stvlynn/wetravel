@@ -1,3 +1,5 @@
+import type { StopCategory } from "@/entities/stop";
+
 export interface Expense {
   id: string;
   description: string;
@@ -5,6 +7,8 @@ export interface Expense {
   amount: number;
   /** ISO currency code for `amount`. Empty string means "use the trip currency". */
   currency: string;
+  /** Expense type, reusing the shared stop categories. Defaults to "Plan". */
+  category: StopCategory;
   participants: string[];
   whenLabel: string;
 }

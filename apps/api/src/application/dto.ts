@@ -36,6 +36,7 @@ export interface TripDto {
     payer: string;
     amount: number;
     currency: string;
+    category: string;
     participants: string[];
     whenLabel: string;
   }>;
@@ -84,6 +85,7 @@ export function toTripDto(trip: Trip, currentUserId: string): TripDto {
       payer: e.payer,
       amount: e.amount,
       currency: e.currency,
+      category: e.category,
       participants: e.participants,
       whenLabel: e.whenLabel,
     })),

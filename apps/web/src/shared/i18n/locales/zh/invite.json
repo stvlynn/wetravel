@@ -26,7 +26,8 @@
     "creating": "创建中…",
     "copy": "复制链接",
     "copied": "已复制 ✓",
-    "copyFallback": "请手动复制此链接：",
+    "regenerate": "重新生成链接",
+    "regenerateErrorTitle": "无法重新生成邀请",
     "errorTitle": "无法创建邀请",
     "errorGeneric": "创建邀请链接失败。"
   },
