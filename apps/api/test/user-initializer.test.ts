@@ -4,29 +4,38 @@ import { mapGoogleProfileToDto } from "../src/infrastructure/auth/oauth-profile-
 
 describe("resolveInitialAvatar", () => {
   it("uses the OAuth profile image when present", () => {
-    const url = resolveInitialAvatar({
-      provider: "google",
-      providerAccountId: "123",
-      email: "a@example.com",
-      name: "A",
-      image: "https://example.com/avatar.png",
-    });
+    const url = resolveInitialAvatar(
+      {
+        provider: "google",
+        providerAccountId: "123",
+        email: "a@example.com",
+        name: "A",
+        image: "https://example.com/avatar.png",
+      },
+      "seed",
+    );
     expect(url).toBe("https://example.com/avatar.png");
   });
 
-  it("returns null when the OAuth image is missing so the client generates one", () => {
-    const url = resolveInitialAvatar({
-      provider: "google",
-      providerAccountId: "123",
-      email: "a@example.com",
-      name: "A",
-      image: null,
-    });
-    expect(url).toBeNull();
+  it("generates a static gradient avatar when the OAuth image is missing", () => {
+    const url = resolveInitialAvatar(
+      {
+        provider: "google",
+        providerAccountId: "123",
+        email: "a@example.com",
+        name: "A",
+        image: null,
+      },
+      "seed",
+    );
+    expect(url.startsWith("data:image/svg+xml")).toBe(true);
   });
 
-  it("returns null for email sign-ups so the client generates one", () => {
-    expect(resolveInitialAvatar(null)).toBeNull();
+  it("generates a deterministic gradient avatar for email sign-ups", () => {
+    const first = resolveInitialAvatar(null, "seed");
+    const second = resolveInitialAvatar(null, "seed");
+    expect(first.startsWith("data:image/svg+xml")).toBe(true);
+    expect(first).toBe(second);
   });
 });
 

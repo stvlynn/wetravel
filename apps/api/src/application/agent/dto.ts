@@ -1,4 +1,5 @@
 import type {
+  AgentApprovalResponse,
   AgentMessage,
   AgentMessagePart,
   AgentMessageRole,
@@ -9,6 +10,7 @@ import type {
   PendingPatch,
 } from "../../domain/agent";
 import type { Trip } from "../../domain/trip";
+import { mentionedUserIdsFromParts } from "./mentions";
 
 export interface AgentMessageDto {
   id: string;
@@ -19,6 +21,8 @@ export interface AgentMessageDto {
   /** Display name of the human actor, resolved from trip membership. */
   actorName: string | null;
   source: AgentMessageSource;
+  /** Better Auth user ids @mentioned in this message (excluding the author). */
+  mentionedUserIds: string[];
   createdAt: string;
 }
 
@@ -35,6 +39,12 @@ export interface AgentSuggestionDto {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Request body for approving or denying a proactive suggestion.
+ * Mirrors AI SDK `addToolApprovalResponse({ id, approved, reason? })`.
+ */
+export type AgentApprovalRequestDto = AgentApprovalResponse;
 
 export interface AgentHistoryDto {
   messages: AgentMessageDto[];
@@ -59,6 +69,7 @@ export function toAgentMessageDto(message: AgentMessage, trip: Trip): AgentMessa
     actorUserId: message.actorUserId,
     actorName,
     source: message.source,
+    mentionedUserIds: mentionedUserIdsFromParts(message.parts),
     createdAt: message.createdAt,
   };
 }

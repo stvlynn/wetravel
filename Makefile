@@ -42,7 +42,7 @@ help:
 	@echo "  make db-migrate      Apply pending Prisma migrations"
 	@echo "  make db-migrate-dev  Create a new Prisma migration from schema changes"
 	@echo "  make db-seed         Seed demo data via Prisma"
-	@echo "  make db-reset        Drop public schema, re-migrate, and re-seed"
+	@echo "  make db-reset        Drop public schema, generate client, re-migrate, and re-seed"
 	@echo "  make db-init         Run migrations then seed demo data"
 	@echo "  make db-studio       Open Prisma Studio"
 	@echo ""

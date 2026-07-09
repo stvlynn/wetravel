@@ -7,6 +7,7 @@ import type {
   NewAgentMessage,
   NewAgentSuggestion,
   OperationEvent,
+  PendingPatch,
 } from "./types";
 
 /** Persistence port for the per-trip agent session (messages + suggestions). */
@@ -16,9 +17,6 @@ export interface AgentSessionRepository {
     opts?: { afterSeq?: number; limit?: number },
   ): Promise<AgentMessage[]>;
   appendMessage(message: NewAgentMessage): Promise<AgentMessage>;
-  /** User-authored messages since the last assistant reply, for the ambient
-   * reply threshold. */
-  countUserMessagesSinceLastAssistant(tripId: string): Promise<number>;
   latestSeq(tripId: string): Promise<number>;
 
   createSuggestion(suggestion: NewAgentSuggestion): Promise<AgentSuggestion>;
@@ -37,11 +35,37 @@ export interface AgentSessionRepository {
   dismissForUser(id: string, userId: string): Promise<void>;
 }
 
+/** Minimal UI message shape accepted from the AI SDK client (useChat). */
+export interface AgentClientUIMessage {
+  id?: string;
+  role: string;
+  parts: AgentMessagePart[];
+}
+
+/** Result returned by write tools after the user approves them. */
+export type AgentToolApplyResult =
+  | { ok: true; summary: string }
+  | { ok: false; error: string };
+
 export interface AgentChatRequest {
   trip: TripSnapshot;
   history: AgentMessage[];
-  /** Called with the assistant's UI-message parts once the stream completes. */
-  onFinish: (parts: AgentMessagePart[]) => Promise<void>;
+  /**
+   * Full UI messages from the current client turn. Required for AI SDK tool
+   * approval continuation (`approval-responded` parts → tool execution).
+   */
+  clientMessages?: AgentClientUIMessage[];
+  /** Whether the caller may approve write tools. Viewers get auto-denied. */
+  canEdit: boolean;
+  /**
+   * Invoked only after AI SDK tool approval. Runs the patch through the Trip
+   * aggregate; never called while a tool is still waiting on the user.
+   */
+  applyPatch: (patch: PendingPatch) => Promise<AgentToolApplyResult>;
+  /** Called once the stream completes (skip mid-turn approval pauses).
+   * `messageId` is the AI SDK UIMessage id so shared history matches the
+   * live buffer for dedupe. */
+  onFinish: (parts: AgentMessagePart[], messageId?: string) => Promise<void>;
 }
 
 export interface AgentEvaluationRequest {
@@ -51,13 +75,29 @@ export interface AgentEvaluationRequest {
   history: AgentMessage[];
 }
 
+/** Decide whether a plain member message is addressing the agent. */
+export interface AgentAddressedRequest {
+  trip: TripSnapshot;
+  history: AgentMessage[];
+  /** Latest member message text (already persisted). */
+  messageText: string;
+}
+
 /** Model port. Implemented in infrastructure with the Vercel AI SDK; the
  * domain and application layers never touch provider APIs directly. */
 export interface AgentModel {
   /** Stream a chat reply as a web Response carrying an AI SDK UI message stream. */
-  streamChat(request: AgentChatRequest): Response;
-  /** Generate a non-streaming reply (ambient threshold replies). */
-  generateReply(request: Omit<AgentChatRequest, "onFinish">): Promise<AgentMessagePart[]>;
+  streamChat(request: AgentChatRequest): Promise<Response>;
+  /** Generate a non-streaming reply (ambient / mention replies). Read-only tools only. */
+  generateReply(
+    request: Pick<AgentChatRequest, "trip" | "history">,
+  ): Promise<AgentMessagePart[]>;
+  /**
+   * Judge whether a plain member message is addressing the agent (explicit
+   * @agent, a question to the agent, or a clear request for help). Default
+   * false — member-to-member chatter stays silent.
+   */
+  isAddressed(request: AgentAddressedRequest): Promise<boolean>;
   /** Judge a whitelisted operation and return a structured decision. */
   evaluateOperation(request: AgentEvaluationRequest): Promise<InterventionDecision>;
 }

@@ -1,4 +1,5 @@
 export type {
+  AgentApprovalResponse,
   AgentMessage,
   AgentMessagePart,
   AgentMessageRole,
@@ -14,8 +15,11 @@ export type {
   PendingPatch,
 } from "./types";
 export type {
+  AgentAddressedRequest,
   AgentChatRequest,
+  AgentClientUIMessage,
   AgentEvaluationRequest,
   AgentModel,
   AgentSessionRepository,
+  AgentToolApplyResult,
 } from "./ports";

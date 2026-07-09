@@ -1,47 +1,68 @@
 import { useTranslation } from "react-i18next";
-import { SparklesIcon, XIcon } from "lucide-react";
+import type { Trip } from "@/entities/trip";
 import type { AgentSuggestion } from "@/shared/api";
+import { PanelToggleIcon } from "@/widgets/app-sidebar";
+import { cn } from "@/shared/lib";
 import { AgentChat } from "./AgentChat";
 
-/** Expanded-state agent panel: an inset drawer on the right edge of the main
- * area. The itinerary/map stays visible beside it. */
+/** Right base-layer panel, mirroring the left `AppSidebar`: it sits beneath the
+ * main panel (same `bg-sidebar` layer) and reveals via a width transition. When
+ * open, the main panel rounds its right corners against it. */
 export function AgentDrawer({
+  open,
   tripId,
+  trip,
   canEdit,
   applyingId,
-  onApplySuggestion,
+  onApproveSuggestion,
+  onDenySuggestion,
   onClose,
 }: {
+  open: boolean;
   tripId: string;
+  trip: Trip;
   canEdit: boolean;
   applyingId: string | null;
-  onApplySuggestion: (suggestion: AgentSuggestion) => void;
+  onApproveSuggestion: (suggestion: AgentSuggestion) => void;
+  onDenySuggestion: (suggestion: AgentSuggestion) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation("agent");
   return (
-    <div className="wf-enter absolute right-0 top-0 z-30 flex h-full w-[min(360px,85vw)] flex-col border-l border-border bg-background shadow-[-12px_0_32px_-20px_rgba(15,23,42,0.35)]">
-      <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-2.5">
-        <SparklesIcon className="size-4 text-corn-600" />
-        <span className="min-w-0 flex-1 truncate font-heading text-sm font-semibold">
-          {t("panel.title")}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("toggle.close")}
-          title={t("toggle.close")}
-          className="wf-interactive wf-pressable flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <XIcon className="size-4" />
-        </button>
+    <aside
+      aria-hidden={!open}
+      className={cn(
+        "relative flex h-dvh flex-none flex-col overflow-hidden bg-sidebar transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
+        open ? "w-[min(360px,85vw)]" : "w-0",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-full w-[min(360px,85vw)] flex-col transition-opacity duration-[var(--dur-slow)] ease-[var(--ease-out)]",
+          !open && "pointer-events-none opacity-0",
+        )}
+      >
+        <div className="flex flex-none items-center px-3 pt-4 pb-2">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("toggle.close")}
+            title={t("toggle.close")}
+            className="wf-interactive wf-pressable -ml-1 flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <PanelToggleIcon className="size-4" />
+          </button>
+        </div>
+        <AgentChat
+          enabled={open}
+          tripId={tripId}
+          trip={trip}
+          canEdit={canEdit}
+          applyingId={applyingId}
+          onApproveSuggestion={onApproveSuggestion}
+          onDenySuggestion={onDenySuggestion}
+        />
       </div>
-      <AgentChat
-        tripId={tripId}
-        canEdit={canEdit}
-        applyingId={applyingId}
-        onApplySuggestion={onApplySuggestion}
-      />
-    </div>
+    </aside>
   );
 }

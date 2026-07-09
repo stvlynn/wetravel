@@ -13,8 +13,9 @@ only through aggregate methods.
 
 - **TripMember** — `{ id, name, shortName, initials, avatarBg, avatarFg,
   image, userId, role, canInvite, isCurrentUser }`. `image` is an optional
-  avatar URL; the UI falls back to a colored circle when it is absent. `userId`
-  is the Better Auth user backing the membership (null for legacy/demo members).
+  avatar URL; the UI falls back to a colored circle when it is absent. `id` is
+  the trip-local membership id used by stops, votes, comments, and expenses;
+  `userId` is the Better Auth user backing the membership (null for legacy/demo members).
   `role` is `owner | editor | viewer`; `canInvite` gates creating further
   invites. `isCurrentUser` is computed per request (member `userId` equals the
   requester) rather than stored, except on legacy demo members where the seeded
@@ -23,7 +24,8 @@ only through aggregate methods.
   ISO `YYYY-MM-DD` and `dateLabel` is a legacy fallback for imported labels.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
   lat, lng, cost, costCurrency, createdBy, transit, note, votes: MemberId[],
-  comments: Comment[], order }`. `note` is optional Markdown. `costCurrency` is
+  comments: Comment[], order }`. `note` is optional Markdown that may embed
+  hosted image URLs from `POST /api/trips/:id/media`. `costCurrency` is
   the ISO code for `cost` (empty string means "use the trip currency"); costs
   are display-only and never enter the budget.
 - **Comment** (value object) — `{ author, timeLabel, text }`.
@@ -51,9 +53,14 @@ only through aggregate methods.
   conversion; mixed-currency expenses are preserved for display/future FX support
   while aggregate math still sums numeric amounts.
 - **create(draft, owner)** — new trip in `planning` status with the owner as its
-  first member (role `owner`, `canInvite` true, `userId` set), one empty day, and
-  `startDate` set to today (ISO). Day labels are derived from `startDate` on the
-  read side, so days carry no fake "Day N" text.
+  first member (role `owner`, `canInvite` true, generated trip-local member id,
+  `userId` set), one empty day, and `startDate` set to today (ISO). Day labels
+  are derived from `startDate` on the read side, so days carry no fake "Day N" text.
+- **cloneFromTemplate(template, owner)** — deep-copies a template trip for a new
+  owner. Regenerates trip / stop / expense ids, remaps member ids, replaces the
+  template owner slot with the real user, and leaves other members as cosmetic
+  collaborators (`userId: null`). Used when provisioning a sample trip on
+  sign-up.
 - **addMember({ userId, name, image, role, canInvite })** — adds a real user as a
   member with a generated trip-local id and cycled avatar palette. Rejects adding
   a user who is already a member (the `(trip_id, user_id)` unique constraint backs
@@ -132,6 +139,30 @@ working — the new link is created first so a failure leaves the old one intact
 usability, adds the member, records the acceptance; idempotent for existing
 members). The `TripInviteRepository` port exposes `revoke(inviteId)` to mark a
 link revoked.
+
+## Weather
+
+`domain/weather` is a driven port, not a trip aggregate:
+
+- **WeatherForecastQuery / WeatherForecastSnapshot** — vendor-neutral forecast
+  request and response (OpenTrip naming; no OpenWeather types).
+- **WeatherClient** — `fetchForecast(query)`; implemented by infrastructure
+  (cache decorator + provider adapter). Application `WeatherService` is the only
+  entry used by HTTP and the agent `checkWeather` tool.
+
+See [weather.md](./weather.md).
+
+## Geo
+
+`domain/geo` is a driven port, not a trip aggregate:
+
+- **GeoPlace / GeoRoute / GeoReview\*** — vendor-neutral place, route, and review
+  shapes (OpenTrip naming; no Nominatim/Google types).
+- **GeoProvider** — `placeSearch`, `placeNearby`, `placeDetail`, `routeCompute`,
+  `routeMatrix`, `reviewLookup`; implemented by infrastructure (OSM or Google).
+  Application `GeoService` is the only entry used by agent geo read tools.
+
+See [geo.md](./geo.md).
 
 ## Determinism
 

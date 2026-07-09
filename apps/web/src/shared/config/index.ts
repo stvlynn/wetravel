@@ -42,4 +42,6 @@ export const queryKeys = {
   agentStatus: ["agent", "status"] as const,
   agentMessages: (tripId: string) => ["agent", tripId, "messages"] as const,
   agentEvents: (tripId: string) => ["agent", tripId, "events"] as const,
+  fxRates: (base: string, quotesKey: string) =>
+    ["fx", "rates", base, quotesKey] as const,
 };

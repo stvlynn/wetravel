@@ -1,7 +1,16 @@
-import type { CurrentUserProfile, FileStorage, StoredFile } from "./ports";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+  detectImageMimeType,
+  extensionOf,
+  storageNamespaceOf,
+  type FileStorage,
+  type StoredFile,
+} from "../storage";
+import type { CurrentUserProfile } from "./ports";
 
-const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+/** @deprecated Prefer MAX_IMAGE_BYTES — kept for existing avatar route wiring. */
+export const MAX_AVATAR_BYTES = MAX_IMAGE_BYTES;
 
 export interface AvatarUpload {
   content: Uint8Array;
@@ -17,18 +26,22 @@ export class AvatarService {
     file: AvatarUpload,
     profile: CurrentUserProfile,
   ): Promise<string> {
-    if (file.content.byteLength > MAX_AVATAR_BYTES) {
+    if (file.content.byteLength > MAX_IMAGE_BYTES) {
       throw new AvatarError("avatar_too_large", "Avatar exceeds the maximum size");
     }
 
     const mimeType = detectImageMimeType(file.content);
-    if (!mimeType || !ALLOWED_MIME_TYPES.has(mimeType) || file.claimedMimeType !== mimeType) {
+    if (
+      !mimeType ||
+      !ALLOWED_IMAGE_MIME_TYPES.has(mimeType) ||
+      file.claimedMimeType !== mimeType
+    ) {
       throw new AvatarError("avatar_unsupported_mime", "Only PNG, JPEG and WebP images are allowed");
     }
 
     const ext = extensionOf(mimeType);
     const id = crypto.randomUUID();
-    const storagePath = `avatars/${userNamespaceOf(userId)}/${id}.${ext}`;
+    const storagePath = `avatars/${storageNamespaceOf(userId)}/${id}.${ext}`;
     const storedFile: StoredFile = { content: file.content, contentType: mimeType };
 
     await this.storage.write(storagePath, storedFile);
@@ -127,54 +140,4 @@ export class AvatarError extends Error {
     super(message, { cause });
     this.name = "AvatarError";
   }
-}
-
-function extensionOf(mimeType: string): string {
-  switch (mimeType) {
-    case "image/png":
-      return "png";
-    case "image/jpeg":
-      return "jpg";
-    case "image/webp":
-      return "webp";
-    default:
-      return "bin";
-  }
-}
-
-function detectImageMimeType(content: Uint8Array): string | null {
-  if (
-    content.length >= 8 &&
-    content[0] === 0x89 &&
-    content[1] === 0x50 &&
-    content[2] === 0x4e &&
-    content[3] === 0x47 &&
-    content[4] === 0x0d &&
-    content[5] === 0x0a &&
-    content[6] === 0x1a &&
-    content[7] === 0x0a
-  ) {
-    return "image/png";
-  }
-  if (content.length >= 3 && content[0] === 0xff && content[1] === 0xd8 && content[2] === 0xff) {
-    return "image/jpeg";
-  }
-  if (
-    content.length >= 12 &&
-    ascii(content, 0, 4) === "RIFF" &&
-    ascii(content, 8, 12) === "WEBP"
-  ) {
-    return "image/webp";
-  }
-  return null;
-}
-
-function ascii(content: Uint8Array, start: number, end: number): string {
-  return String.fromCharCode(...content.subarray(start, end));
-}
-
-function userNamespaceOf(userId: string): string {
-  return [...new TextEncoder().encode(userId)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
 }

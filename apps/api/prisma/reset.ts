@@ -1,6 +1,4 @@
 import { spawn } from "node:child_process";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -18,16 +16,19 @@ function run(command: string, args: string[]): Promise<void> {
 }
 
 async function main() {
+  // Use raw pg so reset does not depend on a previously generated Prisma Client.
   const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 1 });
-  const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
+  try {
+    console.log("dropping all tables…");
+    await pool.query('DROP SCHEMA IF EXISTS "public" CASCADE');
+    await pool.query('CREATE SCHEMA "public"');
+    await pool.query('GRANT ALL ON SCHEMA "public" TO public');
+  } finally {
+    await pool.end();
+  }
 
-  console.log("dropping all tables…");
-  await prisma.$executeRawUnsafe('DROP SCHEMA IF EXISTS "public" CASCADE');
-  await prisma.$executeRawUnsafe('CREATE SCHEMA "public"');
-  await prisma.$executeRawUnsafe('GRANT ALL ON SCHEMA "public" TO public');
-  await prisma.$disconnect();
-
+  // Seed (and any other Prisma Client usage) needs a generated client.
+  await run("pnpm", ["exec", "prisma", "generate"]);
   await run("pnpm", ["exec", "prisma", "migrate", "deploy"]);
   await run("pnpm", ["exec", "prisma", "db", "seed"]);
   console.log("database reset complete");

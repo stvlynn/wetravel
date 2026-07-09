@@ -36,7 +36,6 @@ services:
             AI_API_KEY: ${AI_API_KEY}
             AI_PROACTIVE_THRESHOLD: ${AI_PROACTIVE_THRESHOLD:-0.7}
             AI_MAX_TOOL_STEPS: ${AI_MAX_TOOL_STEPS:-5}
-            AI_REPLY_THRESHOLD: ${AI_REPLY_THRESHOLD:-6}
             PORT: "8780"
         volumes:
             - opentrip-uploads:/app/apps/api/uploads

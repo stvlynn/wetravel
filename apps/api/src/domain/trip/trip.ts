@@ -194,9 +194,10 @@ export class Trip {
     if (!title) throw new DomainError("empty_trip_title", "Trip title is required");
 
     const palette = MEMBER_PALETTE[0]!;
+    const tripId = `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startDate = todayIso();
     const snapshot: TripSnapshot = {
-      id: `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: tripId,
       title,
       status: "planning",
       currency: draft.currency?.trim() || "JPY",
@@ -205,7 +206,7 @@ export class Trip {
       ownerId: owner.id,
       members: [
         {
-          id: owner.id,
+          id: `m${tripId}-owner`,
           name: owner.name,
           shortName: shortNameOf(owner.name),
           initials: initialsOf(owner.name),
@@ -231,6 +232,104 @@ export class Trip {
       expenses: [],
     };
     return new Trip(snapshot);
+  }
+
+  /** Clone a template trip for a new owner.
+   *
+   * Regenerates trip / stop / expense ids (they are globally unique) and remaps
+   * member ids. The template's owner-role member becomes the real user; other
+   * members stay as cosmetic collaborators with `userId: null`. */
+  static cloneFromTemplate(template: Trip, owner: TripOwner): Trip {
+    const source = template.toSnapshot();
+    if (source.members.length === 0) {
+      throw new DomainError("empty_template", "Template trip has no members");
+    }
+
+    const tripId = `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const nonce = Math.random().toString(36).slice(2, 8);
+    const ownerMemberId = `m${tripId}-owner`;
+
+    const ownerSource =
+      source.members.find((m) => m.role === "owner") ??
+      source.members.find((m) => m.isCurrentUser) ??
+      source.members[0]!;
+
+    const memberIdMap = new Map<string, string>();
+    for (const m of source.members) {
+      memberIdMap.set(
+        m.id,
+        m.id === ownerSource.id ? ownerMemberId : `m${nonce}-${m.id}`,
+      );
+    }
+
+    const remapMember = (id: string): string => {
+      const next = memberIdMap.get(id);
+      if (!next) {
+        throw new DomainError(
+          "unknown_template_member",
+          `Template references unknown member ${id}`,
+        );
+      }
+      return next;
+    };
+
+    const members: MemberSnapshot[] = source.members.map((m) => {
+      if (m.id === ownerSource.id) {
+        const palette = MEMBER_PALETTE[0]!;
+        return {
+          id: ownerMemberId,
+          name: owner.name,
+          shortName: shortNameOf(owner.name),
+          initials: initialsOf(owner.name),
+          avatarBg: palette.bg,
+          avatarFg: palette.fg,
+          image: owner.image ?? null,
+          userId: owner.id,
+          role: "owner",
+          canInvite: true,
+          isCurrentUser: true,
+        };
+      }
+      return {
+        ...m,
+        id: remapMember(m.id),
+        userId: null,
+        role: m.role === "owner" ? "editor" : m.role,
+        isCurrentUser: false,
+      };
+    });
+
+    const stops: StopSnapshot[] = source.stops.map((s) => ({
+      ...s,
+      id: `s${nonce}-${s.id}`,
+      createdBy: remapMember(s.createdBy),
+      votes: s.votes.map(remapMember),
+      comments: s.comments.map((c) => ({
+        ...c,
+        author: remapMember(c.author),
+      })),
+    }));
+
+    const expenses: ExpenseSnapshot[] = source.expenses.map((e) => ({
+      ...e,
+      id: `e${nonce}-${e.id}`,
+      payer: remapMember(e.payer),
+      participants: e.participants.map(remapMember),
+    }));
+
+    return new Trip({
+      id: tripId,
+      title: source.title,
+      status: source.status,
+      currency: source.currency,
+      version: 0,
+      startDate: source.startDate,
+      ownerId: owner.id,
+      members,
+      days: source.days.map((d) => ({ ...d })),
+      stops,
+      expenses,
+    });
   }
 
   get id(): string {

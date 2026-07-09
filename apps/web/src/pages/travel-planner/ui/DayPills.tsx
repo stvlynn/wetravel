@@ -18,7 +18,7 @@ export function DayPills({
   ];
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+    <div className="scrollbar-none flex gap-1.5 overflow-x-auto overflow-y-hidden py-1.5">
       {pills.map((p) => {
         const active = day === p.n;
         return (

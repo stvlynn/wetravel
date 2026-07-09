@@ -23,8 +23,25 @@ export interface AiConfig {
     proactiveThreshold: number;
     /** Upper bound on tool-call steps per chat generation. */
     maxToolSteps: number;
-    /** Member messages since the last assistant reply that trigger an ambient reply. */
-    replyThreshold: number;
+}
+
+export type GeoProviderName = "osm" | "google";
+
+export interface OsmGeoEndpoints {
+    nominatimBaseUrl: string;
+    overpassBaseUrl: string;
+    osrmBaseUrl: string;
+    /** Required identifying User-Agent for public OSM endpoints. */
+    userAgent: string;
+}
+
+export interface GeoConfig {
+    provider: GeoProviderName;
+    osm: OsmGeoEndpoints;
+    /** Required when provider is `google`. */
+    googleMapsApiKey: string | undefined;
+    timeoutMs: number;
+    cacheTtlMs: number;
 }
 
 export interface AppConfig {
@@ -36,6 +53,7 @@ export interface AppConfig {
     googleOAuth: GoogleOAuthConfig | null;
     captcha: CaptchaConfig | null;
     openWeatherMapApiKey: string | undefined;
+    geo: GeoConfig;
     /** Trip agent model configuration. Null disables the agent entirely. */
     ai: AiConfig | null;
 }
@@ -82,13 +100,20 @@ export interface RawEnv {
     S3_FORCE_PATH_STYLE?: string;
     OPENWEATHERMAP_API_KEY?: string;
     VITE_OPENWEATHERMAP_API_KEY?: string;
+    GEO_PROVIDER?: string;
+    GEO_OSM_NOMINATIM_URL?: string;
+    GEO_OSM_OVERPASS_URL?: string;
+    GEO_OSM_OSRM_URL?: string;
+    GEO_OSM_USER_AGENT?: string;
+    GEO_TIMEOUT_MS?: string;
+    GEO_CACHE_TTL_MS?: string;
+    GOOGLE_MAPS_API_KEY?: string;
     AI_PROVIDER?: string;
     AI_MODEL?: string;
     AI_BASE_URL?: string;
     AI_API_KEY?: string;
     AI_PROACTIVE_THRESHOLD?: string;
     AI_MAX_TOOL_STEPS?: string;
-    AI_REPLY_THRESHOLD?: string;
 }
 
 const CAPTCHA_PROVIDERS: CaptchaProvider[] = [
@@ -157,7 +182,56 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
         openWeatherMapApiKey:
           env.OPENWEATHERMAP_API_KEY?.trim() ||
           env.VITE_OPENWEATHERMAP_API_KEY?.trim(),
+        geo: parseGeoConfig(env),
         ai: parseAiConfig(env),
+    };
+}
+
+const DEFAULT_NOMINATIM_URL = "https://nominatim.openstreetmap.org";
+const DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const DEFAULT_OSRM_URL = "https://router.project-osrm.org";
+const DEFAULT_GEO_TIMEOUT_MS = 12_000;
+const DEFAULT_GEO_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/** Geo provider selection. Defaults to OSM; Google requires an API key. */
+function parseGeoConfig(env: RawEnv): GeoConfig {
+    const providerRaw = env.GEO_PROVIDER?.trim().toLowerCase() || "osm";
+    if (providerRaw !== "osm" && providerRaw !== "google") {
+        throw new Error('GEO_PROVIDER must be either "osm" or "google"');
+    }
+    const provider = providerRaw as GeoProviderName;
+    const googleMapsApiKey = env.GOOGLE_MAPS_API_KEY?.trim() || undefined;
+    if (provider === "google" && !googleMapsApiKey) {
+        throw new Error(
+            "GOOGLE_MAPS_API_KEY is required when GEO_PROVIDER=google",
+        );
+    }
+
+    const userAgent =
+        env.GEO_OSM_USER_AGENT?.trim() ||
+        "OpenTrip/0.1 (https://github.com/stvlynn/OpenTrip; geo-agent)";
+
+    return {
+        provider,
+        osm: {
+            nominatimBaseUrl:
+                env.GEO_OSM_NOMINATIM_URL?.trim() || DEFAULT_NOMINATIM_URL,
+            overpassBaseUrl:
+                env.GEO_OSM_OVERPASS_URL?.trim() || DEFAULT_OVERPASS_URL,
+            osrmBaseUrl: env.GEO_OSM_OSRM_URL?.trim() || DEFAULT_OSRM_URL,
+            userAgent,
+        },
+        googleMapsApiKey,
+        timeoutMs: parseNumber(
+            env.GEO_TIMEOUT_MS,
+            "GEO_TIMEOUT_MS",
+            DEFAULT_GEO_TIMEOUT_MS,
+        ),
+        cacheTtlMs: parseNumber(
+            env.GEO_CACHE_TTL_MS,
+            "GEO_CACHE_TTL_MS",
+            DEFAULT_GEO_CACHE_TTL_MS,
+        ),
     };
 }
 
@@ -179,7 +253,6 @@ function parseAiConfig(env: RawEnv): AiConfig | null {
             0.7,
         ),
         maxToolSteps: parseNumber(env.AI_MAX_TOOL_STEPS, "AI_MAX_TOOL_STEPS", 5),
-        replyThreshold: parseNumber(env.AI_REPLY_THRESHOLD, "AI_REPLY_THRESHOLD", 6),
     };
 }
 

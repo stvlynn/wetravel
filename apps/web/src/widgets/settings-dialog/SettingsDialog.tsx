@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CircleUserRound, Info, Settings2, X, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ProfileForm } from "@/features/edit-user-profile";
+import { CurrencySelect } from "@/features/set-default-currency";
 import { useSettings, type SettingsPane } from "@/features/settings";
 import { ThemeModeSelect } from "@/features/toggle-theme";
 import { config } from "@/shared/config";
@@ -139,6 +140,9 @@ function PreferencesPane(): React.ReactElement {
       </SettingRow>
       <SettingRow label={t("settings.appearance.label")}>
         <ThemeModeSelect />
+      </SettingRow>
+      <SettingRow label={t("settings.currency.label")}>
+        <CurrencySelect />
       </SettingRow>
     </div>
   );

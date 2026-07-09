@@ -118,19 +118,6 @@ export class PgAgentSessionRepository implements AgentSessionRepository {
     return toMessage(rows[0]!);
   }
 
-  async countUserMessagesSinceLastAssistant(tripId: string): Promise<number> {
-    const { rows } = await this.pool.query<{ count: string }>(
-      `SELECT count(*) AS count FROM agent_messages
-       WHERE trip_id = $1 AND role = 'user'
-         AND seq > COALESCE(
-           (SELECT max(seq) FROM agent_messages WHERE trip_id = $1 AND role = 'assistant'),
-           0
-         )`,
-      [tripId],
-    );
-    return Number(rows[0]?.count ?? 0);
-  }
-
   async latestSeq(tripId: string): Promise<number> {
     const { rows } = await this.pool.query<{ seq: string | null }>(
       `SELECT max(seq) AS seq FROM agent_messages WHERE trip_id = $1`,

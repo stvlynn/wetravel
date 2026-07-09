@@ -16,8 +16,7 @@ import {
   updatePreferences,
   updateAgentPanelPreference,
   fetchAgentStatus,
-  applyAgentSuggestion,
-  dismissAgentSuggestion,
+  approveAgentSuggestion,
   ApiError,
   type AgentSuggestion,
 } from "@/shared/api";
@@ -26,6 +25,7 @@ import { stopNumbers } from "@/entities/trip";
 import type { Trip } from "@/entities/trip";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
+import { cn } from "@/shared/lib";
 import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tabs } from "@/shared/ui/tabs";
@@ -37,6 +37,7 @@ import { Sidebar } from "./ui/Sidebar";
 import { AgentToggle } from "./ui/agent/AgentToggle";
 import { AgentDrawer } from "./ui/agent/AgentDrawer";
 import { AgentInterventionToasts } from "./ui/agent/AgentInterventionToast";
+import { NoteEditorPane } from "./ui/NoteEditorPane";
 import { TripMapView } from "./ui/TripMapView";
 import { ScheduleBoard, type ComposeDraft } from "./ui/ScheduleBoard";
 import { BudgetBoard } from "./ui/BudgetBoard";
@@ -62,6 +63,9 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const [tab, setTab] = useState<Tab>("map");
   const [day, setDay] = useState(0);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [noteEditingStopId, setNoteEditingStopId] = useState<string | null>(
+    null,
+  );
   const [compose, setCompose] = useState<ComposeDraft | null>(null);
   const [picking, setPicking] = useState(false);
 
@@ -164,16 +168,19 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     [agentPanelMutation],
   );
 
-  const suggestions = useAgentEvents(tripId, agentEnabled);
+  const { suggestions: agentSuggestions, newMessages } = useAgentEvents(
+    tripId,
+    agentEnabled,
+  );
   const pendingSuggestions = useMemo(
-    () => suggestions.filter((s) => s.status === "pending"),
-    [suggestions],
+    () => agentSuggestions.filter((s) => s.status === "pending"),
+    [agentSuggestions],
   );
 
   // Retire toasts and refresh the trip when someone else applies a suggestion.
   const seenPendingRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    for (const s of suggestions) {
+    for (const s of agentSuggestions) {
       if (s.status === "pending") {
         seenPendingRef.current.add(s.id);
       } else if (seenPendingRef.current.delete(s.id) && s.status === "applied") {
@@ -190,13 +197,47 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
         }
       }
     }
-  }, [suggestions, currentUserId, trip, ta, queryClient, tripId]);
+  }, [agentSuggestions, currentUserId, trip, ta, queryClient, tripId]);
 
-  const applySuggestionMutation = useMutation({
-    mutationFn: (suggestionId: string) => applyAgentSuggestion(tripId, suggestionId),
-    onSuccess: (updatedTrip) => {
-      queryClient.setQueryData(queryKeys.trip(tripId), updatedTrip);
-      toastManager.add({ title: ta("toast.applied"), type: "success" });
+  const seenMentionToastRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!agentEnabled) return;
+    for (const message of newMessages) {
+      if (message.actorUserId === currentUserId) continue;
+      if (!(message.mentionedUserIds ?? []).includes(currentUserId)) continue;
+      if (seenMentionToastRef.current.has(message.id)) continue;
+      seenMentionToastRef.current.add(message.id);
+
+      const preview = message.parts
+        .filter((p) => p.type === "text" && typeof p.text === "string")
+        .map((p) => p.text as string)
+        .join("\n")
+        .trim()
+        .slice(0, 140);
+
+      toastManager.add({
+        title: ta("mention.toastTitle", {
+          name: message.actorName ?? ta("panel.systemName"),
+        }),
+        description: preview || undefined,
+        type: "info",
+        actionProps: {
+          onClick: () => setAgentPanel(false),
+          children: ta("mention.view"),
+        },
+      });
+    }
+  }, [newMessages, currentUserId, agentEnabled, ta, setAgentPanel]);
+
+  /** Proactive suggestions use the same approval DTO as AI SDK tools. */
+  const approveSuggestionMutation = useMutation({
+    mutationFn: (input: { id: string; approved: boolean }) =>
+      approveAgentSuggestion(tripId, input),
+    onSuccess: (result, variables) => {
+      if (variables.approved && result && "id" in result) {
+        queryClient.setQueryData(queryKeys.trip(tripId), result);
+        toastManager.add({ title: ta("toast.applied"), type: "success" });
+      }
     },
     onError: (err) => {
       const stale =
@@ -213,28 +254,25 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     },
   });
 
-  const dismissSuggestionMutation = useMutation({
-    mutationFn: (suggestionId: string) => dismissAgentSuggestion(tripId, suggestionId),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.agentEvents(tripId) });
-    },
-  });
-
-  const handleApplySuggestion = useCallback(
-    (s: AgentSuggestion) => applySuggestionMutation.mutate(s.id),
-    [applySuggestionMutation],
+  const handleApproveSuggestion = useCallback(
+    (s: AgentSuggestion) =>
+      approveSuggestionMutation.mutate({ id: s.id, approved: true }),
+    [approveSuggestionMutation],
+  );
+  const handleDenySuggestion = useCallback(
+    (s: AgentSuggestion) =>
+      approveSuggestionMutation.mutate({ id: s.id, approved: false }),
+    [approveSuggestionMutation],
   );
   const handleDiscussSuggestion = useCallback(
     () => setAgentPanel(false),
     [setAgentPanel],
   );
-  const handleDismissSuggestion = useCallback(
-    (s: AgentSuggestion) => dismissSuggestionMutation.mutate(s.id),
-    [dismissSuggestionMutation],
-  );
-  const applyingSuggestionId = applySuggestionMutation.isPending
-    ? applySuggestionMutation.variables
-    : null;
+  const applyingSuggestionId =
+    approveSuggestionMutation.isPending &&
+    approveSuggestionMutation.variables?.approved
+      ? approveSuggestionMutation.variables.id
+      : null;
 
   const rename = useMutation({
     mutationFn: (title: string) => renameTrip(tripId, title),
@@ -383,9 +421,30 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
 
   const selectStop = (id: string) => {
     setSelectedStopId(id);
+    setNoteEditingStopId((current) => (current && current !== id ? null : current));
+  };
+
+  const noteEditingStop = noteEditingStopId
+    ? trip.stops.find((s) => s.id === noteEditingStopId)
+    : undefined;
+
+  useEffect(() => {
+    if (noteEditingStopId && !trip.stops.some((s) => s.id === noteEditingStopId)) {
+      setNoteEditingStopId(null);
+    }
+  }, [noteEditingStopId, trip.stops]);
+
+  const openNoteEditor = (stopId: string) => {
+    setSelectedStopId(stopId);
+    setNoteEditingStopId(stopId);
+  };
+
+  const closeNoteEditor = () => {
+    setNoteEditingStopId(null);
   };
 
   const headerSubtitle = formatTripSubtitle(trip, i18n.language, t);
+  const agentPanelOpen = agentEnabled && !agentCollapsed;
 
   return (
     <div className="flex h-dvh bg-sidebar">
@@ -415,7 +474,10 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
                 <Tabs
                   items={tabItems}
                   value={tab}
-                  onValueChange={(v) => setTab(v as Tab)}
+                  onValueChange={(v) => {
+                    setNoteEditingStopId(null);
+                    setTab(v as Tab);
+                  }}
                   aria-label={t("tabs.map")}
                   className="flex w-full"
                 />
@@ -429,6 +491,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
             onDayChange={(d) => {
               setDay(d);
               setSelectedStopId(null);
+              setNoteEditingStopId(null);
             }}
             selectedStopId={selectedStopId}
             onSelectStop={selectStop}
@@ -447,13 +510,41 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
               const index = trip.stops.filter((s) => s.day === targetDay).length;
               actions.stopMove.mutate({ stopId, day: targetDay, index });
             }}
+            onExpandNote={openNoteEditor}
           />
         </AppSidebar>
 
-        <div className="flex min-w-0 flex-1 overflow-hidden rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
+        <div className="flex min-h-0 min-w-0 flex-1">
+        <div
+          className={cn(
+            "relative z-[5] flex min-w-0 flex-1 overflow-hidden border border-border bg-background transition-[border-radius,box-shadow] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
+            agentPanelOpen
+              ? "rounded-2xl shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25),8px_0_24px_-16px_rgba(15,23,42,0.25)]"
+              : "rounded-l-2xl border-r-0 shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]",
+          )}
+        >
           <main className="relative flex min-w-0 flex-1 flex-col">
-            <div className="relative min-h-0 flex-1 overflow-auto">
-              {tab === "map" ? (
+            <div
+              className={cn(
+                "relative min-h-0 flex-1",
+                noteEditingStop ? "overflow-hidden" : "overflow-auto",
+              )}
+            >
+              {noteEditingStop ? (
+                <NoteEditorPane
+                  tripId={trip.id}
+                  editorKey={noteEditingStop.id}
+                  value={noteEditingStop.note}
+                  placeholder={t("detail.notePlaceholder")}
+                  onCommit={(note) =>
+                    actions.stopUpdate.mutate({
+                      stopId: noteEditingStop.id,
+                      patch: { note },
+                    })
+                  }
+                  onClose={closeNoteEditor}
+                />
+              ) : tab === "map" ? (
               <TripMapView
                 trip={trip}
                 numbers={numbers}
@@ -518,29 +609,35 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
             )}
           </div>
 
-          <FloatingMembers
-            tripId={trip.id}
-            members={trip.members}
-            canInvite={trip.permissions.canInvite}
-          />
-
-          {agentEnabled && !agentCollapsed ? (
-            <AgentDrawer
+          {noteEditingStop ? null : (
+            <FloatingMembers
               tripId={trip.id}
+              members={trip.members}
+              canInvite={trip.permissions.canInvite}
+            />
+          )}
+      </main>
+      </div>
+
+          {agentEnabled ? (
+            <AgentDrawer
+              open={!agentCollapsed}
+              tripId={trip.id}
+              trip={trip}
               canEdit={trip.permissions.canEdit}
-              applyingId={applyingSuggestionId ?? null}
-              onApplySuggestion={handleApplySuggestion}
+              applyingId={applyingSuggestionId}
+              onApproveSuggestion={handleApproveSuggestion}
+              onDenySuggestion={handleDenySuggestion}
               onClose={() => setAgentPanel(true)}
             />
           ) : null}
-      </main>
-      </div>
+        </div>
       </Splitter>
 
       {agentEnabled && agentCollapsed ? (
         <AgentToggle
           onOpen={() => setAgentPanel(false)}
-          reserveMapControls={tab === "map"}
+          reserveMapControls={tab === "map" && !noteEditingStop}
         />
       ) : null}
 
@@ -548,10 +645,10 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
         <AgentInterventionToasts
           suggestions={pendingSuggestions}
           canEdit={trip.permissions.canEdit}
-          applyingId={applyingSuggestionId ?? null}
-          onApply={handleApplySuggestion}
+          applyingId={applyingSuggestionId}
+          onApprove={handleApproveSuggestion}
           onDiscuss={handleDiscussSuggestion}
-          onDismiss={handleDismissSuggestion}
+          onDeny={handleDenySuggestion}
         />
       ) : null}
     </div>

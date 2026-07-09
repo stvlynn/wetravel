@@ -1,5 +1,6 @@
 import type {
   AddExpenseDraft,
+  InsertStopDraft,
   MoveStopDraft,
   UpdateDayDraft,
   UpdateStopDraft,
@@ -40,13 +41,21 @@ export type AgentSuggestionStatus = "pending" | "applied" | "stale" | "expired";
 
 export type AgentSeverity = "info" | "warning" | "critical";
 
-/** A patch the agent proposes. Restricted to operations the Trip aggregate
- * already supports; applying always goes through the normal domain methods. */
+/**
+ * A patch the agent proposes. Mirrors trip-scoped editor operations on the
+ * Trip aggregate (same surface as TripService mutations for a single trip).
+ * Applying always goes through the normal domain methods after human approval.
+ */
 export type PendingPatch =
-  | { kind: "update_stop"; stopId: string; changes: UpdateStopDraft }
-  | { kind: "move_stop"; move: MoveStopDraft }
+  | { kind: "rename_trip"; title: string }
+  | { kind: "add_day" }
+  | { kind: "delete_day"; dayNumber: number }
   | { kind: "update_day"; dayNumber: number; changes: UpdateDayDraft }
   | { kind: "reorder_days"; order: number[] }
+  | { kind: "insert_stop"; draft: InsertStopDraft }
+  | { kind: "update_stop"; stopId: string; changes: UpdateStopDraft }
+  | { kind: "move_stop"; move: MoveStopDraft }
+  | { kind: "add_expense"; draft: AddExpenseDraft }
   | { kind: "update_expense"; expenseId: string; changes: AddExpenseDraft };
 
 export interface AgentSuggestion {
@@ -98,4 +107,16 @@ export interface InterventionDecision {
   pendingPatch: PendingPatch | null;
   /** Suggestion time-to-live in minutes; null means no expiry. */
   expiresInMinutes: number | null;
+}
+
+/**
+ * Approval payload aligned with AI SDK `addToolApprovalResponse` /
+ * `ToolApprovalResponse`: `{ id, approved, reason? }`.
+ * Used for proactive suggestion apply/deny and mirrored in the chat UI.
+ */
+export interface AgentApprovalResponse {
+  /** Suggestion id (proactive) or tool approval id (chat tool parts). */
+  id: string;
+  approved: boolean;
+  reason?: string;
 }

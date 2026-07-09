@@ -1,4 +1,4 @@
-import type { FileStorage } from "../../application/avatar";
+import type { FileStorage } from "../../application/storage";
 import type { StorageConfig } from "../config";
 import { S3Storage } from "./s3-storage";
 

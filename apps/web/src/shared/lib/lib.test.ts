@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, sumMinor } from "./money";
+import {
+  convertMinorAmount,
+  formatConvertedMoney,
+  formatFxRate,
+  formatMoney,
+  sumMinor,
+} from "./money";
 import { stopNumbers } from "@/entities/trip";
 import type { Stop } from "@/entities/stop";
 
@@ -10,6 +16,38 @@ describe("formatMoney", () => {
 
   it("rounds to whole units", () => {
     expect(formatMoney(2775.5, "JPY")).toBe("¥2,776");
+  });
+});
+
+describe("convertMinorAmount", () => {
+  const rates = { JPY: 1, USD: 0.00615, EUR: 0.00539 };
+
+  it("returns the same amount when currencies match", () => {
+    expect(convertMinorAmount(1000, "JPY", "JPY", rates, "JPY")).toBe(1000);
+  });
+
+  it("converts JPY to USD with two decimal places", () => {
+    expect(convertMinorAmount(10000, "JPY", "USD", rates, "JPY")).toBe(61.5);
+  });
+
+  it("returns null when a quote is missing", () => {
+    expect(convertMinorAmount(1000, "JPY", "GBP", rates, "JPY")).toBeNull();
+  });
+});
+
+describe("formatConvertedMoney", () => {
+  it("keeps JPY as a grouped integer", () => {
+    expect(formatConvertedMoney(1200, "JPY")).toBe("¥1,200");
+  });
+
+  it("formats USD with two fraction digits", () => {
+    expect(formatConvertedMoney(61.5, "USD")).toBe("$61.50");
+  });
+});
+
+describe("formatFxRate", () => {
+  it("formats a small rate with up to six fraction digits", () => {
+    expect(formatFxRate("JPY", "USD", 0.00615)).toBe("1 JPY = 0.00615 USD");
   });
 });
 

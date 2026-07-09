@@ -1,24 +1,25 @@
 import { useTranslation } from "react-i18next";
-import { SparklesIcon } from "lucide-react";
+import { CheckIcon, SparklesIcon, XIcon } from "lucide-react";
 import type { AgentSuggestion } from "@/shared/api";
 import { Button } from "@/shared/ui/button";
 
 /** Non-blocking intervention cards in the bottom-right corner. Each pending
- * suggestion offers the three ADR actions: apply, discuss, ignore. */
+ * suggestion offers ADR actions: approve, discuss, deny — approve/deny use the
+ * same `{ id, approved }` shape as AI SDK tool approval. */
 export function AgentInterventionToasts({
   suggestions,
   canEdit,
   applyingId,
-  onApply,
+  onApprove,
   onDiscuss,
-  onDismiss,
+  onDeny,
 }: {
   suggestions: AgentSuggestion[];
   canEdit: boolean;
   applyingId: string | null;
-  onApply: (suggestion: AgentSuggestion) => void;
+  onApprove: (suggestion: AgentSuggestion) => void;
   onDiscuss: (suggestion: AgentSuggestion) => void;
-  onDismiss: (suggestion: AgentSuggestion) => void;
+  onDeny: (suggestion: AgentSuggestion) => void;
 }) {
   const { t } = useTranslation("agent");
   if (suggestions.length === 0) return null;
@@ -40,8 +41,9 @@ export function AgentInterventionToasts({
             </div>
           </div>
           <div className="mt-2.5 flex items-center justify-end gap-1.5">
-            <Button size="xs" variant="ghost" onClick={() => onDismiss(s)}>
-              {t("toast.dismiss")}
+            <Button size="xs" variant="ghost" onClick={() => onDeny(s)}>
+              <XIcon className="size-3" />
+              {t("approval.deny")}
             </Button>
             <Button size="xs" variant="outline" onClick={() => onDiscuss(s)}>
               {t("toast.discuss")}
@@ -50,9 +52,10 @@ export function AgentInterventionToasts({
               <Button
                 size="xs"
                 disabled={applyingId === s.id}
-                onClick={() => onApply(s)}
+                onClick={() => onApprove(s)}
               >
-                {t("toast.apply")}
+                <CheckIcon className="size-3" />
+                {t("approval.approve")}
               </Button>
             ) : null}
           </div>

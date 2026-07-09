@@ -20,6 +20,8 @@ export interface AgentMessage {
   actorUserId: string | null;
   actorName: string | null;
   source: AgentMessageSource;
+  /** Better Auth user ids @mentioned in this message (excluding the author). */
+  mentionedUserIds: string[];
   createdAt: string;
 }
 
@@ -48,6 +50,16 @@ export interface AgentEvents {
   suggestions: AgentSuggestion[];
 }
 
+/**
+ * Mirrors AI SDK `addToolApprovalResponse({ id, approved, reason? })`.
+ * Used for proactive suggestion approve/deny on the server.
+ */
+export interface AgentApprovalResponse {
+  id: string;
+  approved: boolean;
+  reason?: string;
+}
+
 export function fetchAgentStatus(): Promise<{ enabled: boolean }> {
   return apiFetch<{ enabled: boolean }>("/api/agent/status");
 }
@@ -59,8 +71,8 @@ export function fetchAgentMessages(tripId: string): Promise<AgentHistory> {
 export function postAgentMessage(
   tripId: string,
   text: string,
-): Promise<{ thresholdReached: boolean }> {
-  return apiFetch<{ thresholdReached: boolean }>(
+): Promise<{ addressed: boolean }> {
+  return apiFetch<{ addressed: boolean }>(
     `/api/trips/${tripId}/agent/messages`,
     { method: "POST", body: JSON.stringify({ text }) },
   );
@@ -75,13 +87,28 @@ export function fetchAgentEvents(
   );
 }
 
+/** Approve or deny a proactive suggestion (AI SDK approval DTO). */
+export function approveAgentSuggestion(
+  tripId: string,
+  approval: AgentApprovalResponse,
+): Promise<Trip | { dismissed: boolean }> {
+  return apiFetch<Trip | { dismissed: boolean }>(
+    `/api/trips/${tripId}/agent/suggestions/${approval.id}/approve`,
+    { method: "POST", body: JSON.stringify(approval) },
+  );
+}
+
+/** @deprecated Prefer `approveAgentSuggestion` with `{ approved: true }`. */
 export function applyAgentSuggestion(
   tripId: string,
   suggestionId: string,
 ): Promise<Trip> {
   return apiFetch<Trip>(
     `/api/trips/${tripId}/agent/suggestions/${suggestionId}/apply`,
-    { method: "POST", body: JSON.stringify({}) },
+    {
+      method: "POST",
+      body: JSON.stringify({ id: suggestionId, approved: true }),
+    },
   );
 }
 
@@ -91,6 +118,9 @@ export function dismissAgentSuggestion(
 ): Promise<{ dismissed: boolean }> {
   return apiFetch<{ dismissed: boolean }>(
     `/api/trips/${tripId}/agent/suggestions/${suggestionId}/dismiss`,
-    { method: "POST", body: JSON.stringify({}) },
+    {
+      method: "POST",
+      body: JSON.stringify({ id: suggestionId, approved: false }),
+    },
   );
 }

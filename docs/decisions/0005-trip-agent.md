@@ -123,35 +123,40 @@ when the product knows what risk they represent.
 - The toast includes a concise reason and enough pending patch detail for the
   user to understand what will change before applying.
 - Toast actions are localized through i18n keys. Initial English labels:
-  - `Apply suggestion`
+  - `Approve`
   - `Discuss`
-  - `Dismiss`
+  - `Deny`
 - Initial Simplified Chinese labels:
-  - `应用建议`
+  - `批准`
   - `讨论`
-  - `忽略`
-- `Apply suggestion` applies exactly the displayed pending patch.
+  - `拒绝`
+- `Approve` applies exactly the displayed pending patch (approval DTO:
+  `{ id, approved: true }`).
 - `Discuss` opens the right-side agent panel and continues in the shared trip
   session with the intervention as context.
-- `Dismiss` hides the toast for that user only; it does not delete the shared
-  event or hide it from other members.
+- `Deny` hides the toast for that user only (`{ id, approved: false }`); it does
+  not delete the shared event or hide it from other members.
+- Chat write-tool approvals use the same Approve/Deny affordance and the AI SDK
+  `addToolApprovalResponse` API so the wire format stays consistent.
 
 ### Applying Suggestions
 
-- The agent may propose a pending patch, but it does not mutate trip data during
-  the evaluation step.
-- Applying a suggestion calls an application use case that:
+- The agent may propose a pending patch (proactive path) or a write tool call
+  (chat path), but it does not mutate trip data until a human approves.
+- Approving a proactive suggestion calls an application use case that:
   - reloads the current trip,
   - checks the caller's permissions,
   - verifies the patch still applies to the referenced trip version,
   - runs the normal domain operation,
-  - records the apply action in the agent session history.
+  - records the approve action in the agent session history.
+- Approving a chat write tool uses AI SDK tool approval; after approval the
+  tool's `execute` runs the same domain operations.
 - If the trip has changed and the patch is stale, the apply attempt is rejected
   and the agent may be asked to regenerate the suggestion.
-- If multiple online users see the same toast, the first successful apply wins.
+- If multiple online users see the same toast, the first successful approve wins.
   Other clients receive the updated suggestion status.
-- Agent-authored writes are attributed to the member who clicked apply, with
-  agent suggestion metadata attached for audit.
+- Agent-authored writes are attributed to the member who approved, with
+  agent suggestion / tool metadata attached for audit.
 
 ### Model and Environment Configuration
 
@@ -176,12 +181,26 @@ when the product knows what risk they represent.
 - The prompt requires the agent to prefer no response unless a change creates a
   meaningful risk for the itinerary, weather fit, duplication, route sanity, or
   budget integrity.
-- Read tools may inspect the current trip state, recent operation events, and
-  relevant derived checks.
-- Write tools are not exposed directly to the model. The model returns a
-  pending patch, and OpenTrip applies it through application use cases only
-  after a permitted user chooses `Apply suggestion`.
+- Read tools may run immediately (for example weather). They must not mutate
+  trip state.
+- Write tools are **generated** from the application-layer trip ops registry
+  (`application/trip/ops`) and projected into the Vercel AI SDK via
+  `Object.fromEntries` + `tool()`. They always require human approval via AI
+  SDK `toolApproval: 'user-approval'`. The model may *propose* a change by
+  calling a tool; `execute` runs only after a permitted member responds with
+  AI SDK `addToolApprovalResponse({ id, approved, reason? })`. New trip CRUD
+  is added as a registry entry (not a hand-written tool block in the adapter).
+- Write tool `execute` implementations call OpenTrip application/domain use
+  cases only — never raw SQL or ad-hoc state mutation. Attribution remains with
+  the approving member.
+- Viewers cannot approve write tools (server auto-denies via `toolApproval`).
+- Proactive intervention (operation evaluation) still returns a structured
+  pending patch and stores it as a shared suggestion for multi-member toasts.
+  Approving that suggestion uses the **same DTO shape** as AI SDK approval:
+  `{ id, approved, reason? }` (`POST …/suggestions/:id/approve`).
 - The prompt must not include secrets, raw credentials, or unrelated user data.
+- Chat uses `experimental_toolApprovalSecret` so clients cannot forge approval
+  responses for write tools.
 
 ## Consequences
 

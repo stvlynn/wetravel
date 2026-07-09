@@ -37,5 +37,6 @@ See [handoff-implementation.md](handoff-implementation.md).
 - Email delivery (verification/reset emails and invite emails are not wired to a
   provider; invites are shared as links). Members join via an invite link with a
   configurable access scope, role, can-invite flag, and custom expiry.
-- Multi-currency conversion (amounts are stored and shown in JPY like the
-  prototype).
+- Multi-currency conversion for expense storage and balances (amounts remain in
+  the trip currency; settle-up can *display* transfers in another currency via
+  the FX proxy — see [../backend/fx.md](../backend/fx.md)).

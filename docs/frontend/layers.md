@@ -26,12 +26,35 @@ widgets and features. Two pages:
 
   The trip agent (see [../backend/agent.md](../backend/agent.md)) is also
   page-private: `ui/agent/` holds the top-right sparkle toggle (mirroring the
-  left sidebar's expand control), the inset right drawer with the shared chat,
-  and the bottom-right intervention cards; `model/useAgentChat.ts` wraps AI SDK
-  UI's `useChat` (streaming buffer only — the shared history lives in React
-  Query), and `model/useAgentEvents.ts` polls the session every 12 s for all
-  members. The panel's collapsed state persists via the preferences API. All of
-  it renders only when `GET /api/agent/status` reports the agent enabled.
+  left sidebar's expand control), the right agent panel with the shared chat —
+  a `bg-sidebar` base layer mirroring the left `AppSidebar` that reveals via a
+  width transition, so the main panel rounds both edges when it is open — and
+  the bottom-right intervention cards (Approve/Deny, AI SDK approval DTO).
+  Write-tool approval cards render the tool arguments through
+  `ui/agent/AgentToolPreview.tsx`, which reuses the planner's own `StopCard`
+  for stop mutations (and a labeled expense row / one-line summaries for the
+  other tools) so the trip receives a rendered DTO preview, never raw JSON;
+  assistant bubbles render Markdown via [Streamdown](https://streamdown.ai)
+  (AI SDK UI's streaming Markdown path) with the shared `.wf-markdown`
+  typography; reasoning parts render through `ui/agent/AgentReasoning.tsx`, a
+  Collapsible modeled on AI SDK UI's `Reasoning` element (auto-opens while the
+  model thinks, auto-collapses ~1 s after it finishes, and caps its content in a
+  scrollable max-height container); the composer (`ui/agent/AgentComposer.tsx`)
+  offers an inline `@`-mention list of trip members and the agent that opens
+  only when `@` is typed (never on paste/drop), filters as you type, and is
+  navigated with Up/Down + Tab/Enter to insert (Escape dismisses); member
+  mentions persist a `mentions` part on the message and polled clients show a
+  toast to each @mentioned user (never the author); `@agent` routes through the
+  streaming `useChat` path so reasoning/tool approval stay live;
+  `model/useAgentChat.ts` wraps AI SDK UI's
+  `useChat` with
+  `addToolApprovalResponse` and `sendAutomaticallyWhen` for write-tool
+  approvals (streaming buffer only — the shared history lives in React Query;
+  chat turns reuse the client UIMessage id on persist so live vs history
+  dedupe by id), and `model/useAgentEvents.ts` polls the session every 12 s
+  for all members. The panel's collapsed state persists via the preferences
+  API. All of it renders only when `GET /api/agent/status` reports the agent
+  enabled.
 
 Pages may hold page-specific state and data fetching (Pages First).
 

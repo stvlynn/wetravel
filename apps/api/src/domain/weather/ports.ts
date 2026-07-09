@@ -1,14 +1,19 @@
-import type { TimelineResponse } from "../../infrastructure/weather/onecall-types";
+import type {
+  WeatherForecastQuery,
+  WeatherForecastSnapshot,
+} from "./types";
 
-export type TimelineStep = "1h" | "1day";
+export type {
+  WeatherGranularity,
+  WeatherForecastQuery,
+  WeatherForecastSnapshot,
+  WeatherForecastEntry,
+  WeatherConditionSnapshot,
+  DailyTempSnapshot,
+  DailyFeelsLikeSnapshot,
+} from "./types";
 
+/** Driven port: fetch a forecast snapshot for a coordinate and time window. */
 export interface WeatherClient {
-  timeline(
-    step: TimelineStep,
-    lat: number,
-    lon: number,
-    start: number,
-    lang: string,
-    cnt?: number,
-  ): Promise<TimelineResponse>;
+  fetchForecast(query: WeatherForecastQuery): Promise<WeatherForecastSnapshot>;
 }

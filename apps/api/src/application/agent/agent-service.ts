@@ -1,5 +1,6 @@
 import { DomainError, NotFoundError } from "../../domain/shared/errors";
 import type {
+  AgentClientUIMessage,
   AgentMessage,
   AgentModel,
   AgentSessionRepository,
@@ -9,12 +10,16 @@ import type {
 import type { Trip, TripRepository } from "../../domain/trip";
 import { ForbiddenError } from "../use-cases";
 import { toTripDto, type TripDto } from "../dto";
+import { applyTripOp } from "../trip/ops";
 import {
   toAgentMessageDto,
   toAgentSuggestionDto,
   type AgentEventsDto,
   type AgentHistoryDto,
 } from "./dto";
+import { buildUserMessageParts, containsAgentMention } from "./mentions";
+
+export { containsAgentMention } from "./mentions";
 
 /** Thrown when an apply attempt loses a race or targets a stale suggestion.
  * Mapped to HTTP 409 at the edge. */
@@ -36,11 +41,8 @@ export type Defer = (task: Promise<void>) => void;
 export interface AgentServiceOptions {
   /** Minimum model confidence before a proactive suggestion is created. */
   proactiveThreshold: number;
-  /** User messages since the last assistant reply that trigger an ambient reply. */
-  replyThreshold: number;
 }
 
-const MENTION_PATTERN = /@agent\b/i;
 const HISTORY_LIMIT = 200;
 const CHAT_CONTEXT_LIMIT = 50;
 /** Status changes stay in the polling window this long so clients can retire toasts. */
@@ -48,10 +50,6 @@ const SUGGESTION_UPDATE_WINDOW_MS = 10 * 60 * 1000;
 
 function newId(prefix: string): string {
   return `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function containsAgentMention(text: string): boolean {
-  return MENTION_PATTERN.test(text);
 }
 
 /** Use cases for the shared per-trip agent session: chat, operation-triggered
@@ -130,54 +128,71 @@ export class AgentService {
     };
   }
 
-  /** Persist a plain (non-mention) member message. When the ambient reply
-   * threshold is reached, a reply is generated in the background and lands in
-   * the session for everyone via polling. */
+  /** Persist a plain (non-streaming) member message. Every message is read by
+   * the model; an ambient reply is generated only when the agent judges that
+   * it was addressed (explicit @agent, a direct ask, or a clear request). */
   async postMessage(
     tripId: string,
     userId: string,
     text: string,
     defer: Defer,
-  ): Promise<{ thresholdReached: boolean }> {
+  ): Promise<{ addressed: boolean }> {
     const trip = await this.loadReadable(tripId, userId);
     const trimmed = text.trim();
     if (!trimmed) throw new DomainError("empty_message", "Message text is required");
 
+    const explicitMention = containsAgentMention(trimmed);
     await this.appendMessage(trip, {
       role: "user",
-      parts: [{ type: "text", text: trimmed }],
+      parts: buildUserMessageParts(trimmed, trip, userId),
       actorUserId: userId,
-      source: containsAgentMention(trimmed) ? "mention" : "chat",
+      source: explicitMention ? "mention" : "chat",
     });
 
-    const sinceLastReply =
-      await this.sessionRepo.countUserMessagesSinceLastAssistant(tripId);
-    const thresholdReached =
-      this.options.replyThreshold > 0 &&
-      sinceLastReply >= this.options.replyThreshold;
-
-    if (thresholdReached) {
+    // Explicit @agent always replies; otherwise ask the model whether this
+    // message is addressing the agent. Member-to-member chatter stays quiet.
+    if (explicitMention) {
       defer(this.generateAmbientReply(tripId));
+      return { addressed: true };
     }
-    return { thresholdReached };
+
+    defer(this.maybeReplyIfAddressed(tripId, trimmed));
+    return { addressed: false };
   }
 
-  /** Stream a reply to an explicit chat/mention message. The user message (if
-   * present) is persisted before generation; the assistant message is
-   * persisted when the stream finishes. */
+  /**
+   * Stream a reply to an explicit chat/mention message, or continue after the
+   * client sends AI SDK tool-approval responses.
+   *
+   * - Fresh turn (`approvalContinue = false`): persist the user text, then stream.
+   * - Approval continue: do not re-persist the user message; streamText executes
+   *   approved write tools via `applyPatch` and streams the follow-up.
+   */
   async streamChat(
     tripId: string,
     userId: string,
-    text: string | null,
+    input: {
+      text: string | null;
+      /** Client UIMessage id from useChat — reused so the live buffer and
+       * shared history dedupe by the same key while streaming. */
+      clientMessageId?: string;
+      clientMessages?: AgentClientUIMessage[];
+      approvalContinue?: boolean;
+    },
   ): Promise<Response> {
     const trip = await this.loadReadable(tripId, userId);
+    const canEdit = trip.permissionsFor(userId).canEdit;
+    const approvalContinue = input.approvalContinue === true;
 
-    if (text !== null) {
-      const trimmed = text.trim();
+    if (!approvalContinue && input.text !== null) {
+      const trimmed = input.text.trim();
       if (!trimmed) throw new DomainError("empty_message", "Message text is required");
       await this.appendMessage(trip, {
+        // Prefer the AI SDK client id so AgentChat can filter live vs
+        // persisted with `persistedIds.has(m.id)` during the stream.
+        id: input.clientMessageId?.trim() || undefined,
         role: "user",
-        parts: [{ type: "text", text: trimmed }],
+        parts: buildUserMessageParts(trimmed, trip, userId),
         actorUserId: userId,
         source: containsAgentMention(trimmed) ? "mention" : "chat",
       });
@@ -186,11 +201,51 @@ export class AgentService {
     const history = await this.sessionRepo.listMessages(tripId, {
       limit: CHAT_CONTEXT_LIMIT,
     });
+
+    let patchQueue: Promise<void> = Promise.resolve();
+    const applyPatchSequentially = (patch: PendingPatch) => {
+      const run = async () => {
+        try {
+          // AI SDK can execute multiple approved tool calls concurrently. Run
+          // them one at a time so each patch reloads the trip after the prior
+          // patch has saved the aggregate.
+          const editable = await this.loadEditable(tripId, userId);
+          return await this.applyPatch(editable, patch, userId);
+        } catch (err) {
+          const message =
+            err instanceof Error ? err.message : "Failed to apply trip change";
+          return { ok: false as const, error: message };
+        }
+      };
+      const result = patchQueue.then(run, run);
+      patchQueue = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    };
+
     return this.model.streamChat({
       trip: trip.toSnapshot(),
       history,
-      onFinish: async (parts) => {
+      clientMessages: input.clientMessages,
+      canEdit,
+      applyPatch: applyPatchSequentially,
+      onFinish: async (parts, messageId) => {
+        // Do not persist mid-turn tool-approval pauses — the client keeps the
+        // live UIMessage until addToolApprovalResponse continues the stream.
+        // Persisting approval-requested parts would leave a dead card in the
+        // shared history that other clients cannot resume.
+        const awaitingApproval = parts.some((p) => {
+          if (typeof p !== "object" || p === null) return false;
+          return (p as { state?: unknown }).state === "approval-requested";
+        });
+        if (awaitingApproval) return;
+
         await this.appendMessage(trip, {
+          // Reuse the streamed UIMessage id so the client can drop the live
+          // bubble once history refetches (same key as useChat).
+          id: messageId,
           role: "assistant",
           parts,
           actorUserId: null,
@@ -224,17 +279,35 @@ export class AgentService {
     const trip = await this.load(tripId);
     await this.appendMessage(trip, {
       role: "user",
-      parts: [{ type: "text", text }],
+      parts: buildUserMessageParts(text, trip, userId),
       actorUserId: userId,
       source: "mention",
     });
     defer(this.generateAmbientReply(tripId));
   }
 
+  /**
+   * Respond to a proactive suggestion using the AI SDK approval shape
+   * `{ id, approved, reason? }`. `approved: true` applies the patch through
+   * the domain; `approved: false` dismisses the toast for this user only.
+   */
+  async respondToSuggestion(
+    tripId: string,
+    userId: string,
+    approval: { id: string; approved: boolean; reason?: string },
+  ): Promise<TripDto | { dismissed: true }> {
+    if (!approval.approved) {
+      await this.dismissSuggestion(tripId, approval.id, userId);
+      return { dismissed: true };
+    }
+    return this.applySuggestion(tripId, approval.id, userId, approval.reason);
+  }
+
   async applySuggestion(
     tripId: string,
     suggestionId: string,
     userId: string,
+    reason?: string,
   ): Promise<TripDto> {
     const trip = await this.loadEditable(tripId, userId);
     const suggestion = await this.sessionRepo.findSuggestion(suggestionId);
@@ -269,7 +342,11 @@ export class AgentService {
     }
 
     try {
-      await this.applyPatch(trip, suggestion.patch);
+      const applied = await this.applyPatch(trip, suggestion.patch, userId);
+      if (!applied.ok) {
+        await this.sessionRepo.setStatus(suggestionId, "stale");
+        throw new DomainError("patch_failed", applied.error);
+      }
     } catch (err) {
       // The patch no longer fits the trip; surface it as stale, not applied.
       await this.sessionRepo.setStatus(suggestionId, "stale");
@@ -277,10 +354,14 @@ export class AgentService {
     }
 
     const actorName = trip.memberByUserId(userId)?.name ?? "A member";
+    const reasonSuffix = reason?.trim() ? ` (${reason.trim()})` : "";
     await this.appendMessage(trip, {
       role: "system",
       parts: [
-        { type: "text", text: `${actorName} applied the suggestion: ${suggestion.suggestionText}` },
+        {
+          type: "text",
+          text: `${actorName} approved the suggestion: ${suggestion.suggestionText}${reasonSuffix}`,
+        },
       ],
       actorUserId: userId,
       source: "threshold",
@@ -307,14 +388,38 @@ export class AgentService {
 
   private async appendMessage(
     trip: Trip,
-    message: Pick<AgentMessage, "role" | "parts" | "actorUserId" | "source">,
+    message: Pick<AgentMessage, "role" | "parts" | "actorUserId" | "source"> & {
+      id?: string;
+    },
   ): Promise<AgentMessage> {
+    const { id, ...rest } = message;
     return this.sessionRepo.appendMessage({
-      id: newId("am"),
+      id: id && id.length > 0 ? id : newId("am"),
       tripId: trip.id,
       tripVersion: trip.toSnapshot().version,
-      ...message,
+      ...rest,
     });
+  }
+
+  private async maybeReplyIfAddressed(
+    tripId: string,
+    messageText: string,
+  ): Promise<void> {
+    try {
+      const trip = await this.load(tripId);
+      const history = await this.sessionRepo.listMessages(tripId, {
+        limit: CHAT_CONTEXT_LIMIT,
+      });
+      const addressed = await this.model.isAddressed({
+        trip: trip.toSnapshot(),
+        history,
+        messageText,
+      });
+      if (!addressed) return;
+      await this.generateAmbientReply(tripId);
+    } catch (err) {
+      console.error("Agent addressed-message check failed:", err);
+    }
   }
 
   private async generateAmbientReply(tripId: string): Promise<void> {
@@ -393,30 +498,11 @@ export class AgentService {
     }
   }
 
-  /** Run the pending patch through the normal domain operations. */
-  private async applyPatch(trip: Trip, patch: PendingPatch): Promise<void> {
-    switch (patch.kind) {
-      case "update_stop":
-        trip.updateStop(patch.stopId, patch.changes);
-        await this.tripRepo.save(trip);
-        return;
-      case "move_stop":
-        trip.moveStop(patch.move);
-        await this.tripRepo.save(trip);
-        return;
-      case "update_day": {
-        const day = trip.updateDay(patch.dayNumber, patch.changes);
-        await this.tripRepo.updateDay(trip.id, day);
-        return;
-      }
-      case "reorder_days":
-        trip.reorderDays(patch.order);
-        await this.tripRepo.reorderDays(trip);
-        return;
-      case "update_expense":
-        trip.updateExpense(patch.expenseId, patch.changes);
-        await this.tripRepo.save(trip);
-        return;
-    }
+  /** Run the pending patch via the trip ops catalog (domain + repository). */
+  private applyPatch(trip: Trip, patch: PendingPatch, actorUserId: string) {
+    return applyTripOp(
+      { trip, actorUserId, tripRepo: this.tripRepo },
+      patch,
+    );
   }
 }

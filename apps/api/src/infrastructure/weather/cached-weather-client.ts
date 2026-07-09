@@ -1,8 +1,12 @@
-import type { TimelineStep, WeatherClient } from "../../domain/weather/ports";
-import type { TimelineResponse } from "./onecall-types";
+import type {
+  WeatherClient,
+  WeatherForecastQuery,
+  WeatherForecastSnapshot,
+  WeatherGranularity,
+} from "../../domain/weather";
 
 interface CacheEntry {
-  value: TimelineResponse;
+  value: WeatherForecastSnapshot;
   expiresAt: number;
 }
 
@@ -12,23 +16,24 @@ const DAILY_BUCKET_SECONDS = 10 * 24 * 60 * 60; // 10 days
 
 export class CachedWeatherClient implements WeatherClient {
   private cache = new Map<string, CacheEntry>();
-  private inFlight = new Map<string, Promise<TimelineResponse>>();
+  private inFlight = new Map<string, Promise<WeatherForecastSnapshot>>();
 
   constructor(
     private client: WeatherClient,
     private ttlMs: number = ONE_HOUR_MS,
   ) {}
 
-  async timeline(
-    step: TimelineStep,
-    lat: number,
-    lon: number,
-    start: number,
-    lang: string,
-    cnt = 10,
-  ): Promise<TimelineResponse> {
-    const cacheStart = bucketStart(step, start);
-    const key = `${step}:${roundCoordinate(lat)}:${roundCoordinate(lon)}:${cacheStart}:${lang}:${cnt}`;
+  async fetchForecast(query: WeatherForecastQuery): Promise<WeatherForecastSnapshot> {
+    const cacheStart = bucketStart(query.granularity, query.start);
+    const count = query.count ?? 10;
+    const key = [
+      query.granularity,
+      roundCoordinate(query.lat),
+      roundCoordinate(query.lon),
+      cacheStart,
+      query.lang,
+      count,
+    ].join(":");
 
     const cached = this.cache.get(key);
     const now = Date.now();
@@ -38,7 +43,11 @@ export class CachedWeatherClient implements WeatherClient {
     }
 
     const stale = cached?.value;
-    const refresh = this.startRefresh(key, step, lat, lon, cacheStart, lang, cnt);
+    const refresh = this.startRefresh(key, {
+      ...query,
+      start: cacheStart,
+      count,
+    });
 
     if (stale) {
       // Return the stale response immediately and refresh in the background.
@@ -52,17 +61,12 @@ export class CachedWeatherClient implements WeatherClient {
 
   private startRefresh(
     key: string,
-    step: TimelineStep,
-    lat: number,
-    lon: number,
-    start: number,
-    lang: string,
-    cnt: number,
-  ): Promise<TimelineResponse> {
+    query: WeatherForecastQuery,
+  ): Promise<WeatherForecastSnapshot> {
     let refresh = this.inFlight.get(key);
     if (!refresh) {
       refresh = this.client
-        .timeline(step, lat, lon, start, lang, cnt)
+        .fetchForecast(query)
         .then((value) => {
           this.cache.set(key, { value, expiresAt: Date.now() + this.ttlMs });
           return value;
@@ -80,8 +84,8 @@ function roundCoordinate(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-function bucketStart(step: TimelineStep, start: number): number {
-  if (step === "1h") {
+function bucketStart(granularity: WeatherGranularity, start: number): number {
+  if (granularity === "hourly") {
     return Math.floor(start / HOURLY_BUCKET_SECONDS) * HOURLY_BUCKET_SECONDS;
   }
   return Math.floor(start / DAILY_BUCKET_SECONDS) * DAILY_BUCKET_SECONDS;

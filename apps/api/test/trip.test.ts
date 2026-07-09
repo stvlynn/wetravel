@@ -23,9 +23,22 @@ describe("Trip aggregate", () => {
     expect(s.days[0]!.date).toBe(s.startDate);
     expect(s.days[0]!.dateLabel).toBe("");
     expect(s.members).toEqual([
-      expect.objectContaining({ id: "u1", initials: "AL", image: null, isCurrentUser: true }),
+      expect.objectContaining({ userId: "u1", initials: "AL", image: null, isCurrentUser: true }),
     ]);
-    expect(trip.currentMemberId()).toBe("u1");
+    expect(trip.currentMemberId()).toBe(s.members[0]!.id);
+  });
+
+  it("uses trip-local owner member ids so one user can create multiple trips", () => {
+    const first = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    const second = Trip.create({ title: "Tokyo" }, { id: "u1", name: "Ada" });
+
+    const firstOwner = first.toSnapshot().members[0]!;
+    const secondOwner = second.toSnapshot().members[0]!;
+    expect(firstOwner.userId).toBe("u1");
+    expect(secondOwner.userId).toBe("u1");
+    expect(firstOwner.id).not.toBe(secondOwner.id);
+    expect(firstOwner.id).not.toBe("u1");
+    expect(secondOwner.id).not.toBe("u1");
   });
 
   it("carries the owner's avatar image into the member snapshot", () => {
@@ -328,6 +341,58 @@ describe("Trip aggregate", () => {
         participants: ["lynn"],
       }),
     ).toThrow();
+  });
+});
+
+describe("Trip.cloneFromTemplate", () => {
+  it("gives the new user a personal copy with remapped ids", () => {
+    const template = freshTrip();
+    const clone = Trip.cloneFromTemplate(template, {
+      id: "user-ada",
+      name: "Ada Lovelace",
+      image: "https://example.com/ada.png",
+    });
+    const s = clone.toSnapshot();
+    const templateSnap = template.toSnapshot();
+
+    expect(s.id).not.toBe(templateSnap.id);
+    expect(s.id).toMatch(/^t/);
+    expect(s.ownerId).toBe("user-ada");
+    expect(s.version).toBe(0);
+    expect(s.title).toBe(templateSnap.title);
+    expect(s.days).toHaveLength(templateSnap.days.length);
+    expect(s.stops).toHaveLength(templateSnap.stops.length);
+    expect(s.expenses).toHaveLength(templateSnap.expenses.length);
+
+    const owner = s.members.find((m) => m.role === "owner");
+    expect(owner).toMatchObject({
+      userId: "user-ada",
+      name: "Ada Lovelace",
+      image: "https://example.com/ada.png",
+      isCurrentUser: true,
+    });
+    expect(owner?.id).not.toBe("user-ada");
+    expect(s.members.filter((m) => m.userId)).toHaveLength(1);
+    expect(s.members).toHaveLength(templateSnap.members.length);
+
+    const memberIds = new Set(s.members.map((m) => m.id));
+    for (const stop of s.stops) {
+      expect(stop.id).not.toBe(templateSnap.stops.find((t) => t.name === stop.name)?.id);
+      expect(memberIds.has(stop.createdBy)).toBe(true);
+      for (const vote of stop.votes) expect(memberIds.has(vote)).toBe(true);
+      for (const comment of stop.comments) expect(memberIds.has(comment.author)).toBe(true);
+    }
+    for (const expense of s.expenses) {
+      expect(memberIds.has(expense.payer)).toBe(true);
+      for (const p of expense.participants) expect(memberIds.has(p)).toBe(true);
+    }
+
+    expect(clone.permissionsFor("user-ada")).toEqual({
+      isMember: true,
+      canEdit: true,
+      canInvite: true,
+    });
+    expect(clone.actingMemberId("user-ada")).toBe(owner?.id);
   });
 });
 

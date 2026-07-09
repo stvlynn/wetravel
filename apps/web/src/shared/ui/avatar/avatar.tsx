@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
-import { cn, planetAvatarUrl } from "@/shared/lib";
+import { cn, gradientAvatarUrl } from "@/shared/lib";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
 
 export interface AvatarProps {
@@ -10,9 +10,9 @@ export interface AvatarProps {
   /** Optional image URL. When provided and loadable, it replaces the fallback. */
   src?: string | null;
   /**
-   * Stable identity used to generate a deterministic planet-style fallback
-   * avatar when no `src` renders. When omitted, the fallback is a plain
-   * `bg`/`fg` color chip.
+   * Stable identity used to generate a deterministic gradient fallback avatar
+   * when no `src` renders. When omitted, the fallback is a plain `bg`/`fg`
+   * color chip.
    */
   seed?: string;
   size?: number;
@@ -35,7 +35,10 @@ export function Avatar({
   className,
 }: AvatarProps) {
   const stacked = stackIndex != null;
-  const planetUri = useMemo(() => (seed ? planetAvatarUrl(seed) : null), [seed]);
+  const fallbackUri = useMemo(
+    () => (seed ? gradientAvatarUrl(seed) : null),
+    [seed],
+  );
   return (
     <Tooltip>
       <TooltipTrigger
@@ -66,11 +69,11 @@ export function Avatar({
         <AvatarPrimitive.Fallback
           data-slot="avatar-fallback"
           className="flex size-full items-center justify-center rounded-full"
-          style={planetUri ? undefined : { background: bg, color: fg }}
+          style={fallbackUri ? undefined : { background: bg, color: fg }}
         >
-          {planetUri ? (
+          {fallbackUri ? (
             <img
-              src={planetUri}
+              src={fallbackUri}
               alt=""
               aria-hidden="true"
               draggable={false}

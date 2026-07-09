@@ -21,6 +21,7 @@ export interface SidebarProps {
   commentPending?: boolean;
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
   onChangeStopDay: (stopId: string, day: number) => void;
+  onExpandNote: (stopId: string) => void;
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -51,6 +52,7 @@ export function Sidebar(props: SidebarProps) {
           commentPending={props.commentPending}
           onUpdateStop={props.onUpdateStop}
           onChangeStopDay={props.onChangeStopDay}
+          onExpandNote={() => props.onExpandNote(selectedStop.id)}
         />
       ) : (
         <>

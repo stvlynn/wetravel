@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Maximize2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import type { Trip } from "@/entities/trip";
@@ -10,7 +11,7 @@ import {
 } from "@/entities/stop";
 import type { TripMember } from "@/entities/member";
 import type { UpdateStopInput } from "@/shared/api";
-import { cn, CURRENCIES, formatMoney } from "@/shared/lib";
+import { cn, CURRENCIES, formatMoney, interactive } from "@/shared/lib";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -29,7 +30,6 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Spinner } from "@/shared/ui/spinner";
-import { Textarea } from "@/shared/ui/textarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
 
 const CATEGORY_OPTIONS: StopCategory[] = [
@@ -261,77 +261,54 @@ function NoteMarkdown({ value }: { value: string }) {
   );
 }
 
-/** Note block that turns into a textarea on click, committing on blur/Escape.
- * Falls back to a read-only Markdown render when the user cannot edit. */
+/** Note preview in the stop detail. Expand opens the main-pane editor. */
 function InlineNote({
   value,
-  onCommit,
   canEdit,
   ariaLabel,
   placeholder,
+  onExpand,
 }: {
   value: string;
-  onCommit: (next: string) => void;
   canEdit: boolean;
   ariaLabel: string;
   placeholder: string;
+  onExpand: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => setDraft(value), [value]);
+  const { t } = useTranslation("planner");
 
   if (!canEdit) {
     return value ? <NoteMarkdown value={value} /> : null;
   }
 
-  const commit = () => {
-    setEditing(false);
-    const next = draft.trim();
-    if (next !== value) onCommit(next);
-    else setDraft(value);
-  };
-
-  if (editing) {
-    return (
-      <Textarea
-        autoFocus
-        value={draft}
-        aria-label={ariaLabel}
-        placeholder={placeholder}
-        rows={4}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setDraft(value);
-            setEditing(false);
-          }
-        }}
-        className="rounded-lg"
-      />
-    );
-  }
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => setEditing(true)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setEditing(true);
-        }
-      }}
-      title={ariaLabel}
-      className="cursor-text rounded-lg text-left"
-    >
-      {value ? (
-        <NoteMarkdown value={value} />
-      ) : (
-        <span className="text-sm text-muted-foreground">{placeholder}</span>
-      )}
+    <div className="group relative -m-1 rounded-xl p-1 transition-[background-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent/60">
+      <button
+        type="button"
+        onClick={onExpand}
+        title={ariaLabel}
+        aria-label={ariaLabel}
+        className="w-full cursor-text rounded-lg p-1 text-left"
+      >
+        {value ? (
+          <NoteMarkdown value={value} />
+        ) : (
+          <span className="text-sm text-pretty text-muted-foreground">
+            {placeholder}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label={t("detail.expandNote")}
+        className={cn(
+          "absolute right-0 top-0 inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-[opacity,background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-accent hover:text-foreground",
+          interactive,
+        )}
+      >
+        <Maximize2 aria-hidden="true" className="size-4" />
+      </button>
     </div>
   );
 }
@@ -595,6 +572,7 @@ export function StopDetail({
   commentPending = false,
   onUpdateStop,
   onChangeStopDay,
+  onExpandNote,
 }: {
   trip: Trip;
   stop: Stop;
@@ -606,6 +584,7 @@ export function StopDetail({
   commentPending?: boolean;
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
   onChangeStopDay: (stopId: string, day: number) => void;
+  onExpandNote: () => void;
 }) {
   const { t } = useTranslation("planner");
   const [draft, setDraft] = useState("");
@@ -693,18 +672,15 @@ export function StopDetail({
 
       <div className="flex flex-1 flex-col gap-4 overflow-auto p-4">
         <div className="flex flex-col gap-2">
-          <div className="flex items-start gap-2">
-            <CategoryIcon category={stop.category} />
-            <InlineText
-              value={stop.name}
-              canEdit={canEdit}
-              ariaLabel={t("detail.editName")}
-              placeholder={t("detail.namePlaceholder")}
-              onCommit={(name) => onUpdateStop(stop.id, { name })}
-              displayClassName="min-w-0 flex-1 font-heading text-xl font-semibold tracking-tight leading-tight text-balance"
-              inputClassName="min-w-0 flex-1 rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-xl font-semibold tracking-tight leading-tight outline-none"
-            />
-          </div>
+          <InlineText
+            value={stop.name}
+            canEdit={canEdit}
+            ariaLabel={t("detail.editName")}
+            placeholder={t("detail.namePlaceholder")}
+            onCommit={(name) => onUpdateStop(stop.id, { name })}
+            displayClassName="min-w-0 font-heading text-xl font-semibold tracking-tight leading-tight text-balance"
+            inputClassName="w-full min-w-0 rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-xl font-semibold tracking-tight leading-tight outline-none"
+          />
           <div className="flex flex-wrap items-center gap-1.5">
             {canEdit ? (
               <>
@@ -730,11 +706,6 @@ export function StopDetail({
                 <Badge variant="info">{costLabel}</Badge>
               </>
             )}
-            {stop.votes.length ? (
-              <Badge variant="secondary">
-                {t("schedule.voteCount", { count: stop.votes.length })}
-              </Badge>
-            ) : null}
           </div>
           <div className="flex flex-col gap-1">
             <InlineText
@@ -764,18 +735,20 @@ export function StopDetail({
 
         {canEdit || stop.note ? (
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-balance">{t("detail.notes")}</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              {t("detail.notes")}
+            </h3>
             <InlineNote
               value={stop.note}
               canEdit={canEdit}
               ariaLabel={t("detail.editNote")}
               placeholder={t("detail.notePlaceholder")}
-              onCommit={(note) => onUpdateStop(stop.id, { note })}
+              onExpand={onExpandNote}
             />
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
+        <div className="flex flex-col gap-2 rounded-xl bg-card p-3 shadow-[var(--shadow-border)]">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               {stop.votes.length ? (

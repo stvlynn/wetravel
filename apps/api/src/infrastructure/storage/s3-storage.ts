@@ -5,7 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import type { FileStorage, StoredFile } from "../../application/avatar";
+import type { FileStorage, StoredFile } from "../../application/storage";
 import type { S3StorageConfig } from "../config";
 import { buildPublicUrl } from "./public-url";
 

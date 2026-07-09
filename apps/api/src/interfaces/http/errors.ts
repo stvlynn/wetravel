@@ -1,9 +1,12 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
 import { WeatherError } from "../../application/weather/weather-error";
+import { FxError } from "../../application/fx/fx-error";
+import { GeoError } from "../../application/geo/geo-error";
 import { DomainError, NotFoundError } from "../../domain/shared/errors";
 import { ConflictError, ForbiddenError } from "../../application";
 import { AvatarError } from "../../application/avatar";
+import { TripMediaError } from "../../application/media";
 import { fail } from "./response";
 
 /** Translate thrown errors into the error envelope. Registered via app.onError. */
@@ -29,8 +32,29 @@ export function handleError(err: Error, c: Context) {
           : 500;
     return fail(c, err.code, err.message, status);
   }
+  if (err instanceof TripMediaError) {
+    const status =
+      err.code === "media_too_large"
+        ? 413
+        : err.code === "media_unsupported_mime"
+          ? 400
+          : 500;
+    return fail(c, err.code, err.message, status);
+  }
   if (err instanceof WeatherError) {
     const status = err.code === "weather_not_configured" ? 503 : 502;
+    return fail(c, err.code, err.message, status);
+  }
+  if (err instanceof FxError) {
+    return fail(c, err.code, err.message, 502);
+  }
+  if (err instanceof GeoError) {
+    const status =
+      err.code === "geo_not_configured"
+        ? 503
+        : err.code === "geo_timeout"
+          ? 504
+          : 502;
     return fail(c, err.code, err.message, status);
   }
   if (err instanceof NotFoundError) {

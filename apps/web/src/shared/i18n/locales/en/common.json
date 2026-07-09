@@ -14,6 +14,7 @@
         "signOut": "Sign out",
         "cancel": "Cancel",
         "close": "Close",
+        "save": "Save",
         "collapseSidebar": "Collapse sidebar",
         "expandSidebar": "Expand sidebar"
     },
@@ -57,7 +58,7 @@
         },
         "preferences": {
             "title": "Preferences",
-            "description": "Language and appearance settings."
+            "description": "Language, appearance, and currency settings."
         },
         "appearance": {
             "label": "Appearance",
@@ -67,6 +68,13 @@
         },
         "language": {
             "label": "Language"
+        },
+        "currency": {
+            "label": "Currency",
+            "errorTitle": "Currency update failed",
+            "errors": {
+                "saveFailed": "Failed to save default currency."
+            }
         },
         "about": {
             "title": "About",

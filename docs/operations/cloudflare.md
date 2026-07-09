@@ -67,9 +67,15 @@ binding; all object storage configuration is supplied through env values.
 
 To enable the trip agent (see [../backend/agent.md](../backend/agent.md)), set
 `AI_API_KEY` as a secret and `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, and the
-threshold vars (`AI_PROACTIVE_THRESHOLD`, `AI_MAX_TOOL_STEPS`,
-`AI_REPLY_THRESHOLD`) as vars. Without `AI_MODEL` + `AI_API_KEY` the agent
-routes respond 404 and the frontend hides the entry point.
+threshold vars (`AI_PROACTIVE_THRESHOLD`, `AI_MAX_TOOL_STEPS`) as vars. Without
+`AI_MODEL` + `AI_API_KEY` the agent routes respond 404 and the frontend hides
+the entry point.
+
+Geo agent tools default to OSM (`GEO_PROVIDER=osm`). To use Google Places +
+Routes instead, set `GEO_PROVIDER=google` as a var and
+`GOOGLE_MAPS_API_KEY` as a secret. Optional OSM endpoint overrides
+(`GEO_OSM_NOMINATIM_URL`, `GEO_OSM_OVERPASS_URL`, `GEO_OSM_OSRM_URL`,
+`GEO_OSM_USER_AGENT`) are vars. See [../backend/geo.md](../backend/geo.md).
 
 ## Rollback
 

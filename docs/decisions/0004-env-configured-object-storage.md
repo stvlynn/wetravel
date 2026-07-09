@@ -30,3 +30,6 @@ configuration rather than code changes or runtime-specific bucket bindings.
 - Docker uploads survive container replacement through `opentrip-uploads`.
 - Invalid storage configuration fails visibly during startup rather than
   falling back to ephemeral storage.
+- The same `FileStorage` port serves avatars (`avatars/…`) and trip note
+  images (`trips/…`); public delivery is `GET /api/uploads/*` with a path
+  allowlist for both namespaces.

@@ -26,8 +26,8 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
-`popover`, `preview-card`, `dialog`, `splitter`. Each exposes a
-public `index.ts`.
+`popover`, `preview-card`, `dialog`, `collapsible`, `splitter`,
+`markdown-editor`. Each exposes a public `index.ts`.
 
 `preview-card` is a hover/focus-triggered rich card (Base UI PreviewCard). Use
 it, rather than `tooltip`, when the hover content is structured (e.g. the
@@ -43,9 +43,15 @@ technology while icon-only controls retain localized labels.
 Variants/sizes come from props, not ad-hoc overrides. Icon-only buttons require
 `aria-label`; form controls set an explicit `type`.
 
-Stop notes are authored in a `textarea` (Markdown) and rendered in the stop
-detail via `react-markdown` (scoped `.wf-markdown` typography in `global.css`),
-which supports embedded images through standard Markdown image syntax.
+Stop notes expand into the planner main pane (replacing map/schedule/budget)
+via a Milkdown Crepe WYSIWYG editor (Crepe TopBar as fixed chrome, block slash
+menu). Images upload through `POST /api/trips/:id/media` into the shared
+object-storage port (same FS/S3 adapters as avatars) and embed as hosted URLs
+in Markdown. Closing asks to save or discard when the draft is dirty. The
+sidebar keeps a Markdown preview (`react-markdown` + `.wf-markdown`); click
+or the expand control opens the main-pane editor. Agent chat assistant replies
+use Streamdown (same `.wf-markdown` scope) so incomplete streaming Markdown
+stays readable without a hand-rolled parser.
 
 `autocomplete` and `select` are adapted from the coss components and built on
 Base UI (`@base-ui/react`). `autocomplete` powers the stop-name place search

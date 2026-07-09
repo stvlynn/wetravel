@@ -62,6 +62,11 @@ export class TripService {
     return trip;
   }
 
+  /** Assert the user may mutate the trip (used by media uploads and similar). */
+  async assertEditable(tripId: string, userId: string): Promise<void> {
+    await this.loadEditable(tripId, userId);
+  }
+
   listTrips(userId: string): Promise<TripSummary[]> {
     return this.repo.findSummaries(userId);
   }

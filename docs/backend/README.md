@@ -33,11 +33,17 @@ cases). Two entry points share it:
 
 Both entry points inject storage through an application port. Node supports
 explicit `fs` or `s3` configuration; Workers require `s3` so their dependency
-graph never imports the Node filesystem adapter.
+graph never imports the Node filesystem adapter. Avatars and trip note images
+share that port (`AvatarService`, `TripMediaService`).
 
 ## Related
 
 - [domain.md](domain.md) — the model and business rules.
+- [trip-ops.md](trip-ops.md) — trip-scoped mutation registry (shared HTTP + agent tools).
+- [agent.md](agent.md) — trip agent session, tools, and approval.
+- [weather.md](weather.md) — internal weather service, cache, and agent tool boundary.
+- [fx.md](fx.md) — internal FX rates service for settle-up display conversion.
+- [geo.md](geo.md) — internal geo service (OSM/Google), cache, and agent read tools.
 - [api.md](api.md) — routes and contracts.
 - [database.md](database.md) — schema, migrations, seed.
 - [auth.md](auth.md) — Better Auth integration.

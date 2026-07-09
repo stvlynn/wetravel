@@ -6,8 +6,16 @@ import type { Balance, Expense } from "@/entities/expense";
 import type { Trip } from "@/entities/trip";
 import type { TripMember } from "@/entities/member";
 import { CategoryIcon, STOP_CATEGORIES, type StopCategory } from "@/entities/stop";
-import type { AddExpenseInput } from "@/shared/api";
-import { CURRENCIES, cn, formatMoney } from "@/shared/lib";
+import { useFxRates } from "@/features/fx-rates";
+import type { AddExpenseInput, FxRatesData } from "@/shared/api";
+import {
+  CURRENCIES,
+  cn,
+  convertMinorAmount,
+  formatConvertedMoney,
+  formatFxRate,
+  formatMoney,
+} from "@/shared/lib";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -16,6 +24,7 @@ import {
   PreviewCardPopup,
   PreviewCardTrigger,
 } from "@/shared/ui/preview-card";
+import { ScrambleText } from "@/shared/ui/scramble-text";
 import {
   Select,
   SelectItem,
@@ -103,13 +112,23 @@ export function BudgetBoard({
   onAddExpense: (input: AddExpenseInput) => void;
   onUpdateExpense: (expenseId: string, input: AddExpenseInput) => void;
 }) {
-  const { t } = useTranslation("planner");
+  const { t, i18n } = useTranslation("planner");
   const { t: tc } = useTranslation("common");
   const { budget, currency } = trip;
   const settlementTraces = traceSettlements(budget.balances);
 
   const [open, setOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [settleCurrency, setSettleCurrency] = useState(currency);
+  const needsFx = settleCurrency !== currency;
+  const { data: fxRates, isPending: fxPending, isError: fxError } = useFxRates(
+    currency,
+    needsFx,
+  );
+
+  useEffect(() => {
+    setSettleCurrency(currency);
+  }, [currency]);
 
   const startAdd = () => {
     setEditingExpenseId(null);
@@ -303,18 +322,31 @@ export function BudgetBoard({
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex flex-col gap-0.5 border-b border-border px-4 py-3.5">
-            <span className="font-heading text-base font-semibold tracking-tight">
-              {t("budget.settleUp")}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {t("budget.transfersClear", { count: budget.settlements.length })}
-            </span>
+          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="font-heading text-base font-semibold tracking-tight text-balance">
+                {t("budget.settleUp")}
+              </span>
+              <span className="text-xs text-muted-foreground text-pretty">
+                {t("budget.transfersClear", { count: budget.settlements.length })}
+              </span>
+            </div>
+            <SettlementCurrencySelect
+              value={settleCurrency}
+              onChange={setSettleCurrency}
+            />
           </div>
           {budget.settlements.map((s, i) => {
             const from = memberOf(trip, s.from);
             const to = memberOf(trip, s.to);
             const trace = settlementTraces.get(`${s.from}\u0000${s.to}`);
+            const displayAmount = formatSettlementAmount(
+              s.amount,
+              currency,
+              settleCurrency,
+              fxRates,
+              i18n.language,
+            );
             return (
               <PreviewCard key={i}>
                 <PreviewCardTrigger
@@ -326,7 +358,7 @@ export function BudgetBoard({
                       aria-label={t("budget.derivation.aria", {
                         from: from.shortName,
                         to: to.shortName,
-                        amount: formatMoney(s.amount, currency),
+                        amount: displayAmount,
                       })}
                     />
                   }
@@ -350,9 +382,18 @@ export function BudgetBoard({
                     </span>
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-center gap-1 pt-[7px]">
-                    <span className="font-mono text-sm font-semibold tabular-nums text-corn-600">
-                      {formatMoney(s.amount, currency)}
-                    </span>
+                    {needsFx && fxPending ? (
+                      <span className="font-mono text-sm font-semibold tabular-nums text-corn-600">
+                        …
+                      </span>
+                    ) : (
+                      <ScrambleText
+                        key={`${settleCurrency}:${displayAmount}`}
+                        className="font-mono text-sm font-semibold tabular-nums text-corn-600"
+                      >
+                        {displayAmount}
+                      </ScrambleText>
+                    )}
                     <MoveRight
                       className="h-4 w-full text-corn-300"
                       strokeWidth={1.75}
@@ -375,6 +416,15 @@ export function BudgetBoard({
                 </PreviewCardTrigger>
                 {trace ? (
                   <PreviewCardPopup>
+                    <SettlementFxDetails
+                      amount={s.amount}
+                      tripCurrency={currency}
+                      settleCurrency={settleCurrency}
+                      fxRates={fxRates}
+                      fxPending={needsFx && fxPending}
+                      fxError={needsFx && fxError}
+                      locale={i18n.language}
+                    />
                     <SettlementDerivation
                       from={from}
                       to={to}
@@ -392,6 +442,138 @@ export function BudgetBoard({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SettlementCurrencySelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const { t } = useTranslation("planner");
+  return (
+    <Select
+      items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+      value={value}
+      onValueChange={(next) => {
+        if (typeof next === "string" && next) onChange(next);
+      }}
+    >
+      <SelectTrigger
+        className="h-9 w-[92px] flex-none rounded-lg tabular-nums"
+        aria-label={t("budget.settleCurrencyLabel")}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup>
+        {CURRENCIES.map((c) => (
+          <SelectItem key={c} value={c}>
+            {c}
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  );
+}
+
+function formatSettlementAmount(
+  amount: number,
+  tripCurrency: string,
+  settleCurrency: string,
+  fxRates: FxRatesData | undefined,
+  locale: string,
+): string {
+  if (settleCurrency === tripCurrency) {
+    return formatMoney(amount, tripCurrency, locale);
+  }
+  if (!fxRates) return formatMoney(amount, tripCurrency, locale);
+  const converted = convertMinorAmount(
+    amount,
+    tripCurrency,
+    settleCurrency,
+    fxRates.rates,
+    fxRates.base,
+  );
+  if (converted == null) return formatMoney(amount, tripCurrency, locale);
+  return formatConvertedMoney(converted, settleCurrency, locale);
+}
+
+function SettlementFxDetails({
+  amount,
+  tripCurrency,
+  settleCurrency,
+  fxRates,
+  fxPending,
+  fxError,
+  locale,
+}: {
+  amount: number;
+  tripCurrency: string;
+  settleCurrency: string;
+  fxRates: FxRatesData | undefined;
+  fxPending: boolean;
+  fxError: boolean;
+  locale: string;
+}) {
+  const { t } = useTranslation("planner");
+  if (settleCurrency === tripCurrency) return null;
+
+  if (fxPending) {
+    return (
+      <div className="mb-3 border-b border-border pb-3 text-xs text-muted-foreground">
+        {t("budget.fx.loading")}
+      </div>
+    );
+  }
+
+  if (fxError || !fxRates) {
+    return (
+      <div className="mb-3 border-b border-border pb-3 text-xs text-muted-foreground">
+        {t("budget.fx.unavailable")}
+      </div>
+    );
+  }
+
+  const rate =
+    settleCurrency === fxRates.base ? 1 : fxRates.rates[settleCurrency];
+  const converted = convertMinorAmount(
+    amount,
+    tripCurrency,
+    settleCurrency,
+    fxRates.rates,
+    fxRates.base,
+  );
+  if (rate == null || converted == null) {
+    return (
+      <div className="mb-3 border-b border-border pb-3 text-xs text-muted-foreground">
+        {t("budget.fx.unavailable")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 flex flex-col gap-1 border-b border-border pb-3">
+      <span className="text-[11px] font-medium text-muted-foreground">
+        {t("budget.fx.title")}
+      </span>
+      <span className="font-mono text-xs tabular-nums text-foreground">
+        {formatFxRate(tripCurrency, settleCurrency, rate, locale)}
+      </span>
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {t("budget.fx.converted", {
+          original: formatMoney(amount, tripCurrency, locale),
+          converted: formatConvertedMoney(converted, settleCurrency, locale),
+        })}
+      </span>
+      <span className="text-[10px] text-muted-foreground/80">
+        {t("budget.fx.asOf", {
+          date: fxRates.date,
+          provider: fxRates.provider,
+        })}
+      </span>
     </div>
   );
 }

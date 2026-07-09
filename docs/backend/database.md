@@ -30,7 +30,9 @@ For raw SQL paths (e.g., Better Auth's pg adapter) the shared pool factory in
 - `apps/api/prisma/migrations/` — Prisma migration files. `000000000000_baseline`
   was generated from the existing database; subsequent changes use
   `make db-migrate-dev`.
-- `apps/api/prisma/seed.ts` — idempotent demo seed using Prisma Client.
+- `apps/api/prisma/seed.ts` — idempotent demo seed using Prisma Client
+  (`japan-2025`). That row is also the template cloned for each new user on
+  sign-up (see [auth.md](auth.md)).
 - `apps/api/prisma/reset.ts` — drops `public`, reapplies migrations, and seeds.
 
 ## Schema workflow
@@ -70,7 +72,7 @@ migration directory and the updated `schema.prisma` together. Never edit
 | `make db-migrate` | Apply pending Prisma migrations |
 | `make db-migrate-dev` | Create a new migration from schema changes |
 | `make db-seed` | Run `prisma/seed.ts` |
-| `make db-reset` | Drop `public`, migrate, and seed |
+| `make db-reset` | Drop `public`, generate client, migrate, and seed |
 | `make db-init` | Run migrations + seed |
 | `make db-studio` | Open Prisma Studio |
 

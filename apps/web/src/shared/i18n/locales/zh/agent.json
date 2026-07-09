@@ -10,16 +10,63 @@
     "send": "发送",
     "agentName": "助手",
     "systemName": "系统",
-    "operationBy": "{{name}}"
+    "operationBy": "{{name}}",
+    "thinking": "思考中…"
+  },
+  "mention": {
+    "listLabel": "提及成员或助手",
+    "toastTitle": "{{name}} 提到了你",
+    "view": "查看"
+  },
+  "reasoning": {
+    "thinking": "思考中…",
+    "thought": "已思考片刻",
+    "thoughtFor_other": "已思考 {{count}} 秒"
+  },
+  "approval": {
+    "approve": "批准",
+    "deny": "拒绝",
+    "viewersCannotApprove": "需要编辑者权限才能批准更改"
+  },
+  "context": {
+    "commentingOnStop": "评论地点 {{stop}}"
+  },
+  "tool": {
+    "proposed": "提议：{{tool}}",
+    "running": "正在执行 {{tool}}…",
+    "approved": "已批准 {{tool}}",
+    "denied": "已拒绝 {{tool}}",
+    "applied": "已应用 {{tool}}",
+    "names": {
+      "checkWeather": "查询天气",
+      "placeSearch": "搜索地点",
+      "placeNearby": "附近地点",
+      "placeDetail": "地点详情",
+      "routeCompute": "计算路线",
+      "routeMatrix": "行程矩阵",
+      "reviewLookup": "查看评价"
+    }
+  },
+  "preview": {
+    "daySlot": "第 {{day}} 天 · 第 {{position}} 项",
+    "moveTo": "移动到第 {{day}} 天 · 第 {{position}} 项",
+    "expenseMeta": "由 {{name}} 支付 · {{count}} 人分摊",
+    "renameTrip": "将行程重命名为“{{title}}”",
+    "addDay": "新增一天",
+    "deleteDay": "删除第 {{day}} 天",
+    "updateDay": "更新第 {{day}} 天",
+    "updateDayCity": "第 {{day}} 天 → {{city}}",
+    "reorderDays": "调整天数顺序：{{order}}",
+    "unknown": "请查看该提议的更改"
   },
   "toast": {
     "title": "助手建议",
-    "apply": "应用建议",
+    "apply": "批准",
     "discuss": "讨论",
-    "dismiss": "忽略",
-    "applied": "建议已应用",
-    "appliedByOther": "{{name}} 应用了一条助手建议",
+    "dismiss": "拒绝",
+    "applied": "建议已批准",
+    "appliedByOther": "{{name}} 批准了一条助手建议",
     "stale": "建议已过期——行程已发生变化",
-    "applyError": "无法应用该建议"
+    "applyError": "无法批准该建议"
   }
 }

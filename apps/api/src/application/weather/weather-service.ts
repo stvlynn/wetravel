@@ -1,6 +1,9 @@
 import { DomainError } from "../../domain/shared/errors";
-import type { WeatherClient } from "../../domain/weather/ports";
-import type { TimelineEntry, TimelineResponse } from "../../infrastructure/weather/onecall-types";
+import type {
+  WeatherClient,
+  WeatherForecastEntry,
+  WeatherForecastSnapshot,
+} from "../../domain/weather";
 import type { WeatherData } from "./weather-data";
 
 const HOURLY_HORIZON_SECONDS = 48 * 60 * 60;
@@ -52,28 +55,28 @@ export class WeatherService {
       normalizedTime &&
       naiveTargetUtc <= nowUtc + HOURLY_HORIZON_SECONDS
     ) {
-      const response = await this.client.timeline(
-        "1h",
+      const response = await this.client.fetchForecast({
         lat,
         lon,
-        naiveTargetUtc - 10 * 60 * 60, // center a 20-record window around the target
-        normalizeLang(lang),
-        HOURLY_RECORDS,
-      );
+        start: naiveTargetUtc - 10 * 60 * 60, // center a 20-record window around the target
+        granularity: "hourly",
+        lang: normalizeLang(lang),
+        count: HOURLY_RECORDS,
+      });
       const match = findNearestHourly(response, targetLocalMs);
       if (match) {
         return mapEntry(match);
       }
     }
 
-    const response = await this.client.timeline(
-      "1day",
+    const response = await this.client.fetchForecast({
       lat,
       lon,
-      Math.floor(targetLocalMs / 1000), // start at the requested day interpreted as UTC; we match by local date below
-      normalizeLang(lang),
-      DAILY_RECORDS,
-    );
+      start: Math.floor(targetLocalMs / 1000), // start at the requested day interpreted as UTC; we match by local date below
+      granularity: "daily",
+      lang: normalizeLang(lang),
+      count: DAILY_RECORDS,
+    });
     const match = findDaily(response, targetDate);
     return match ? mapEntry(match) : null;
   }
@@ -131,24 +134,24 @@ function localDateTimeToMs(
   return Date.UTC(year, month - 1, day, hour, minute);
 }
 
-function entryLocalMs(entry: TimelineEntry, offsetSeconds: number): number {
+function entryLocalMs(entry: WeatherForecastEntry, offsetSeconds: number): number {
   return (entry.dt + offsetSeconds) * 1000;
 }
 
 function findNearestHourly(
-  response: TimelineResponse,
+  response: WeatherForecastSnapshot,
   targetLocalMs: number,
-): TimelineEntry | null {
-  if (response.data.length === 0) return null;
+): WeatherForecastEntry | null {
+  if (response.entries.length === 0) return null;
 
-  let nearest = response.data[0]!;
+  let nearest = response.entries[0]!;
   let minDistance = Math.abs(
-    entryLocalMs(nearest, response.timezone_offset) - targetLocalMs,
+    entryLocalMs(nearest, response.timezoneOffset) - targetLocalMs,
   );
 
-  for (const entry of response.data) {
+  for (const entry of response.entries) {
     const distance = Math.abs(
-      entryLocalMs(entry, response.timezone_offset) - targetLocalMs,
+      entryLocalMs(entry, response.timezoneOffset) - targetLocalMs,
     );
     if (distance < minDistance) {
       minDistance = distance;
@@ -160,12 +163,12 @@ function findNearestHourly(
 }
 
 function findDaily(
-  response: TimelineResponse,
+  response: WeatherForecastSnapshot,
   date: string,
-): TimelineEntry | null {
-  for (const entry of response.data) {
+): WeatherForecastEntry | null {
+  for (const entry of response.entries) {
     const localYmd = new Date(
-      (entry.dt + response.timezone_offset) * 1000,
+      (entry.dt + response.timezoneOffset) * 1000,
     )
       .toISOString()
       .slice(0, 10);
@@ -176,8 +179,8 @@ function findDaily(
   return null;
 }
 
-function mapEntry(entry: TimelineEntry): WeatherData | null {
-  const condition = entry.weather[0];
+function mapEntry(entry: WeatherForecastEntry): WeatherData | null {
+  const condition = entry.conditions[0];
   if (!condition) return null;
 
   const temp = extractTemp(entry);
@@ -193,18 +196,18 @@ function mapEntry(entry: TimelineEntry): WeatherData | null {
     humidity: entry.humidity,
     pressure: entry.pressure,
     visibility: entry.visibility ?? 10_000,
-    windSpeed: entry.wind_speed ?? 0,
-    windDeg: entry.wind_deg ?? 0,
+    windSpeed: entry.windSpeed ?? 0,
+    windDeg: entry.windDeg ?? 0,
     clouds: entry.clouds ?? 0,
   };
 }
 
-function extractTemp(entry: TimelineEntry): number {
+function extractTemp(entry: WeatherForecastEntry): number {
   return typeof entry.temp === "number" ? entry.temp : entry.temp.day;
 }
 
-function extractFeelsLike(entry: TimelineEntry): number {
-  return typeof entry.feels_like === "number"
-    ? entry.feels_like
-    : entry.feels_like.day;
+function extractFeelsLike(entry: WeatherForecastEntry): number {
+  return typeof entry.feelsLike === "number"
+    ? entry.feelsLike
+    : entry.feelsLike.day;
 }

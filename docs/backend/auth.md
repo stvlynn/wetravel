@@ -18,10 +18,11 @@ export const auth = betterAuth({
           clientSecret: config.googleOAuth.clientSecret,
           mapProfileToUser: (profile) => {
             const dto = mapGoogleProfileToDto(profile);
+            const seed = dto.email ?? dto.name ?? crypto.randomUUID();
             return {
               name: dto.name ?? undefined,
               email: dto.email ?? undefined,
-              image: resolveInitialAvatar(dto) ?? undefined,
+              image: resolveInitialAvatar(dto, seed),
             };
           },
         },
@@ -47,15 +48,32 @@ are set. The redirect URI registered in Google Cloud Console must be
 Google profiles are normalized through the shared `OAuthProfileDto`
 (`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers
 use the same mapping path. The provider's avatar URL is written to `user.image`
-during sign-up. Email sign-ups (and OAuth profiles without a picture) leave
-`user.image` unset; the client renders a deterministic planet-style avatar
-seeded by the user id via the shared `Avatar` component (`planet-avatar`).
+during sign-up. Email sign-ups (and OAuth profiles without a picture) get a
+deterministic vercel-style gradient avatar (github.com/vercel/avatar) baked into
+a small static SVG data URI and stored on `user.image` (a `create.before`
+database hook seeds it from the user id). The avatar is therefore static in the
+database and rendered as a plain image everywhere. The generator lives in
+`apps/api/src/application/user/avatar.ts` and mirrors the frontend copy in
+`apps/web/src/shared/lib/avatar.ts`; the AI agent uses the same generator with
+an extra dither layer (`agentAvatarUrl`).
 
 ### User preferences
 
 `user.additionalFields.defaultCurrency` is stored on the `user` table
 (`0005_currency.sql`) and surfaced on every session as `session.user.defaultCurrency`.
-The planner uses it as the preselected currency when composing a stop cost.
+Users change it from Settings → Preferences (`CurrencySelect` via
+`authClient.updateUser`). The planner uses it as the preselected currency when
+composing a stop cost.
+
+### Sample trip on sign-up
+
+After Better Auth creates a user row, `databaseHooks.user.create.after` clones
+the sample Japan trip (`japan-2025`) into a personal copy owned by that user
+(`provisionSampleTripForUser`). The template is loaded from the live DB row when
+present, otherwise from the in-memory seed snapshot. Cosmetic demo members stay
+on the clone; the seed owner slot is replaced by the real user. Provisioning
+errors are logged and never block registration. The shared legacy demo trip
+remains listed for all signed-in users.
 
 ## Captcha
 

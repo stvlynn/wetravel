@@ -27,6 +27,10 @@ Travel Planner SaaS — plan trips together, split everything.
 - [backend/database.md](backend/database.md)
 - [backend/auth.md](backend/auth.md)
 - [backend/agent.md](backend/agent.md)
+- [backend/trip-ops.md](backend/trip-ops.md) — trip mutation registry (HTTP + agent)
+- [backend/weather.md](backend/weather.md) — weather proxy, cache, agent tool
+- [backend/fx.md](backend/fx.md) — FX rates proxy for settle-up conversion
+- [backend/geo.md](backend/geo.md) — geo places/routes (OSM/Google), agent tools
 
 ### Operations and quality
 

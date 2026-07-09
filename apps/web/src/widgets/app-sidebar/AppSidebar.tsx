@@ -19,7 +19,7 @@ export interface AppSidebarProps {
 const STORAGE_KEY = "wf.sidebar.collapsed";
 
 /** A left-pointing "toggle panel" glyph used for both collapse and expand. */
-function PanelToggleIcon({ className }: { className?: string }) {
+export function PanelToggleIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"

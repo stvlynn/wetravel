@@ -1,13 +1,20 @@
 import type { OAuthProfileDto } from "./oauth-profile";
+import { gradientAvatarUrl } from "./avatar";
 
 /** Pick the avatar URL for a newly-created user.
  *
- * OAuth providers supply an image from the profile; email sign-ups have no
- * image and get a deterministic planet-style avatar generated on the client
- * from their user id (see the shared `Avatar` component). Returning `null`
- * here keeps generated avatars out of the database. */
+ * OAuth providers supply an image from the profile; users without one get a
+ * deterministic vercel-style gradient avatar (github.com/vercel/avatar),
+ * generated from a stable `seed` and stored statically in the database so the
+ * UI always renders a fixed image. */
 export function resolveInitialAvatar(
   oauthProfile: OAuthProfileDto | null,
-): string | null {
-  return oauthProfile?.image ?? null;
+  seed: string,
+): string {
+  return oauthProfile?.image ?? gradientAvatarUrl(seed);
+}
+
+/** Generate the static gradient avatar for a user identified by `seed`. */
+export function generateUserAvatar(seed: string): string {
+  return gradientAvatarUrl(seed);
 }

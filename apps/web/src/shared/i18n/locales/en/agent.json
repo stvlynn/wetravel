@@ -10,16 +10,64 @@
     "send": "Send",
     "agentName": "Agent",
     "systemName": "System",
-    "operationBy": "{{name}}"
+    "operationBy": "{{name}}",
+    "thinking": "Thinking…"
+  },
+  "mention": {
+    "listLabel": "Mention a member or the agent",
+    "toastTitle": "{{name}} mentioned you",
+    "view": "View"
+  },
+  "reasoning": {
+    "thinking": "Thinking…",
+    "thought": "Thought for a moment",
+    "thoughtFor_one": "Thought for {{count}} second",
+    "thoughtFor_other": "Thought for {{count}} seconds"
+  },
+  "approval": {
+    "approve": "Approve",
+    "deny": "Deny",
+    "viewersCannotApprove": "Editors can approve this change"
+  },
+  "context": {
+    "commentingOnStop": "Commenting on {{stop}}"
+  },
+  "tool": {
+    "proposed": "Proposed: {{tool}}",
+    "running": "Running {{tool}}…",
+    "approved": "Approved {{tool}}",
+    "denied": "Denied {{tool}}",
+    "applied": "Applied {{tool}}",
+    "names": {
+      "checkWeather": "Check weather",
+      "placeSearch": "Search places",
+      "placeNearby": "Nearby places",
+      "placeDetail": "Place details",
+      "routeCompute": "Compute route",
+      "routeMatrix": "Route matrix",
+      "reviewLookup": "Look up reviews"
+    }
+  },
+  "preview": {
+    "daySlot": "Day {{day}} · #{{position}}",
+    "moveTo": "Move to day {{day}} · #{{position}}",
+    "expenseMeta": "Paid by {{name}} · {{count}} sharing",
+    "renameTrip": "Rename trip to “{{title}}”",
+    "addDay": "Add a new day",
+    "deleteDay": "Remove day {{day}}",
+    "updateDay": "Update day {{day}}",
+    "updateDayCity": "Day {{day}} → {{city}}",
+    "reorderDays": "Reorder days: {{order}}",
+    "unknown": "Review the proposed change"
   },
   "toast": {
     "title": "Agent suggestion",
-    "apply": "Apply",
+    "apply": "Approve",
     "discuss": "Discuss",
-    "dismiss": "Ignore",
-    "applied": "Suggestion applied",
-    "appliedByOther": "{{name}} applied an agent suggestion",
+    "dismiss": "Deny",
+    "applied": "Suggestion approved",
+    "appliedByOther": "{{name}} approved an agent suggestion",
     "stale": "Suggestion outdated — the trip has changed",
-    "applyError": "Could not apply the suggestion"
+    "applyError": "Could not approve the suggestion"
   }
 }

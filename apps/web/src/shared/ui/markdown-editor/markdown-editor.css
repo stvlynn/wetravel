@@ -1,0 +1,75 @@
+/* Crepe base chrome; colors remapped to OpenTrip tokens below. */
+@import "@milkdown/crepe/theme/common/style.css";
+
+.wf-markdown-editor {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--card);
+  --crepe-color-surface-low: var(--secondary);
+  --crepe-color-on-surface: var(--foreground);
+  --crepe-color-on-surface-variant: var(--muted-foreground);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--accent);
+  --crepe-color-on-secondary: var(--accent-foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--destructive);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: var(--accent);
+  --crepe-color-inline-area: var(--secondary);
+
+  --crepe-font-title: var(--font-heading);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+
+  --crepe-shadow-1: var(--shadow-sm);
+  --crepe-shadow-2: var(--shadow-md);
+
+  min-height: 0;
+  flex: 1;
+}
+
+.wf-markdown-editor .milkdown {
+  background: transparent !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wf-markdown-editor .milkdown .milkdown-top-bar {
+  flex: none;
+  /* Room for the dialog close control overlaid on the right. */
+  padding-right: 3rem;
+  background: var(--card);
+  border-bottom: none;
+  box-shadow: var(--shadow-border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.wf-markdown-editor .milkdown .milkdown-top-bar .top-bar-item {
+  border-radius: var(--radius-md);
+  transition-property: background-color, color, scale;
+  transition-duration: var(--dur-base);
+  transition-timing-function: var(--ease-out);
+}
+
+.wf-markdown-editor .milkdown .milkdown-top-bar .top-bar-item:active {
+  scale: var(--press-scale);
+}
+
+.wf-markdown-editor .milkdown .ProseMirror,
+.wf-markdown-editor .milkdown .editor {
+  flex: 1;
+  min-height: 0;
+  padding: 0.75rem 1rem 1.5rem;
+  outline: none;
+}
+
+.wf-markdown-editor .milkdown .editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}

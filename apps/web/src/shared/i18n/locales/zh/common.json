@@ -14,6 +14,7 @@
         "signOut": "退出登录",
         "cancel": "取消",
         "close": "关闭",
+        "save": "保存",
         "collapseSidebar": "收起侧栏",
         "expandSidebar": "展开侧栏"
     },
@@ -57,7 +58,7 @@
         },
         "preferences": {
             "title": "偏好设置",
-            "description": "语言与外观设置。"
+            "description": "语言、外观与货币设置。"
         },
         "appearance": {
             "label": "外观",
@@ -67,6 +68,13 @@
         },
         "language": {
             "label": "语言"
+        },
+        "currency": {
+            "label": "货币",
+            "errorTitle": "货币更新失败",
+            "errors": {
+                "saveFailed": "保存默认货币失败。"
+            }
         },
         "about": {
             "title": "关于",

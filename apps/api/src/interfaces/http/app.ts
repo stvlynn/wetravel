@@ -5,6 +5,18 @@ import { z } from "zod";
 import { containsAgentMention, type Defer } from "../../application";
 import type { OperationEvent } from "../../domain/agent";
 import { MAX_AVATAR_BYTES } from "../../application/avatar";
+import { MAX_TRIP_MEDIA_BYTES } from "../../application/media";
+import { isManagedUploadPath } from "../../application/storage";
+import {
+  dayNumberParamSchema,
+  expenseDraftSchema,
+  insertStopSchema,
+  moveStopBodySchema,
+  renameTripSchema,
+  reorderDaysSchema,
+  updateDaySchema,
+  updateStopChangesSchema,
+} from "../../application/trip/ops";
 import { BetterAuthCurrentUserProfile } from "../../infrastructure/auth/current-user-profile";
 import type { Container } from "../../infrastructure/composition/container";
 import { handleError } from "./errors";
@@ -19,96 +31,17 @@ interface Env {
   };
 }
 
-const stopCategorySchema = z.enum([
-  "Sight",
-  "Food",
-  "Stay",
-  "Shopping",
-  "Activity",
-  "Walk",
-  "Park",
-  "Transit",
-  "Plan",
-]);
-
-const insertStopSchema = z.object({
-  day: z.number().int().positive(),
-  index: z.number().int().min(0),
-  name: z.string().min(1),
-  time: z.string(),
-  duration: z.string().trim().max(20).optional(),
-  lat: z.number().min(-90).max(90).optional(),
-  lng: z.number().min(-180).max(180).optional(),
-  area: z.string().max(120).optional(),
-  category: stopCategorySchema.optional(),
-  cost: z.number().min(0).max(100_000_000).optional(),
-  costCurrency: z.string().trim().min(1).max(8).optional(),
-  note: z.string().max(20_000).optional(),
-});
-
-const moveStopSchema = z.object({
-  day: z.number().int().positive(),
-  index: z.number().int().min(0),
-});
-
-const updateStopSchema = z
-  .object({
-    name: z.string().trim().min(1).max(160),
-    time: z.string().trim().max(20),
-    duration: z.string().trim().max(20),
-    area: z.string().trim().max(120),
-    category: stopCategorySchema,
-    cost: z.number().min(0).max(100_000_000),
-    costCurrency: z.string().trim().min(1).max(8),
-    note: z.string().max(20_000),
-  })
-  .partial()
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "At least one stop field is required",
-  });
+/** Trip-scoped mutation schemas come from the trip ops registry. */
+const moveStopSchema = moveStopBodySchema;
+const updateStopSchema = updateStopChangesSchema;
+const expenseSchema = expenseDraftSchema;
+const dayNumberSchema = dayNumberParamSchema;
 
 const commentSchema = z.object({ text: z.string().min(1) });
 
 const createTripSchema = z.object({
   title: z.string().trim().min(1).max(120),
   currency: z.string().trim().min(1).max(8).optional(),
-});
-
-const renameTripSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-});
-
-const dayNumberSchema = z.coerce.number().int().positive();
-
-const hexColorSchema = z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/);
-
-const updateDaySchema = z
-  .object({
-    date: z
-      .string()
-      .trim()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .or(z.literal(""))
-      .optional(),
-    dateLabel: z.string().trim().max(40).optional(),
-    city: z.string().trim().max(80).optional(),
-    color: hexColorSchema.optional(),
-  })
-  .refine((value) => value.date !== undefined || value.dateLabel !== undefined || value.city !== undefined || value.color !== undefined, {
-    message: "At least one day field is required",
-  });
-
-const reorderDaysSchema = z.object({
-  order: z.array(z.number().int().positive()).min(1),
-});
-
-const expenseSchema = z.object({
-  description: z.string().min(1),
-  amount: z.number().positive(),
-  currency: z.string().trim().min(1).max(8).optional(),
-  category: stopCategorySchema.optional(),
-  payer: z.string().min(1),
-  participants: z.array(z.string().min(1)).min(1),
 });
 
 const createInviteSchema = z
@@ -128,6 +61,8 @@ const createInviteSchema = z
 
 const MAX_MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 const MAX_AVATAR_REQUEST_BYTES = MAX_AVATAR_BYTES + MAX_MULTIPART_OVERHEAD_BYTES;
+const MAX_TRIP_MEDIA_REQUEST_BYTES =
+  MAX_TRIP_MEDIA_BYTES + MAX_MULTIPART_OVERHEAD_BYTES;
 
 /** Build the Hono app for a wired container. Shared by the Node and Workers
  * entry points. */
@@ -144,16 +79,29 @@ const agentPostMessageSchema = z.object({
   text: z.string().trim().min(1).max(4_000),
 });
 
+const agentUiMessageSchema = z.object({
+  id: z.string().optional(),
+  role: z.string(),
+  parts: z.array(
+    z.object({ type: z.string(), text: z.string().optional() }).passthrough(),
+  ),
+});
+
 const agentChatSchema = z.object({
-  /** Latest UI message from the panel; null for server-triggered generation. */
-  message: z
-    .object({
-      parts: z.array(
-        z.object({ type: z.string(), text: z.string().optional() }).passthrough(),
-      ),
-    })
-    .nullable()
-    .optional(),
+  /**
+   * Full UI message list for the current turn (AI SDK useChat). Required for
+   * tool-approval continuation; also used to extract the latest user text.
+   */
+  messages: z.array(agentUiMessageSchema).optional(),
+  /** Legacy single-message body; still accepted for simple text turns. */
+  message: agentUiMessageSchema.nullable().optional(),
+});
+
+/** Aligns with AI SDK `addToolApprovalResponse({ id, approved, reason? })`. */
+const agentApprovalSchema = z.object({
+  id: z.string().min(1).optional(),
+  approved: z.boolean(),
+  reason: z.string().max(500).optional(),
 });
 
 const agentEventsQuerySchema = z.coerce.number().int().min(0).default(0);
@@ -165,9 +113,11 @@ export function createApp(container: Container) {
     tripInviteService,
     preferenceService,
     avatarService,
+    tripMediaService,
     fileStorage,
     config,
     weatherService,
+    fxService,
     agentService,
   } = container;
 
@@ -243,11 +193,11 @@ export function createApp(container: Container) {
     );
   });
 
-  // Serve uploaded files publicly (avatars, etc.).
+  // Serve uploaded files publicly (avatars, trip note images, etc.).
   app.get("/api/uploads/*", async (c) => {
     const encodedPath = c.req.path.replace(/^\/api\/uploads\//, "");
     const storagePath = decodeStoragePath(encodedPath);
-    if (!storagePath || !isAvatarStoragePath(storagePath)) {
+    if (!storagePath || !isManagedUploadPath(storagePath)) {
       return fail(c, "invalid_path", "Invalid path", 400);
     }
     const file = await fileStorage.read(storagePath);
@@ -272,6 +222,7 @@ export function createApp(container: Container) {
     ok(c, await tripService.listTrips(c.get("user")!.id)),
   );
 
+  // Weather proxy: UI and agent both use WeatherService (never a vendor client).
   guard.get("/weather", async (c) => {
     const lat = Number(c.req.query("lat"));
     const lon = Number(c.req.query("lon"));
@@ -282,6 +233,17 @@ export function createApp(container: Container) {
       return fail(c, "invalid_coordinates", "lat and lon are required", 400);
     }
     return ok(c, await weatherService.getWeather(lat, lon, date, time, lang));
+  });
+
+  // FX proxy: budget settle-up uses FxService (never a vendor client).
+  guard.get("/fx/rates", async (c) => {
+    const base = c.req.query("base")?.trim() ?? "";
+    const quotesRaw = c.req.query("quotes")?.trim() ?? "";
+    const date = c.req.query("date")?.trim();
+    const quotes = quotesRaw
+      ? quotesRaw.split(",").map((q) => q.trim()).filter(Boolean)
+      : undefined;
+    return ok(c, await fxService.getRates(base, quotes, date));
   });
 
   guard.post("/trips", async (c) => {
@@ -376,6 +338,30 @@ export function createApp(container: Container) {
     });
     return ok(c, dto);
   });
+
+  guard.post(
+    "/trips/:id/media",
+    bodyLimit({
+      maxSize: MAX_TRIP_MEDIA_REQUEST_BYTES,
+      onError: (c) => fail(c, "media_too_large", "Image request is too large", 413),
+    }),
+    async (c) => {
+      const body = await c.req.parseBody();
+      const file = body.file;
+      if (!(file instanceof File)) {
+        return fail(c, "media_missing", "Image file is required", 400);
+      }
+      const url = await tripMediaService.upload(
+        c.req.param("id"),
+        c.get("user")!.id,
+        {
+          content: new Uint8Array(await file.arrayBuffer()),
+          claimedMimeType: file.type,
+        },
+      );
+      return ok(c, { url }, 201);
+    },
+  );
 
   guard.patch("/trips/:id/stops/:stopId", async (c) => {
     const input = updateStopSchema.parse(await c.req.json());
@@ -603,18 +589,50 @@ export function createApp(container: Container) {
 
   agent.post("/chat", async (c) => {
     const input = agentChatSchema.parse(await c.req.json());
-    const text = input.message
-      ? input.message.parts
-          .filter((p) => p.type === "text" && typeof p.text === "string")
-          .map((p) => p.text)
-          .join("\n")
-      : null;
-    // Streaming response: returned as-is, outside the { data } envelope.
-    return agentService!.streamChat(
-      c.req.param("tripId")!,
-      c.get("user")!.id,
-      text,
+    const clientMessages =
+      input.messages ?? (input.message ? [input.message] : undefined);
+
+    const hasApprovalResponse = (clientMessages ?? []).some((m) =>
+      m.parts.some((p) => {
+        const state = (p as { state?: unknown }).state;
+        const approval = (p as { approval?: { approved?: unknown } }).approval;
+        return (
+          state === "approval-responded" ||
+          (typeof approval === "object" &&
+            approval !== null &&
+            typeof (approval as { approved?: unknown }).approved === "boolean" &&
+            state !== "approval-requested")
+        );
+      }),
     );
+
+    // Prefer the latest user text (and its client id) from the UI message list.
+    let text: string | null = null;
+    let clientMessageId: string | undefined;
+    if (!hasApprovalResponse && clientMessages?.length) {
+      for (let i = clientMessages.length - 1; i >= 0; i--) {
+        const m = clientMessages[i]!;
+        if (m.role !== "user") continue;
+        const joined = m.parts
+          .filter((p) => p.type === "text" && typeof p.text === "string")
+          .map((p) => p.text as string)
+          .join("\n")
+          .trim();
+        if (joined) {
+          text = joined;
+          clientMessageId = m.id;
+          break;
+        }
+      }
+    }
+
+    // Streaming response: returned as-is, outside the { data } envelope.
+    return agentService!.streamChat(c.req.param("tripId")!, c.get("user")!.id, {
+      text,
+      clientMessageId,
+      clientMessages,
+      approvalContinue: hasApprovalResponse,
+    });
   });
 
   agent.get("/events", async (c) => {
@@ -629,24 +647,59 @@ export function createApp(container: Container) {
     );
   });
 
-  agent.post("/suggestions/:suggestionId/apply", async (c) =>
-    ok(
+  /** Approve or deny a proactive suggestion (AI SDK approval DTO shape). */
+  agent.post("/suggestions/:suggestionId/approve", async (c) => {
+    const body = agentApprovalSchema.parse(await c.req.json().catch(() => ({})));
+    const suggestionId = c.req.param("suggestionId");
+    return ok(
       c,
-      await agentService!.applySuggestion(
+      await agentService!.respondToSuggestion(
         c.req.param("tripId")!,
-        c.req.param("suggestionId"),
         c.get("user")!.id,
+        {
+          id: body.id ?? suggestionId,
+          approved: body.approved,
+          reason: body.reason,
+        },
       ),
-    ),
-  );
+    );
+  });
+
+  // Backward-compatible alias: apply === approve with approved: true.
+  agent.post("/suggestions/:suggestionId/apply", async (c) => {
+    const body = agentApprovalSchema
+      .partial()
+      .parse(await c.req.json().catch(() => ({})));
+    return ok(
+      c,
+      await agentService!.respondToSuggestion(
+        c.req.param("tripId")!,
+        c.get("user")!.id,
+        {
+          id: body.id ?? c.req.param("suggestionId"),
+          approved: body.approved ?? true,
+          reason: body.reason,
+        },
+      ),
+    );
+  });
 
   agent.post("/suggestions/:suggestionId/dismiss", async (c) => {
-    await agentService!.dismissSuggestion(
-      c.req.param("tripId")!,
-      c.req.param("suggestionId"),
-      c.get("user")!.id,
+    const body = agentApprovalSchema
+      .partial()
+      .parse(await c.req.json().catch(() => ({})));
+    return ok(
+      c,
+      await agentService!.respondToSuggestion(
+        c.req.param("tripId")!,
+        c.get("user")!.id,
+        {
+          id: body.id ?? c.req.param("suggestionId"),
+          approved: false,
+          reason: body.reason,
+        },
+      ),
     );
-    return ok(c, { dismissed: true });
   });
 
   guard.route("/trips/:tripId/agent", agent);
@@ -663,14 +716,4 @@ function decodeStoragePath(path: string): string | null {
   } catch {
     return null;
   }
-}
-
-function isAvatarStoragePath(path: string): boolean {
-  const parts = path.split("/");
-  if (parts.length !== 3 || parts[0] !== "avatars" || !/^[0-9a-f]+$/i.test(parts[1]!)) {
-    return false;
-  }
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(png|jpg|webp)$/i.test(
-    parts[2]!,
-  );
 }

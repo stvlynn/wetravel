@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import type { FileStorage, StoredFile } from "../../application/avatar";
+import type { FileStorage, StoredFile } from "../../application/storage";
 import type { FileSystemStorageConfig } from "../config";
 import { buildPublicUrl } from "./public-url";
 

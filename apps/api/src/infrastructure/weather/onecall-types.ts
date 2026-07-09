@@ -23,7 +23,8 @@ export interface DailyFeelsLike {
 
 /** One Call API 4.0 returns a unified `data` array for both hourly and daily
  * timelines. Hourly entries have scalar `temp`/`feels_like`; daily entries have
- * the aggregated objects. */
+ * the aggregated objects. `weather` may be null when the provider has no
+ * condition for that slot (e.g. sparse historical/timeline gaps). */
 export interface TimelineEntry {
   dt: number;
   temp: number | DailyTemp;
@@ -34,7 +35,7 @@ export interface TimelineEntry {
   wind_deg?: number;
   clouds?: number;
   visibility?: number;
-  weather: WeatherCondition[];
+  weather: WeatherCondition[] | null;
 }
 
 export interface TimelineResponse {

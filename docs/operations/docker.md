@@ -65,3 +65,6 @@ cat backup.sql | docker compose exec -T postgres psql -U opentrip opentrip
   the example env. The named volume preserves avatars across container rebuilds.
 - S3-compatible storage can be used instead by setting `STORAGE_BACKEND=s3`
   and all `S3_*` variables described in [README.md](README.md).
+- Geo agent tools default to OSM (`GEO_PROVIDER=osm`). Override Nominatim /
+  Overpass / OSRM URLs or set `GEO_PROVIDER=google` + `GOOGLE_MAPS_API_KEY`
+  as documented in [../backend/geo.md](../backend/geo.md).

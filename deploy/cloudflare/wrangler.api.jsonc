@@ -36,6 +36,8 @@
     "AI_BASE_URL": "",
     "AI_PROACTIVE_THRESHOLD": "0.7",
     "AI_MAX_TOOL_STEPS": "5",
-    "AI_REPLY_THRESHOLD": "6"
+    // Geo agent tools. Default OSM; set google + GOOGLE_MAPS_API_KEY secret to switch.
+    "GEO_PROVIDER": "osm",
+    "GEO_OSM_USER_AGENT": "OpenTrip/0.1 (https://github.com/stvlynn/OpenTrip; geo-agent)"
   }
 }

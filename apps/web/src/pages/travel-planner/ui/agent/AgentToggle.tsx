@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { SparklesIcon } from "lucide-react";
+import { PanelToggleIcon } from "@/widgets/app-sidebar";
 import { cn } from "@/shared/lib";
 
-/** Collapsed-state agent entry: a quiet sparkle button in the top-right
+/** Collapsed-state agent entry: a quiet panel-toggle button in the top-right
  * corner, mirroring the left sidebar's expand control. */
 export function AgentToggle({
   onOpen,
@@ -24,7 +24,7 @@ export function AgentToggle({
         reserveMapControls ? "right-14" : "right-3",
       )}
     >
-      <SparklesIcon className="size-4" />
+      <PanelToggleIcon className="size-4" />
     </button>
   );
 }
