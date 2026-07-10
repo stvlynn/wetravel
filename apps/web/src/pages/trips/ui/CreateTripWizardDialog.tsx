@@ -26,7 +26,18 @@ import {
   DialogTitle,
   DialogViewport,
 } from "@/shared/ui/dialog";
-import { cn, CURRENCIES, formatMoney } from "@/shared/lib";
+import {
+  cn,
+  CURRENCIES,
+  currencySelectItems,
+  formatMoney,
+} from "@/shared/lib";
+import {
+  CurrencyLabel,
+  currencySelectPopupClass,
+  currencySelectTriggerClass,
+  currencySelectValueClass,
+} from "@/shared/ui/currency-label";
 
 type WizardStep =
   | "destination"
@@ -110,8 +121,9 @@ export function CreateTripWizardDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { t } = useTranslation("trips");
+  const { t, i18n } = useTranslation("trips");
   const { t: tc } = useTranslation("common");
+  const locale = i18n.resolvedLanguage ?? "en";
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const preferredCurrency = session?.user?.defaultCurrency?.trim() || "JPY";
@@ -389,7 +401,7 @@ export function CreateTripWizardDialog({
                       }}
                     />
                     <Select
-                      items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                      items={currencySelectItems(locale)}
                       value={answers.budgetCurrency}
                       onValueChange={(value) => {
                         const next = String(value);
@@ -400,15 +412,21 @@ export function CreateTripWizardDialog({
                       }}
                     >
                       <SelectTrigger
-                        className="w-[92px] flex-none rounded-lg tabular-nums"
+                        className={`${currencySelectTriggerClass} rounded-lg`}
                         aria-label={t("wizard.steps.budget.currencyLabel")}
                       >
-                        <SelectValue />
+                        <SelectValue className={currencySelectValueClass}>
+                          {(selected: string | null) =>
+                            selected ? (
+                              <CurrencyLabel code={selected} locale={locale} />
+                            ) : null
+                          }
+                        </SelectValue>
                       </SelectTrigger>
-                      <SelectPopup>
+                      <SelectPopup className={currencySelectPopupClass}>
                         {CURRENCIES.map((c) => (
                           <SelectItem key={c} value={c}>
-                            {c}
+                            <CurrencyLabel code={c} locale={locale} />
                           </SelectItem>
                         ))}
                       </SelectPopup>

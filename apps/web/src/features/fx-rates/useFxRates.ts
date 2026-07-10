@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchFxRates, type FxRatesData } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
-import { CURRENCIES } from "@/shared/lib";
+import { FX_QUOTE_CURRENCIES } from "@/shared/lib";
 
-/** Quotes requested for settle-up conversion — the app currency picker set. */
-const SETTLE_QUOTES = CURRENCIES;
+/** Quotes requested for settle-up conversion. */
+const SETTLE_QUOTES = FX_QUOTE_CURRENCIES;
 
 export function useFxRates(base: string, enabled = true) {
   const normalizedBase = base.trim().toUpperCase();

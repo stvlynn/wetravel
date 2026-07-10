@@ -12,6 +12,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/shared/ui/context-menu";
+import { useDestinationMapCenter } from "../model/useDestinationMapCenter";
 import { MapSearch } from "./MapSearch";
 
 export function TripMapView({
@@ -40,11 +41,13 @@ export function TripMapView({
   const lastCoord = useRef<{ lng: number; lat: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const destinationCenter = useDestinationMapCenter(trip);
 
   const bias = useMemo(() => {
     const first = trip.stops[0];
-    return first ? { lat: first.lat, lng: first.lng } : undefined;
-  }, [trip]);
+    if (first) return { lat: first.lat, lng: first.lng };
+    return destinationCenter ?? undefined;
+  }, [trip, destinationCenter]);
 
   useEffect(() => {
     setSearchResult(null);
@@ -127,6 +130,7 @@ export function TripMapView({
           }}
           searchResult={searchResult}
           onAddSearchResult={handleAddSearchResult}
+          fallbackCenter={destinationCenter}
         />
       {picking ? (
         <div className="absolute inset-x-0 top-4 flex justify-center px-4">

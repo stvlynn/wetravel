@@ -122,6 +122,9 @@ export interface TripSnapshot {
 /** Optional create-wizard answers persisted on the trip. Omitted fields mean TBD. */
 export interface TripIntake {
   destination?: string;
+  /** Geocoded destination center (set at create when destination is known). */
+  destinationLat?: number;
+  destinationLng?: number;
   dayCount?: number;
   startDate?: string;
   endDate?: string;

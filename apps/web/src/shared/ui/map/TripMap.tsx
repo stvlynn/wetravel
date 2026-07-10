@@ -33,7 +33,13 @@ export interface TripMapProps {
   searchResult?: SearchResult | null;
   /** Called from the search-result popup's "Add stop here" button. */
   onAddSearchResult?: () => void;
+  /** Used when there are no stops yet (e.g. geocoded create-wizard destination). */
+  fallbackCenter?: { lat: number; lng: number } | null;
 }
+
+const DEFAULT_CENTER: [number, number] = [0, 20];
+const DEFAULT_ZOOM = 1.6;
+const FALLBACK_ZOOM = 10;
 
 /** Pushpin cursor (data URI) with the hotspot at the pin tip. */
 const PIN_CURSOR =
@@ -56,6 +62,7 @@ export function TripMap({
   onContext,
   searchResult = null,
   onAddSearchResult,
+  fallbackCenter = null,
 }: TripMapProps) {
   const { t, i18n } = useTranslation("planner");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,6 +75,7 @@ export function TripMap({
   const pickRef = useRef(onPick);
   const contextRef = useRef(onContext);
   const onAddSearchResultRef = useRef(onAddSearchResult);
+  const fallbackCenterRef = useRef(fallbackCenter);
   const searchMarkerRef = useRef<Marker | null>(null);
   const searchPopupRef = useRef<Popup | null>(null);
   const searchRootRef = useRef<Root | null>(null);
@@ -76,16 +84,18 @@ export function TripMap({
   pickRef.current = onPick;
   contextRef.current = onContext;
   onAddSearchResultRef.current = onAddSearchResult;
+  fallbackCenterRef.current = fallbackCenter;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    const boot = fallbackCenterRef.current;
     let map: MlMap;
     try {
       map = new MlMap({
         container: containerRef.current,
         style: STYLE_URL,
-        center: [136.8, 35.1],
-        zoom: 6.4,
+        center: boot ? [boot.lng, boot.lat] : DEFAULT_CENTER,
+        zoom: boot ? FALLBACK_ZOOM : DEFAULT_ZOOM,
         attributionControl: false,
       });
     } catch {
@@ -209,12 +219,22 @@ export function TripMap({
         visible.forEach((s) => b.extend([s.lng, s.lat]));
         map.fitBounds(b, { padding: 70, maxZoom: 13, duration: 900 });
       }
+    } else if (!visible.length && !searchResult && fallbackCenter) {
+      const fitKey = `fallback:${fallbackCenter.lng},${fallbackCenter.lat}`;
+      if (fitKey !== lastFitRef.current) {
+        lastFitRef.current = fitKey;
+        map.flyTo({
+          center: [fallbackCenter.lng, fallbackCenter.lat],
+          zoom: FALLBACK_ZOOM,
+          duration: 900,
+        });
+      }
     }
   };
 
   useEffect(() => {
     syncRef.current();
-  }, [stops, day, activeStopId, searchResult]);
+  }, [stops, day, activeStopId, searchResult, fallbackCenter]);
 
   // Point-picking mode: pushpin cursor + one click resolves a coordinate.
   useEffect(() => {

@@ -69,6 +69,8 @@ Returned by most trip mutations and `GET /api/trips/:id`.
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `destination` | string? | City / region label |
+| `destinationLat` | number? | Geocoded destination latitude (create / backfill) |
+| `destinationLng` | number? | Geocoded destination longitude |
 | `dayCount` | number? | Planned day count |
 | `startDate` | string? | ISO start |
 | `endDate` | string? | ISO inclusive end |

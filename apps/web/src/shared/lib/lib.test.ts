@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   convertMinorAmount,
+  currencyDisplayName,
+  currencyOptionLabel,
   formatConvertedMoney,
   formatFxRate,
   formatMoney,
@@ -16,6 +18,14 @@ describe("formatMoney", () => {
 
   it("rounds to whole units", () => {
     expect(formatMoney(2775.5, "JPY")).toBe("¥2,776");
+  });
+});
+
+describe("currencyOptionLabel", () => {
+  it("prefixes the ISO code with a localized name", () => {
+    expect(currencyOptionLabel("JPY", "zh")).toMatch(/^JPY /);
+    expect(currencyDisplayName("JPY", "zh")).toMatch(/日元|日圓/);
+    expect(currencyOptionLabel("USD", "en")).toMatch(/USD .+Dollar/i);
   });
 });
 

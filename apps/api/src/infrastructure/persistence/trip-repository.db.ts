@@ -434,6 +434,13 @@ export class SqlTripRepository implements TripRepository {
     );
   }
 
+  async updateIntake(id: string, intake: TripIntake | null): Promise<void> {
+    await this.db.query(
+      `UPDATE trips SET intake = $2, version = version + 1 WHERE id = $1`,
+      [id, intake ? JSON.stringify(intake) : null],
+    );
+  }
+
   async addDay(tripId: string, day: DaySnapshot): Promise<void> {
     const sql = this.dialect.insertIgnore(
       "trip_days",

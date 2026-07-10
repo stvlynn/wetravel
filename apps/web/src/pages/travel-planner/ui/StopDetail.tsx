@@ -11,7 +11,13 @@ import {
 } from "@/entities/stop";
 import type { TripMember } from "@/entities/member";
 import type { UpdateStopInput } from "@/shared/api";
-import { cn, CURRENCIES, formatMoney, interactive } from "@/shared/lib";
+import { cn, CURRENCIES, currencySelectItems, formatMoney, interactive } from "@/shared/lib";
+import {
+  CurrencyLabel,
+  currencySelectPopupClass,
+  currencySelectTriggerClass,
+  currencySelectValueClass,
+} from "@/shared/ui/currency-label";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -487,7 +493,8 @@ function CostEditor({
   label: string;
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
 }) {
-  const { t } = useTranslation("planner");
+  const { t, i18n } = useTranslation("planner");
+  const locale = i18n.resolvedLanguage ?? "en";
   const currency = stop.costCurrency || trip.currency;
   const [amount, setAmount] = useState(stop.cost ? String(stop.cost) : "");
 
@@ -528,7 +535,7 @@ function CostEditor({
               aria-label={t("detail.costLabel")}
             />
             <Select
-              items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+              items={currencySelectItems(locale)}
               value={currency}
               onValueChange={(value) => {
                 const next = String(value);
@@ -539,15 +546,21 @@ function CostEditor({
               }}
             >
               <SelectTrigger
-                className="w-[92px] flex-none rounded-lg tabular-nums"
+                className={`${currencySelectTriggerClass} rounded-lg`}
                 aria-label={t("schedule.currencyLabel")}
               >
-                <SelectValue />
+                <SelectValue className={currencySelectValueClass}>
+                  {(selected: string | null) =>
+                    selected ? (
+                      <CurrencyLabel code={selected} locale={locale} />
+                    ) : null
+                  }
+                </SelectValue>
               </SelectTrigger>
-              <SelectPopup>
+              <SelectPopup className={currencySelectPopupClass}>
                 {CURRENCIES.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {c}
+                    <CurrencyLabel code={c} locale={locale} />
                   </SelectItem>
                 ))}
               </SelectPopup>

@@ -12,10 +12,17 @@ import {
   CURRENCIES,
   cn,
   convertMinorAmount,
+  currencySelectItems,
   formatConvertedMoney,
   formatFxRate,
   formatMoney,
 } from "@/shared/lib";
+import {
+  CurrencyLabel,
+  currencySelectPopupClass,
+  currencySelectTriggerClass,
+  currencySelectValueClass,
+} from "@/shared/ui/currency-label";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -491,25 +498,30 @@ function SettlementCurrencySelect({
   value: string;
   onChange: (next: string) => void;
 }) {
-  const { t } = useTranslation("planner");
+  const { t, i18n } = useTranslation("planner");
+  const locale = i18n.resolvedLanguage ?? "en";
   return (
     <Select
-      items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+      items={currencySelectItems(locale)}
       value={value}
       onValueChange={(next) => {
         if (typeof next === "string" && next) onChange(next);
       }}
     >
       <SelectTrigger
-        className="h-9 w-[92px] flex-none rounded-lg tabular-nums"
+        className={`h-9 ${currencySelectTriggerClass} rounded-lg`}
         aria-label={t("budget.settleCurrencyLabel")}
       >
-        <SelectValue />
+        <SelectValue className={currencySelectValueClass}>
+          {(selected: string | null) =>
+            selected ? <CurrencyLabel code={selected} locale={locale} /> : null
+          }
+        </SelectValue>
       </SelectTrigger>
-      <SelectPopup>
+      <SelectPopup className={currencySelectPopupClass}>
         {CURRENCIES.map((c) => (
           <SelectItem key={c} value={c}>
-            {c}
+            <CurrencyLabel code={c} locale={locale} />
           </SelectItem>
         ))}
       </SelectPopup>
@@ -916,8 +928,9 @@ function ExpenseEditor({
   onSubmit: (input: AddExpenseInput) => void;
   onCancel: () => void;
 }) {
-  const { t } = useTranslation("planner");
+  const { t, i18n } = useTranslation("planner");
   const { t: tc } = useTranslation("common");
+  const locale = i18n.resolvedLanguage ?? "en";
   const [desc, setDesc] = useState(initial.desc);
   const [amount, setAmount] = useState(initial.amount);
   const [expenseCurrency, setExpenseCurrency] = useState(initial.expenseCurrency);
@@ -969,22 +982,28 @@ function ExpenseEditor({
             className="h-8 min-w-0 flex-1"
           />
           <Select
-            items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+            items={currencySelectItems(locale)}
             value={expenseCurrency}
             onValueChange={(value) =>
               setExpenseCurrency((value as string) || tripCurrency)
             }
           >
             <SelectTrigger
-              className="h-8 w-[84px] flex-none rounded-lg tabular-nums"
+              className={`h-8 ${currencySelectTriggerClass} rounded-lg`}
               aria-label={t("budget.currencyLabel")}
             >
-              <SelectValue />
+              <SelectValue className={currencySelectValueClass}>
+                {(selected: string | null) =>
+                  selected ? (
+                    <CurrencyLabel code={selected} locale={locale} />
+                  ) : null
+                }
+              </SelectValue>
             </SelectTrigger>
-            <SelectPopup>
+            <SelectPopup className={currencySelectPopupClass}>
               {CURRENCIES.map((c) => (
                 <SelectItem key={c} value={c}>
-                  {c}
+                  <CurrencyLabel code={c} locale={locale} />
                 </SelectItem>
               ))}
             </SelectPopup>

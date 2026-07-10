@@ -1,5 +1,5 @@
 import type { Trip } from "./trip";
-import type { DaySnapshot, MemberSnapshot, TripStatus } from "./types";
+import type { DaySnapshot, MemberSnapshot, TripIntake, TripStatus } from "./types";
 
 export interface TripSummaryMember {
   id: string;
@@ -48,6 +48,8 @@ export interface TripRepository {
   rename(id: string, title: string): Promise<void>;
   /** Clear the one-shot agent seed pending flag. */
   clearAgentSeedPending(id: string): Promise<void>;
+  /** Persist create-wizard intake JSON (e.g. destination center backfill). */
+  updateIntake(id: string, intake: TripIntake | null): Promise<void>;
   /** Persist a newly appended itinerary day. */
   addDay(tripId: string, day: DaySnapshot): Promise<void>;
   /** Update display metadata for an existing itinerary day. */

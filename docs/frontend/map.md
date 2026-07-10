@@ -15,6 +15,7 @@ The wrapper lives at `apps/web/src/shared/ui/map` and reproduces the prototype's
   picking={picking}     // point-picking mode
   onPick={(lng, lat) => ...}
   onContext={(lng, lat) => ...} // right-click / long-press coordinate
+  fallbackCenter={pt}   // optional; empty trip opens near this point
 />
 ```
 
@@ -46,6 +47,11 @@ pre-filled at that point, reverse-geocoded for a name) and **Copy coordinates**.
   day's stops in order.
 - **Focus**: selecting a stop flies to it and opens a name popup.
 - **Fit**: when no stop is active, the map fits bounds to the visible stops.
+- **Empty trip + destination**: create stores geocoded `intake.destinationLat/Lng`
+  (via GeoService). `TripMapView` uses those as `fallbackCenter` so the first
+  view opens near the destination. If coords are missing, it falls back to a
+  Photon geocode of the destination label. Trips with no destination open on a
+  neutral world view (not a Japan-centric default).
 - **Day filter**: `day = 0` shows all; otherwise only that day's stops/routes.
 - **Selection event**: clicking a marker calls `onSelectStop(id)`.
 

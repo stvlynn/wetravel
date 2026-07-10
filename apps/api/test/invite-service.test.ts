@@ -30,6 +30,9 @@ class FakeTripRepository implements TripRepository {
   clearAgentSeedPending(): Promise<void> {
     return Promise.resolve();
   }
+  updateIntake(): Promise<void> {
+    return Promise.resolve();
+  }
   addDay(): Promise<void> {
     return Promise.resolve();
   }

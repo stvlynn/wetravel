@@ -30,6 +30,7 @@ function memoryRepo(): TripRepository {
     async addMember() {},
     async rename() {},
     async clearAgentSeedPending() {},
+    async updateIntake() {},
     async addDay() {},
     async updateDay() {},
     async reorderDays() {},

@@ -13,6 +13,7 @@ import {
   type UpdateStopDraft,
 } from "../domain/trip";
 import { toTripDto, type TripDto } from "./dto";
+import type { GeoService } from "./geo/geo-service";
 
 /** Thrown when a user tries to act on a trip they cannot access or mutate. */
 export class ForbiddenError extends Error {
@@ -31,6 +32,7 @@ export class TripService {
   constructor(
     private repo: TripRepository,
     private coverImages: CoverImageProvider | null = null,
+    private geo: GeoService | null = null,
   ) {}
 
   private async load(tripId: string): Promise<Trip> {
@@ -81,7 +83,29 @@ export class TripService {
       destination && this.coverImages
         ? await this.coverImages.searchLandscape(destination)
         : null;
-    const trip = Trip.create({ ...draft, coverUrl }, owner);
+
+    let destinationLat: number | undefined;
+    let destinationLng: number | undefined;
+    if (destination && this.geo && destination.length >= 2) {
+      try {
+        const places = await this.geo.placeSearch({
+          query: destination,
+          limit: 1,
+        });
+        const first = places[0];
+        if (first) {
+          destinationLat = first.lat;
+          destinationLng = first.lng;
+        }
+      } catch {
+        // Geo is best-effort; trip create must not fail when search is down.
+      }
+    }
+
+    const trip = Trip.create(
+      { ...draft, coverUrl, destinationLat, destinationLng },
+      owner,
+    );
     await this.repo.create(trip);
     return toTripDto(trip, owner.id);
   }
@@ -152,7 +176,35 @@ export class TripService {
   }
 
   async getTrip(tripId: string, userId: string): Promise<TripDto> {
-    return toTripDto(await this.loadReadable(tripId, userId), userId);
+    const trip = await this.loadReadable(tripId, userId);
+    await this.ensureDestinationCenter(trip);
+    return toTripDto(trip, userId);
+  }
+
+  /** Backfill intake.destinationLat/Lng for older trips that only stored a label. */
+  private async ensureDestinationCenter(trip: Trip): Promise<void> {
+    if (!this.geo) return;
+    const intake = trip.toSnapshot().intake;
+    const destination = intake?.destination?.trim();
+    if (!destination || destination.length < 2) return;
+    if (
+      typeof intake?.destinationLat === "number" &&
+      typeof intake?.destinationLng === "number"
+    ) {
+      return;
+    }
+    try {
+      const places = await this.geo.placeSearch({
+        query: destination,
+        limit: 1,
+      });
+      const first = places[0];
+      if (!first) return;
+      if (!trip.setDestinationCenter(first.lat, first.lng)) return;
+      await this.repo.updateIntake(trip.toSnapshot().id, trip.toSnapshot().intake);
+    } catch {
+      // Best-effort; map can still Photon-geocode on the client.
+    }
   }
 
   async insertStop(

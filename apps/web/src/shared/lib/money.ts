@@ -14,15 +14,34 @@ const SYMBOLS: Record<string, string> = {
   THB: "฿",
   AUD: "A$",
   CAD: "C$",
+  CHF: "CHF",
+  NZD: "NZ$",
+  INR: "₹",
+  MYR: "RM",
+  IDR: "Rp",
+  PHP: "₱",
+  VND: "₫",
+  MOP: "MOP$",
+  AED: "AED",
+  SAR: "SAR",
+  TRY: "₺",
+  MXN: "MX$",
+  BRL: "R$",
+  SEK: "kr",
+  NOK: "kr",
+  DKK: "kr",
+  PLN: "zł",
+  ILS: "₪",
+  ZAR: "R",
 };
 
-/** Currencies offered in the app's currency pickers, in display order. */
-export const CURRENCIES: readonly string[] = [
+/** Preferred order for travel-oriented pickers (head of the full list). */
+const PREFERRED_CURRENCIES = [
   "JPY",
+  "CNY",
   "USD",
   "EUR",
   "GBP",
-  "CNY",
   "KRW",
   "TWD",
   "HKD",
@@ -30,10 +49,133 @@ export const CURRENCIES: readonly string[] = [
   "THB",
   "AUD",
   "CAD",
+  "CHF",
+  "NZD",
+  "INR",
+  "MYR",
+  "IDR",
+  "PHP",
+  "VND",
+  "MOP",
+  "AED",
+  "SAR",
+  "TRY",
+  "MXN",
+  "BRL",
+  "SEK",
+  "NOK",
+  "DKK",
+  "PLN",
+  "CZK",
+  "HUF",
+  "RON",
+  "ILS",
+  "ZAR",
+  "EGP",
+  "QAR",
+  "KWD",
+  "BHD",
+  "PKR",
+  "BDT",
+  "LKR",
+  "KHR",
+  "LAK",
+  "MMK",
+  "BND",
+  "FJD",
+  "NPR",
+  "ARS",
+  "CLP",
+  "COP",
+  "PEN",
+  "ISK",
+  "BGN",
+  "UAH",
+  "NGN",
+  "KES",
+  "GHS",
+  "MAD",
+] as const;
+
+/** Fallback when `Intl.supportedValuesOf('currency')` is unavailable. */
+const FALLBACK_CURRENCIES: readonly string[] = [
+  ...PREFERRED_CURRENCIES,
+  "RUB",
+  "HRK",
+  "KZT",
+  "UZS",
+  "UYU",
+  "TND",
+  "OMR",
 ];
 
+function buildCurrencyList(): readonly string[] {
+  const supported =
+    typeof Intl !== "undefined" &&
+    "supportedValuesOf" in Intl &&
+    typeof Intl.supportedValuesOf === "function"
+      ? Intl.supportedValuesOf("currency")
+      : [...FALLBACK_CURRENCIES];
+  const available = new Set(supported);
+  const head = PREFERRED_CURRENCIES.filter((c) => available.has(c));
+  const preferred = new Set<string>(PREFERRED_CURRENCIES);
+  const tail = supported.filter((c) => !preferred.has(c)).sort();
+  return Object.freeze([...head, ...tail]);
+}
+
+/** Currencies offered in the app's currency pickers (runtime ISO 4217 set when
+ * available, preferred travel currencies first). */
+export const CURRENCIES: readonly string[] = buildCurrencyList();
+
+/** Quotes requested for settle-up FX. Prefer the travel-oriented head list so
+ * the request stays bounded; unsupported codes simply omit from rates. */
+export const FX_QUOTE_CURRENCIES: readonly string[] = [...PREFERRED_CURRENCIES];
+
+/** Localized currency name for `code`, e.g. `日元` / `Japanese Yen`. */
+export function currencyDisplayName(code: string, locale: string): string {
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return code;
+  try {
+    const name = new Intl.DisplayNames([locale], { type: "currency" }).of(
+      normalized,
+    );
+    return name?.trim() || normalized;
+  } catch {
+    return normalized;
+  }
+}
+
+/** Picker label: `JPY 日元` / `JPY Japanese Yen`. */
+export function currencyOptionLabel(code: string, locale: string): string {
+  const normalized = code.trim().toUpperCase();
+  const name = currencyDisplayName(normalized, locale);
+  return name && name !== normalized ? `${normalized} ${name}` : normalized;
+}
+
+/** Base UI Select `items` for the shared currency list. */
+export function currencySelectItems(
+  locale: string,
+): Array<{ value: string; label: string }> {
+  return CURRENCIES.map((value) => ({
+    value,
+    label: currencyOptionLabel(value, locale),
+  }));
+}
+
 /** Currencies that use zero decimal places in ISO 4217 (minor unit = major). */
-const ZERO_DECIMAL = new Set(["JPY", "KRW", "TWD"]);
+const ZERO_DECIMAL = new Set([
+  "JPY",
+  "KRW",
+  "TWD",
+  "VND",
+  "CLP",
+  "ISK",
+  "UGX",
+  "PYG",
+  "XAF",
+  "XOF",
+  "XPF",
+]);
 
 export function formatMoney(
   amount: number,

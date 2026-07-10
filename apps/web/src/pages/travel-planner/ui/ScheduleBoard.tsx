@@ -17,7 +17,13 @@ import {
   type StopCategory,
 } from "@/entities/stop";
 import type { PlaceResult, UpdateTripDayInput } from "@/shared/api";
-import { cn, CURRENCIES } from "@/shared/lib";
+import { cn, CURRENCIES, currencySelectItems } from "@/shared/lib";
+import {
+  CurrencyLabel,
+  currencySelectPopupClass,
+  currencySelectTriggerClass,
+  currencySelectValueClass,
+} from "@/shared/ui/currency-label";
 import { Button } from "@/shared/ui/button";
 import {
   DayColorPickerContent,
@@ -1398,8 +1404,9 @@ function InsertComposer({
   onCancel: () => void;
   onPickOnMap: () => void;
 }) {
-  const { t } = useTranslation("planner");
+  const { t, i18n } = useTranslation("planner");
   const { t: tc } = useTranslation("common");
+  const locale = i18n.resolvedLanguage ?? "en";
   const located = compose.lat != null && compose.lng != null;
   const hasOptions =
     compose.category != null ||
@@ -1558,22 +1565,28 @@ function InsertComposer({
               className="min-w-0 flex-1 rounded-lg tabular-nums"
             />
             <Select
-              items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+              items={currencySelectItems(locale)}
               value={compose.costCurrency ?? defaultCurrency}
               onValueChange={(value) =>
                 onChange({ costCurrency: (value as string) ?? defaultCurrency })
               }
             >
               <SelectTrigger
-                className="w-[92px] flex-none rounded-lg tabular-nums"
+                className={`${currencySelectTriggerClass} rounded-lg`}
                 aria-label={t("schedule.currencyLabel")}
               >
-                <SelectValue />
+                <SelectValue className={currencySelectValueClass}>
+                  {(selected: string | null) =>
+                    selected ? (
+                      <CurrencyLabel code={selected} locale={locale} />
+                    ) : null
+                  }
+                </SelectValue>
               </SelectTrigger>
-              <SelectPopup>
+              <SelectPopup className={currencySelectPopupClass}>
                 {CURRENCIES.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {c}
+                    <CurrencyLabel code={c} locale={locale} />
                   </SelectItem>
                 ))}
               </SelectPopup>

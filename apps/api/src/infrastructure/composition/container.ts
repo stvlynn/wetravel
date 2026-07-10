@@ -125,7 +125,8 @@ export function createContainer(
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
   });
   const coverImages = new UnsplashCoverProvider(config.unsplashAccessKey);
-  const tripService = new TripService(tripRepository, coverImages);
+  const geoService = new GeoService(createGeoProvider(config.geo));
+  const tripService = new TripService(tripRepository, coverImages, geoService);
   const tripInviteService = new TripInviteService(
     new SqlTripInviteRepository(pool),
     tripRepository,
@@ -141,7 +142,6 @@ export function createContainer(
   const frankfurterClient = new FrankfurterClient();
   const cachedFxClient = new CachedFxClient(frankfurterClient);
   const fxService = new FxService(cachedFxClient);
-  const geoService = new GeoService(createGeoProvider(config.geo));
   const lodgingService = new LodgingService(
     new AirbnbLodgingProvider(config.lodging),
   );

@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { authClient, useSession } from "@/shared/auth";
-import { CURRENCIES } from "@/shared/lib";
+import { CURRENCIES, currencySelectItems } from "@/shared/lib";
+import {
+  CurrencyLabel,
+  currencySelectPopupClass,
+  currencySelectTriggerClass,
+  currencySelectValueClass,
+} from "@/shared/ui/currency-label";
 import {
   Select,
   SelectItem,
@@ -14,7 +20,8 @@ import { toastManager } from "@/shared/ui/toast";
 const FALLBACK_CURRENCY = "JPY";
 
 export function CurrencySelect(): React.ReactElement {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const locale = i18n.resolvedLanguage ?? "en";
   const { data: session, isPending: sessionPending, refetch } = useSession();
   const sessionCurrency = session?.user?.defaultCurrency?.trim() || FALLBACK_CURRENCY;
   const [pending, setPending] = useState<string | null>(null);
@@ -41,21 +48,27 @@ export function CurrencySelect(): React.ReactElement {
 
   return (
     <Select
-      items={CURRENCIES.map((c) => ({ value: c, label: c }))}
+      items={currencySelectItems(locale)}
       value={value}
       onValueChange={handleValueChange}
       disabled={busy}
     >
       <SelectTrigger
-        className="w-40 tabular-nums"
+        className={currencySelectTriggerClass}
         aria-label={t("settings.currency.label")}
       >
-        <SelectValue />
+        <SelectValue className={currencySelectValueClass}>
+          {(selected: string | null) =>
+            selected ? (
+              <CurrencyLabel code={selected} locale={locale} />
+            ) : null
+          }
+        </SelectValue>
       </SelectTrigger>
-      <SelectPopup>
+      <SelectPopup className={currencySelectPopupClass}>
         {CURRENCIES.map((c) => (
           <SelectItem key={c} value={c}>
-            {c}
+            <CurrencyLabel code={c} locale={locale} />
           </SelectItem>
         ))}
       </SelectPopup>

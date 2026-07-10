@@ -56,6 +56,9 @@ export interface TripPermissions {
 /** Wizard answers captured at create time. Omitted fields mean TBD. */
 export interface TripIntake {
   destination?: string;
+  /** Geocoded destination center from create (when destination was set). */
+  destinationLat?: number;
+  destinationLng?: number;
   dayCount?: number;
   startDate?: string;
   endDate?: string;

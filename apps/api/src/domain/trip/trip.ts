@@ -100,6 +100,9 @@ export interface CreateTripDraft {
   dayCount?: number;
   /** Destination city/region label; omitted means TBD. */
   destination?: string;
+  /** Geocoded destination center from the application layer. */
+  destinationLat?: number;
+  destinationLng?: number;
   /** Planned budget amount in major currency units; omitted means TBD. */
   budgetAmount?: number;
   /** Planned party size; omitted means TBD. Does not create members. */
@@ -245,6 +248,16 @@ function resolveCreateSchedule(draft: CreateTripDraft): {
 
   const intake: TripIntake = {};
   if (destination) intake.destination = destination;
+  if (
+    destination &&
+    typeof draft.destinationLat === "number" &&
+    typeof draft.destinationLng === "number" &&
+    Number.isFinite(draft.destinationLat) &&
+    Number.isFinite(draft.destinationLng)
+  ) {
+    intake.destinationLat = draft.destinationLat;
+    intake.destinationLng = draft.destinationLng;
+  }
   if (dayCountRaw) intake.dayCount = dayCountRaw;
   if (startOk) intake.startDate = startOk;
   if (endOk) intake.endDate = endOk;
@@ -264,13 +277,7 @@ function resolveCreateSchedule(draft: CreateTripDraft): {
   };
 }
 
-const DAY_CENTERS: Record<number, [number, number]> = {
-  1: [35.68, 139.75],
-  2: [35.68, 139.72],
-  3: [35.0, 135.77],
-  4: [35.01, 135.75],
-  5: [34.69, 135.5],
-};
+const FALLBACK_MAP_CENTER: [number, number] = [20, 0];
 
 /** Trip aggregate root. All itinerary/expense mutations go through here so
  * invariants hold. Reconstitute with `fromSnapshot`, persist `toSnapshot`. */
@@ -520,7 +527,14 @@ export class Trip {
     const index = Math.max(0, Math.min(draft.index, dayStops.length));
     const prev = dayStops[index - 1];
     const next = dayStops[index];
-    const center = DAY_CENTERS[draft.day] ?? [35.68, 139.75];
+    const intake = this.snapshot.intake;
+    const center: [number, number] =
+      intake?.destinationLat != null &&
+      intake?.destinationLng != null &&
+      Number.isFinite(intake.destinationLat) &&
+      Number.isFinite(intake.destinationLng)
+        ? [intake.destinationLat, intake.destinationLng]
+        : FALLBACK_MAP_CENTER;
 
     const hasCoords =
       typeof draft.lat === "number" &&
@@ -707,6 +721,27 @@ export class Trip {
   /** Clear the one-shot agent seed flag after the first @agent message is sent. */
   clearAgentSeedPending(): void {
     this.snapshot.agentSeedPending = false;
+  }
+
+  /** Persist geocoded destination center onto intake (no-op when already set). */
+  setDestinationCenter(lat: number, lng: number): boolean {
+    const intake = this.snapshot.intake;
+    if (!intake?.destination?.trim()) return false;
+    if (
+      typeof intake.destinationLat === "number" &&
+      typeof intake.destinationLng === "number" &&
+      Number.isFinite(intake.destinationLat) &&
+      Number.isFinite(intake.destinationLng)
+    ) {
+      return false;
+    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    this.snapshot.intake = {
+      ...intake,
+      destinationLat: lat,
+      destinationLng: lng,
+    };
+    return true;
   }
 
   /** Append a new empty day at the end of the itinerary and return it. Its

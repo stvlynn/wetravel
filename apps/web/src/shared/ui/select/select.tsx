@@ -107,7 +107,7 @@ export function SelectPopup({
           {...props}
         >
           <SelectPrimitive.List
-            className="max-h-[19rem] overflow-y-auto p-1"
+            className="scrollbar-none max-h-[19rem] overflow-y-auto overscroll-contain p-1"
             data-slot="select-list"
           >
             {children}

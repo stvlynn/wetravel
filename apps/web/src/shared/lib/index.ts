@@ -6,6 +6,10 @@ export {
   convertMinorAmount,
   sumMinor,
   CURRENCIES,
+  FX_QUOTE_CURRENCIES,
+  currencyDisplayName,
+  currencyOptionLabel,
+  currencySelectItems,
 } from "./money";
 export { formatRelativeTime } from "./time";
 export {
