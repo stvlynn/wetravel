@@ -187,9 +187,10 @@ Check Workers Logs for:
 - `Worker's code had hung and would never generate a response`
 - `$workers.outcome = exception` on `/api/auth/*`
 
-Mitigations in code: shared `pg.Pool` for domain + Better Auth, connection
-timeouts, no session preload on `/api/auth/*`, and emergency CORS on uncaught
-Worker errors. Prefer Hyperdrive over a raw origin `DATABASE_URL` on the Worker.
+Mitigations in code: **per-request** shared `pg.Pool` (do not cache across
+Worker isolate freezes), connection timeouts, no session preload on
+`/api/auth/*`, and emergency CORS on uncaught Worker errors. Hyperdrive still
+pools origin TCP at the edge.
 
 ## Rollback
 
