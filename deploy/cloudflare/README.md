@@ -51,26 +51,29 @@ gh secret set AI_API_KEY -R stvlynn/OpenTrip
 
 ## One-time bootstrap
 
-### 1. Database: direct MySQL secret (default)
+### 1. Database: Hyperdrive (Postgres / PlanetScale)
 
-When Hyperdrive cannot complete TLS to your managed MySQL, use a **Worker
-secret** instead of a Hyperdrive binding.
+**Do not commit** the Hyperdrive id. Store it as a GitHub secret:
 
 ```bash
-export CLOUDFLARE_API_TOKEN=…
-export CLOUDFLARE_ACCOUNT_ID=<CLOUDFLARE_ACCOUNT_ID>
-
-# Never commit this value. Load from a private shell / password manager.
-echo -n "$DATABASE_URL" | npx wrangler secret put DATABASE_URL \
-  --config deploy/cloudflare/wrangler.api.jsonc
+gh secret set HYPERDRIVE_ID -R stvlynn/OpenTrip
+# paste the id from the Cloudflare dashboard
 ```
 
-Vars already in `wrangler.api.jsonc`:
+CI passes `HYPERDRIVE_ID` into `deploy-api.mjs`, which injects the binding at
+deploy time into a temporary wrangler file.
 
-- `DATABASE_PROVIDER=mysql`
-- `DATABASE_SSL=off` — plain TCP (use `required` only if the origin supports TLS)
+Committed vars in `wrangler.api.jsonc`:
 
-Or set GitHub repo secret `DATABASE_URL`; CI syncs it on each API deploy.
+- `DATABASE_PROVIDER=postgres`
+
+Optional: keep origin `DATABASE_URL` as a GitHub secret for `db:migrate` /
+`DB_INIT_ON_START` only (Worker runtime uses Hyperdrive, not this secret).
+
+### 1b. Fallback: direct `DATABASE_URL` secret
+
+If you omit `HYPERDRIVE_ID`, set Worker secret `DATABASE_URL` instead
+(`wrangler secret put` or GitHub secret sync).
 
 ### One-shot DB init on deploy
 
@@ -83,17 +86,12 @@ If the database does not exist yet:
 
 Alternatively: **Run workflow** → enable **init_db** once (no variable needed).
 
-Local equivalent:
+Local equivalent (Postgres origin URL, not Hyperdrive):
 
 ```bash
-DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" DATABASE_SSL=off \
-  pnpm --filter @opentrip/api db:mysql-init
+DATABASE_PROVIDER=postgres DATABASE_URL="$DATABASE_URL" pnpm db:migrate
+DATABASE_PROVIDER=postgres DATABASE_URL="$DATABASE_URL" pnpm db:seed
 ```
-
-### 1b. Optional Hyperdrive
-
-If the origin works with Hyperdrive, bind it and omit `DATABASE_URL` (Worker
-prefers Hyperdrive when present). See [hyperdrive.md](hyperdrive.md).
 
 ### 2. Local secret file (optional, gitignored)
 

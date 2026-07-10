@@ -50,42 +50,30 @@ Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.
 
 ## 1. Database connection (Worker)
 
-Two modes (pick one):
+### A. Hyperdrive (recommended — PlanetScale Postgres)
 
-### A. Direct `DATABASE_URL` secret (default for MySQL when Hyperdrive TLS fails)
-
-Store the connection string as a **Worker secret** (never in git):
-
-```bash
-export CLOUDFLARE_API_TOKEN=…
-# From a private shell / CI secret — do not echo into logs
-echo -n "$DATABASE_URL" | npx wrangler secret put DATABASE_URL \
-  --config deploy/cloudflare/wrangler.api.jsonc
-```
-
-Worker vars (non-secret, in `wrangler.api.jsonc` or Dashboard):
-
-| Var | Example | Notes |
-| --- | --- | --- |
-| `DATABASE_PROVIDER` | `mysql` | or `postgres` |
-| `DATABASE_SSL` | `off` | Default plain TCP. Set `required` only if the origin supports TLS |
-
-GitHub Actions syncs repo secret `DATABASE_URL` → Worker on each API deploy when set.
-
-### B. Hyperdrive binding (optional)
-
-Use when the origin works with Hyperdrive TLS/pooling:
+1. Create Hyperdrive in the Cloudflare dashboard against your Postgres origin.
+2. Store **only** the config id as GitHub secret `HYPERDRIVE_ID` (never commit):
 
 ```bash
-npx wrangler hyperdrive create opentrip-db --connection-string "$DATABASE_URL"
-node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
-# add hyperdrive binding back to wrangler.api.jsonc and commit the id only
+gh secret set HYPERDRIVE_ID -R stvlynn/OpenTrip
+# paste the id when prompted
 ```
 
-Details: [deploy/cloudflare/hyperdrive.md](../../deploy/cloudflare/hyperdrive.md).
+3. On deploy, `deploy-api.mjs` injects the binding from that env into a
+   temporary wrangler config (not checked into git).
 
-Worker prefers `env.HYPERDRIVE.connectionString` when the binding exists; otherwise
-`env.DATABASE_URL`.
+Committed Worker vars: `DATABASE_PROVIDER=postgres`.
+
+For migrations, also keep origin `DATABASE_URL` (PlanetScale connection string)
+as a GitHub secret and run `DB_INIT_ON_START` / `init_db` once.
+
+### B. Direct `DATABASE_URL` (fallback)
+
+If `HYPERDRIVE_ID` is unset, the Worker uses secret `DATABASE_URL` instead.
+Set `DATABASE_PROVIDER` / `DATABASE_SSL` for MySQL direct connect as needed.
+
+Worker prefers Hyperdrive when the binding is present.
 
 ## 2. Migrate + seed / one-shot deploy init
 

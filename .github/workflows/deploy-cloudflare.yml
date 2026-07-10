@@ -4,16 +4,17 @@
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   HYPERDRIVE_ID — Cloudflare Hyperdrive config id (injected at deploy; never commit)
 # Worker secrets synced when present (never commit values):
-#   DATABASE_URL (MySQL/Postgres direct connect when Hyperdrive is unused),
+#   DATABASE_URL — optional direct connect fallback; also used for prisma migrate/seed
 #   BETTER_AUTH_SECRET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
 #   AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_CLIENT_ID,
 #   GOOGLE_CLIENT_SECRET, GOOGLE_MAPS_API_KEY, CAPTCHA_SECRET_KEY
 #
-# Optional repository Variables (Settings → Secrets and variables → Actions → Variables):
-#   DB_INIT_ON_START=true  — one-shot: CREATE DATABASE + apply MySQL schema during deploy
-#   DB_INIT_SEED=true      — also run seed when init runs
-# Turn DB_INIT_ON_START back to false (or delete) after a successful init.
+# Optional repository Variables:
+#   DB_INIT_ON_START=true — one-shot DB bootstrap during deploy
+#   DB_INIT_SEED=true     — also seed when init runs
+#   DATABASE_PROVIDER     — postgres (default in wrangler) | mysql
 
 name: Deploy Cloudflare
 
@@ -35,7 +36,7 @@ on:
         type: boolean
         default: true
       init_db:
-        description: "One-shot MySQL init (CREATE DATABASE + schema)"
+        description: "One-shot DB init (Postgres migrate or MySQL schema)"
         type: boolean
         default: false
 
@@ -96,32 +97,43 @@ jobs:
       - name: Install workspace deps (wrangler bundle needs package resolution)
         run: pnpm install --frozen-lockfile
 
-      - name: Init MySQL (CREATE DATABASE + schema)
-        # Prefer repository Variable DB_INIT_ON_START=true for one deploy, then set false.
-        # Or check "init_db" when manually running the workflow.
+      - name: Init database schema
+        # Variable DB_INIT_ON_START=true for one deploy, then set false.
+        # Or enable "init_db" when manually running the workflow.
+        # Requires secret DATABASE_URL pointing at the origin DB (not Hyperdrive).
         if: >-
           vars.DB_INIT_ON_START == 'true' ||
           vars.DB_INIT_ON_START == '1' ||
           github.event.inputs.init_db == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_PROVIDER: mysql
+          DATABASE_PROVIDER: ${{ vars.DATABASE_PROVIDER || 'postgres' }}
           DATABASE_SSL: ${{ vars.DATABASE_SSL || 'off' }}
           DB_INIT_SEED: ${{ vars.DB_INIT_SEED || 'false' }}
         run: |
           set -euo pipefail
           if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL repository secret is required for DB init"
+            echo "::error::DATABASE_URL repository secret is required for DB init (origin connection string)"
             exit 1
           fi
-          echo "Running MySQL init (DB_INIT_ON_START / init_db)…"
-          pnpm --filter @opentrip/api db:mysql-init
-          echo "Init finished. Set repository variable DB_INIT_ON_START=false before the next deploy."
+          PROVIDER="${DATABASE_PROVIDER:-postgres}"
+          echo "Running DB init (provider=$PROVIDER)…"
+          if [ "$PROVIDER" = "mysql" ]; then
+            pnpm --filter @opentrip/api db:mysql-init
+          else
+            pnpm --filter @opentrip/api db:migrate
+            if [ "${DB_INIT_SEED:-false}" = "true" ] || [ "${DB_INIT_SEED:-false}" = "1" ]; then
+              pnpm --filter @opentrip/api db:seed
+            fi
+          fi
+          echo "Init finished. Set DB_INIT_ON_START=false before the next deploy."
 
       - name: Deploy API Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Injected into wrangler at deploy time — never committed
+          HYPERDRIVE_ID: ${{ secrets.HYPERDRIVE_ID }}
         run: node deploy/cloudflare/scripts/deploy-api.mjs
 
       - name: Sync Worker secrets from GitHub secrets
