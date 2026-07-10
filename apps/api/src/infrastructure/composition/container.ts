@@ -10,7 +10,7 @@ import {
 } from "../../application";
 import { AvatarService } from "../../application/avatar";
 import type { FileStorage } from "../../application/storage";
-import { createAuthDatabase, createPool, type Pool } from "../persistence/pool";
+import { createDatabaseHandles, type Pool } from "../persistence/pool";
 import { SqlTripRepository } from "../persistence/trip-repository.db";
 import { SqlTripInviteRepository } from "../persistence/invite-repository.db";
 import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.db";
@@ -56,8 +56,10 @@ export function createContainer(
   options?: CreateContainerOptions,
 ): Container {
   const poolMax = options?.poolMax ?? 5;
-  const pool = createPool(config, { max: poolMax });
-  const authDatabase = createAuthDatabase(config, { max: poolMax });
+  // One shared Postgres pool for domain + Better Auth (Workers/Hyperdrive).
+  const { pool, authDatabase } = createDatabaseHandles(config, {
+    max: poolMax,
+  });
   const tripRepository = new SqlTripRepository(pool);
   const auth = createAuth(config, authDatabase.driver, {
     tripRepository,
@@ -106,6 +108,7 @@ export function createContainer(
     tripMediaService,
     agentService,
     dispose: async () => {
+      // Postgres: pool.end() owns the shared driver. MySQL: end both handles.
       await Promise.allSettled([pool.end(), authDatabase.end()]);
     },
   };

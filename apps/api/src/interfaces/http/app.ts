@@ -175,8 +175,17 @@ export function createApp(container: Container) {
     }),
   );
 
-  // Resolve session for every request.
+  // Resolve session for app routes. Skip Better Auth's own `/api/auth/*`
+  // surface: it manages cookies/session itself, and an extra getSession
+  // before every OAuth/sign-in call doubles DB load (and can hang the
+  // Worker isolate when the pool is contended).
   app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/api/auth/")) {
+      c.set("user", null);
+      c.set("session", null);
+      await next();
+      return;
+    }
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     c.set("user", session?.user ?? null);
     c.set("session", session?.session ?? null);

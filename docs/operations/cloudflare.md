@@ -173,6 +173,24 @@ Routes instead, set `GEO_PROVIDER=google` as a var and
 (`GEO_OSM_NOMINATIM_URL`, `GEO_OSM_OVERPASS_URL`, `GEO_OSM_OSRM_URL`,
 `GEO_OSM_USER_AGENT`) are vars. See [../backend/geo.md](../backend/geo.md).
 
+## Troubleshooting
+
+### Browser shows “blocked by CORS” on `api.opentrip.im`
+
+CORS is configured from `TRUSTED_ORIGINS` and is correct for
+`https://opentrip.im`. When the Worker **hangs or throws before a response**
+(Cloudflare error **1101**), the edge returns a plain error page **without**
+CORS headers — Chrome reports that as a CORS failure.
+
+Check Workers Logs for:
+
+- `Worker's code had hung and would never generate a response`
+- `$workers.outcome = exception` on `/api/auth/*`
+
+Mitigations in code: shared `pg.Pool` for domain + Better Auth, connection
+timeouts, no session preload on `/api/auth/*`, and emergency CORS on uncaught
+Worker errors. Prefer Hyperdrive over a raw origin `DATABASE_URL` on the Worker.
+
 ## Rollback
 
 ```bash
