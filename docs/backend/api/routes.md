@@ -9,7 +9,7 @@ API origin. **Auth**: `public` | `session` | `session + member` | `session + edi
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET, POST | `/api/auth/*` | Better Auth | Sign-in, sign-up, session, OAuth, etc. |
-| GET | `/api/mobile-auth/oauth/start` | public | Start native Google OAuth |
+| GET | `/api/mobile-auth/oauth/start` | public | 302 to Google with OAuth state cookies |
 | GET | `/api/mobile-auth/oauth/complete` | OAuth cookie | Redirect to the app with a one-time code |
 | POST | `/api/mobile-auth/oauth/exchange` | one-time code | Exchange code for a native Bearer session |
 | GET | `/api/health` | public | Liveness `{ status: "ok" }` |

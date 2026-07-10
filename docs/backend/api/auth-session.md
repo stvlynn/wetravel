@@ -39,7 +39,7 @@ Not every Better Auth plugin path is listed here. Clients need at least:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/mobile-auth/oauth/start?provider=google` | Create a Better Auth Google authorization URL |
+| GET | `/api/mobile-auth/oauth/start?provider=google` | 302 to Google with Better Auth OAuth state cookies (open inside ASWebAuth) |
 | GET | `/api/mobile-auth/oauth/complete` | Convert the browser cookie session to a one-time app callback code |
 | POST | `/api/mobile-auth/oauth/exchange` | Consume `{ code }` and return `{ token, session }` |
 

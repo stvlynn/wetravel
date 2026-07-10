@@ -186,26 +186,32 @@ export function createApp(container: Container) {
   // Better Auth handler.
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
-  // Native clients authenticate in ASWebAuthenticationSession. Better Auth
-  // owns the provider state and callback; this bridge only turns the resulting
-  // cookie session into a short-lived, single-use code for the app.
+  // Native clients authenticate in ASWebAuthenticationSession. The start
+  // endpoint must be opened inside that session so Better Auth's OAuth state
+  // cookie lands in the same jar as Google's callback. This bridge only turns
+  // the resulting cookie session into a short-lived, single-use code for the app.
   app.get("/api/mobile-auth/oauth/start", async (c) => {
     const { provider } = mobileOAuthStartQuerySchema.parse(c.req.query());
     if (!config.googleOAuth) {
-      return fail(c, "oauth_unavailable", "Google sign-in is not configured", 404);
+      return c.redirect("opentrip://auth/callback?error=oauth_unavailable");
     }
     const callbackURL = new URL(
       "/api/mobile-auth/oauth/complete",
       config.betterAuthUrl,
     ).toString();
-    const result = await auth.api.signInSocial({
+    const { headers, response } = await auth.api.signInSocial({
       headers: c.req.raw.headers,
       body: { provider, callbackURL, disableRedirect: true },
+      returnHeaders: true,
     });
-    if (!result.url) {
+    if (!response.url) {
       return fail(c, "oauth_start_failed", "Unable to start Google sign-in", 502);
     }
-    return ok(c, { url: result.url });
+    const redirect = c.redirect(response.url);
+    for (const cookie of headers.getSetCookie()) {
+      redirect.headers.append("Set-Cookie", cookie);
+    }
+    return redirect;
   });
 
   app.get("/api/mobile-auth/oauth/complete", async (c) => {
