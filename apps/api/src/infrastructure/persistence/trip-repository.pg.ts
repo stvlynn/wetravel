@@ -1,5 +1,5 @@
-/** @deprecated Import from trip-repository.sql */
+/** @deprecated Import from trip-repository.db */
 export {
   SqlTripRepository,
   SqlTripRepository as PgTripRepository,
-} from "./trip-repository.sql";
+} from "./trip-repository.db";

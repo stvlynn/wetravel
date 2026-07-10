@@ -11,10 +11,10 @@ import {
 import { AvatarService } from "../../application/avatar";
 import type { FileStorage } from "../../application/storage";
 import { createAuthDatabase, createPool, type Pool } from "../persistence/pool";
-import { SqlTripRepository } from "../persistence/trip-repository.sql";
-import { SqlTripInviteRepository } from "../persistence/invite-repository.sql";
-import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.sql";
-import { SqlAgentSessionRepository } from "../persistence/agent-repository.sql";
+import { SqlTripRepository } from "../persistence/trip-repository.db";
+import { SqlTripInviteRepository } from "../persistence/invite-repository.db";
+import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.db";
+import { SqlAgentSessionRepository } from "../persistence/agent-repository.db";
 import { createAuth, type Auth } from "../auth/auth";
 import { createSampleTripTemplateLoader } from "../persistence/sample-trip-template";
 import { CachedWeatherClient } from "../weather/cached-weather-client";

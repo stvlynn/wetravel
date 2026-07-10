@@ -40,10 +40,11 @@ createContainer
   → createAuthDatabase(provider, url)  # Better Auth (pg.Pool | mysql2 Pool)
 ```
 
-Repositories live under `infrastructure/persistence/*-repository.sql.ts` and
+Repositories live under `infrastructure/persistence/*-repository.db.ts` and
 accept `SqlClient`. Callers write PostgreSQL-style `$1` placeholders; the MySQL
 driver rewrites them to `?`. Dialect helpers cover `ON CONFLICT` /
 `INSERT IGNORE` / `ON DUPLICATE KEY`, and `ANY($n)` / `IN (?,?,…)`.
+(Filenames use `.db.ts`, not `.sql.ts`, so Wrangler does not treat them as raw SQL.)
 
 Prisma Client with `@prisma/adapter-pg` is still available for tooling against
 Postgres. Prefer `SqlClient` for app code so both backends stay supported.

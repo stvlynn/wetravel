@@ -1,5 +1,5 @@
-/** @deprecated Import from agent-repository.sql */
+/** @deprecated Import from agent-repository.db */
 export {
   SqlAgentSessionRepository,
   SqlAgentSessionRepository as PgAgentSessionRepository,
-} from "./agent-repository.sql";
+} from "./agent-repository.db";
