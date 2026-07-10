@@ -87,9 +87,29 @@ Details: [deploy/cloudflare/hyperdrive.md](../../deploy/cloudflare/hyperdrive.md
 Worker prefers `env.HYPERDRIVE.connectionString` when the binding exists; otherwise
 `env.DATABASE_URL`.
 
-## 2. Migrate + seed
+## 2. Migrate + seed / one-shot deploy init
 
-Run schema apply + seed against the same database (from a machine that can reach it):
+### One-shot init on deploy (`DB_INIT_ON_START`)
+
+When the database does not exist yet, set a **repository Variable** (not a
+secret):
+
+| Variable | Value | Notes |
+| --- | --- | --- |
+| `DB_INIT_ON_START` | `true` | Next deploy runs CREATE DATABASE + schema |
+| `DB_INIT_SEED` | `true` | Optional: also seed demo data |
+| `DATABASE_SSL` | `off` | Match Worker / origin TLS |
+
+Requires secret `DATABASE_URL`. After a successful init deploy:
+
+1. Set `DB_INIT_ON_START` to `false` (or delete the variable).
+2. Or use **Actions → Deploy Cloudflare → Run workflow** and check
+   **init_db** once without keeping the variable on.
+
+The MySQL user needs `CREATE` privilege (or create the empty database in the
+cloud console first). Init script: `pnpm --filter @opentrip/api db:mysql-init`.
+
+### Manual migrate + seed
 
 ```bash
 # Postgres
@@ -98,7 +118,9 @@ DATABASE_URL="postgres://…" pnpm db:seed
 
 # MySQL
 DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" \
-  pnpm --filter @opentrip/api db:mysql-schema
+  pnpm --filter @opentrip/api db:mysql-init
+# or schema only (DB must already exist):
+#   pnpm --filter @opentrip/api db:mysql-schema
 DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" pnpm db:seed
 ```
 

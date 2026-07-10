@@ -20,7 +20,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "tsx --env-file-if-exists=../../.env prisma/reset.ts",
     "db:snapshot": "prisma db pull --force",
-    "db:mysql-schema": "tsx --env-file-if-exists=../../.env prisma/mysql/apply-schema.ts"
+    "db:mysql-schema": "tsx --env-file-if-exists=../../.env prisma/mysql/apply-schema.ts",
+    "db:mysql-init": "tsx --env-file-if-exists=../../.env prisma/mysql/init.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

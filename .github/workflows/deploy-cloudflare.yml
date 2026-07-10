@@ -9,6 +9,11 @@
 #   BETTER_AUTH_SECRET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
 #   AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_CLIENT_ID,
 #   GOOGLE_CLIENT_SECRET, GOOGLE_MAPS_API_KEY, CAPTCHA_SECRET_KEY
+#
+# Optional repository Variables (Settings → Secrets and variables → Actions → Variables):
+#   DB_INIT_ON_START=true  — one-shot: CREATE DATABASE + apply MySQL schema during deploy
+#   DB_INIT_SEED=true      — also run seed when init runs
+# Turn DB_INIT_ON_START back to false (or delete) after a successful init.
 
 name: Deploy Cloudflare
 
@@ -29,6 +34,10 @@ on:
         description: "Sync GitHub secrets → Worker secrets after API deploy"
         type: boolean
         default: true
+      init_db:
+        description: "One-shot MySQL init (CREATE DATABASE + schema)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-cloudflare-${{ github.ref }}
@@ -86,6 +95,28 @@ jobs:
 
       - name: Install workspace deps (wrangler bundle needs package resolution)
         run: pnpm install --frozen-lockfile
+
+      - name: Init MySQL (CREATE DATABASE + schema)
+        # Prefer repository Variable DB_INIT_ON_START=true for one deploy, then set false.
+        # Or check "init_db" when manually running the workflow.
+        if: >-
+          vars.DB_INIT_ON_START == 'true' ||
+          vars.DB_INIT_ON_START == '1' ||
+          github.event.inputs.init_db == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_PROVIDER: mysql
+          DATABASE_SSL: ${{ vars.DATABASE_SSL || 'off' }}
+          DB_INIT_SEED: ${{ vars.DB_INIT_SEED || 'false' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL repository secret is required for DB init"
+            exit 1
+          fi
+          echo "Running MySQL init (DB_INIT_ON_START / init_db)…"
+          pnpm --filter @opentrip/api db:mysql-init
+          echo "Init finished. Set repository variable DB_INIT_ON_START=false before the next deploy."
 
       - name: Deploy API Worker
         env:

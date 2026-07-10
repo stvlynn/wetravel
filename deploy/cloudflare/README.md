@@ -72,12 +72,22 @@ Vars already in `wrangler.api.jsonc`:
 
 Or set GitHub repo secret `DATABASE_URL`; CI syncs it on each API deploy.
 
-Local schema/seed (from a machine that can reach the DB):
+### One-shot DB init on deploy
+
+If the database does not exist yet:
+
+1. GitHub → **Settings → Secrets and variables → Actions → Variables**
+2. Add `DB_INIT_ON_START` = `true` (optional: `DB_INIT_SEED` = `true`)
+3. Push or re-run **Deploy Cloudflare**
+4. After success, set `DB_INIT_ON_START` = `false` so later deploys skip init
+
+Alternatively: **Run workflow** → enable **init_db** once (no variable needed).
+
+Local equivalent:
 
 ```bash
-DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" \
-  pnpm --filter @opentrip/api db:mysql-schema
-DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" pnpm db:seed
+DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" DATABASE_SSL=off \
+  pnpm --filter @opentrip/api db:mysql-init
 ```
 
 ### 1b. Optional Hyperdrive
