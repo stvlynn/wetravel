@@ -61,7 +61,7 @@ for the full list. Production must set at least:
 | `EMAIL_FROM` | `OpenTrip <noreply@opentrip.im>` |
 | `CAPTCHA_PROVIDER` | `cloudflare-turnstile` |
 | `DATABASE_PROVIDER` | `postgres` |
-| `STORAGE_BACKEND` / `S3_*` | R2 settings |
+| `STORAGE_BACKEND` / `S3_*` | Set in Actions only (R2 bucket/endpoint) |
 | `AI_*` / `GEO_*` | Agent and geo |
 
 Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.

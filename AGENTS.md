@@ -81,6 +81,14 @@
 - **No redundant UI copy** — do not repeat what a title, icon, or state conveys.
 - **No duplicated implementations** — reuse or extract to the right layer.
 - **No fallback/clever bypass logic** — face the root cause or ask.
+- **No environment-specific config in git.** Production values (R2 bucket /
+  endpoint, captcha provider, email provider, AI model URLs, API keys, etc.)
+  live only in GitHub Actions secrets/variables or local gitignored files
+  (`.env`, `deploy/cloudflare/.secrets.local.json`). Committed files may
+  document **key names** and placeholders (`vars.example.json`,
+  `secrets.example.json`); never real account endpoints, bucket names chosen
+  for prod, or credentials. Cloudflare Worker `vars` in `wrangler.api.jsonc`
+  are local fallbacks only — CI overlays Actions variables at deploy time.
 
 ---
 

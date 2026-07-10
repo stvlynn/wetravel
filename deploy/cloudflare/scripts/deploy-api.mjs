@@ -125,6 +125,22 @@ if (overridden.length > 0) {
   console.log(`Overlaying Worker vars from env: ${overridden.join(", ")}`);
 }
 
+// Production storage must come from Actions (or local env), not committed
+// wrangler defaults — refuse to ship without an explicit bucket/endpoint.
+const storageBackend = (config.vars.STORAGE_BACKEND || "").trim();
+if (storageBackend === "s3") {
+  const missing = ["S3_BUCKET", "S3_ENDPOINT"].filter(
+    (key) => !String(config.vars[key] || "").trim(),
+  );
+  if (missing.length > 0) {
+    console.error(
+      `STORAGE_BACKEND=s3 requires ${missing.join(" and ")} from env ` +
+        `(GitHub Actions variables). Do not commit production R2 values in wrangler.api.jsonc.`,
+    );
+    process.exit(1);
+  }
+}
+
 writeFileSync(generatedConfigPath, `${JSON.stringify(config, null, 2)}\n`, {
   mode: 0o600,
 });

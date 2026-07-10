@@ -7,7 +7,8 @@
   "compatibility_date": "2025-01-01",
   // pg / mysql2 + Better Auth need Node built-ins on Workers.
   "compatibility_flags": ["nodejs_compat_v2"],
-  "account_id": "<CLOUDFLARE_ACCOUNT_ID>",
+  // Account comes from CLOUDFLARE_ACCOUNT_ID (Actions secret / local env).
+  // Do not commit a production account_id here.
   "workers_dev": true,
   "observability": {
     "enabled": true
@@ -23,32 +24,26 @@
   // Set GitHub secret HYPERDRIVE_ID (or env HYPERDRIVE_ID) and deploy-api.mjs
   // injects:
   //   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<from-env>" }]
-  // Alternative: Worker secret DATABASE_URL for direct connect (no Hyperdrive).
   //
-  // Non-secret vars. Secrets: wrangler secret put / sync-secrets.mjs
-  // Frontend: https://opentrip.im  ·  API: https://api.opentrip.im
+  // Production non-secret config lives in GitHub Actions variables (see
+  // vars.example.json). deploy-api.mjs overlays them onto `vars` at deploy
+  // time. Do NOT commit environment-specific values (R2 bucket, AI model,
+  // EMAIL_PROVIDER=resend, CAPTCHA_PROVIDER, …) here — only safe local
+  // fallbacks for manual `wrangler` use.
   "vars": {
     "BASE_URL": "https://api.opentrip.im",
-    "TRUSTED_ORIGINS": "https://opentrip.im,https://www.opentrip.im,https://opentrip-web.pages.dev",
-    // Production uses Hyperdrive → Postgres (PlanetScale). Override only if needed.
+    "TRUSTED_ORIGINS": "https://opentrip.im,https://www.opentrip.im,https://opentrip-web.pages.dev,opentrip://",
     "DATABASE_PROVIDER": "postgres",
     "DATABASE_SSL": "off",
+    // Local fallbacks only. CI must set STORAGE_*/S3_*/AI_*/EMAIL_*/CAPTCHA_*
+    // via Actions variables (deploy-api.mjs overlays and validates).
     "STORAGE_BACKEND": "s3",
     "STORAGE_ROOT": "uploads",
-    "S3_BUCKET": "opentrip-uploads",
     "S3_REGION": "auto",
-    "S3_ENDPOINT": "https://<ACCOUNT_ID>.r2.cloudflarestorage.com",
     "S3_FORCE_PATH_STYLE": "false",
-    "AI_PROVIDER": "openai",
-    "AI_MODEL": "deepseek-v4-pro",
-    "AI_BASE_URL": "https://api.deepseek.com/v1",
-    "AI_PROACTIVE_THRESHOLD": "0.7",
-    "AI_MAX_TOOL_STEPS": "5",
     "GEO_PROVIDER": "osm",
     "GEO_OSM_USER_AGENT": "OpenTrip/0.1 (https://opentrip.im; geo-agent)",
-    // Local/manual defaults. Production overlays these from GitHub Actions
-    // variables via deploy-api.mjs (EMAIL_PROVIDER, CAPTCHA_PROVIDER, AI_*, …).
     "EMAIL_PROVIDER": "console",
-    "EMAIL_FROM": "OpenTrip <noreply@opentrip.im>"
+    "EMAIL_FROM": "OpenTrip <noreply@localhost>"
   }
 }

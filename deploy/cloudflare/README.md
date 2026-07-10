@@ -154,9 +154,19 @@ node deploy/cloudflare/scripts/sync-secrets.mjs
 
 ## R2
 
-Bucket `opentrip-uploads` holds avatars/media via the S3-compatible API
-(`STORAGE_BACKEND=s3`). Access key id + secret access key are Worker secrets;
-bucket/endpoint are Actions variables.
+Configure the R2 bucket **only** via GitHub Actions variables/secrets (not in
+git):
+
+| Actions | Key | Notes |
+| --- | --- | --- |
+| Variable | `STORAGE_BACKEND` | `s3` |
+| Variable | `S3_BUCKET` | R2 bucket name (e.g. set with `gh variable set`) |
+| Variable | `S3_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| Variable | `S3_REGION` | `auto` |
+| Secret | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | R2 S3 API token |
+
+`deploy-api.mjs` overlays these at deploy time and refuses to deploy
+`STORAGE_BACKEND=s3` without `S3_BUCKET` + `S3_ENDPOINT` from env.
 
 ## Rollback
 
