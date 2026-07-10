@@ -1,0 +1,55 @@
+# One-shot: create cache-disabled Hyperdrive for auth/agent fresh reads.
+# Trigger: gh workflow run create-hyperdrive-fresh.yml
+# Then: set GitHub secret HYPERDRIVE_CACHE_DISABLED_ID from the job log line.
+
+name: Create Hyperdrive Fresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Create cache-disabled Hyperdrive
+        id: create
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          node deploy/cloudflare/scripts/create-hyperdrive-fresh.mjs | tee /tmp/hyperdrive-fresh.out
+          ID=$(grep -E '^HYPERDRIVE_CACHE_DISABLED_ID=' /tmp/hyperdrive-fresh.out | tail -1 | cut -d= -f2)
+          if [ -z "$ID" ]; then
+            echo "Failed to capture Hyperdrive id"
+            exit 1
+          fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "::notice::Created or reused HYPERDRIVE_CACHE_DISABLED_ID=$ID"
+
+      - name: Set GitHub Actions secret
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HYPERDRIVE_ID: ${{ steps.create.outputs.id }}
+        run: |
+          set -euo pipefail
+          # GITHUB_TOKEN cannot always write Actions secrets; try, then print
+          # a fallback command for local `gh secret set`.
+          if gh secret set HYPERDRIVE_CACHE_DISABLED_ID --body "$HYPERDRIVE_ID" -R "$GITHUB_REPOSITORY"; then
+            echo "::notice::Set repository secret HYPERDRIVE_CACHE_DISABLED_ID"
+          else
+            echo "::warning::Could not set secret with GITHUB_TOKEN. Run locally:"
+            echo "printf '%s' '$HYPERDRIVE_ID' | gh secret set HYPERDRIVE_CACHE_DISABLED_ID -R $GITHUB_REPOSITORY"
+          fi
