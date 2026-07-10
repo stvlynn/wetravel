@@ -1,4 +1,4 @@
-import { createContainer, type Container } from "./infrastructure/composition/container";
+import { createContainer } from "./infrastructure/composition/container";
 import { loadConfig, type RawEnv } from "./infrastructure/config";
 import { createWorkerStorage } from "./infrastructure/storage/create-worker-storage";
 import { createApp } from "./interfaces/http/app";
@@ -19,20 +19,10 @@ interface WorkerExecutionContext {
   passThroughOnException(): void;
 }
 
-/** Only cache when Hyperdrive owns the socket lifecycle. */
-let hyperdriveCached: {
-  app: ReturnType<typeof createApp>;
-  container: Container;
-} | null = null;
-
 function resolveConnectionString(env: WorkerEnv): string | undefined {
   const fromHyperdrive = env.HYPERDRIVE?.connectionString?.trim();
   if (fromHyperdrive) return fromHyperdrive;
   return env.DATABASE_URL?.trim() || undefined;
-}
-
-function hasHyperdrive(env: WorkerEnv): boolean {
-  return Boolean(env.HYPERDRIVE?.connectionString?.trim());
 }
 
 function buildApp(env: WorkerEnv, poolMax: number) {
@@ -82,40 +72,28 @@ export default {
     env: WorkerEnv,
     ctx: WorkerExecutionContext,
   ): Promise<Response> {
+    // Always build a fresh client pool per request on Workers.
+    // Hyperdrive still pools TCP to the origin at the edge; caching a
+    // node-postgres Pool across isolate freezes left connections "pending"
+    // forever → CF hang cancel (1101) which browsers report as CORS.
+    // max:5 allows Better Auth concurrent queries within one request; the
+    // pool is disposed after the response (shared with domain SqlClient).
+    const { app, container } = buildApp(env, 5);
     try {
-      // Hyperdrive: long-lived **shared** client pool (max small; Hyperdrive
-      // pools at the edge). Avoid dual pools — see createDatabaseHandles.
-      if (hasHyperdrive(env)) {
-        if (!hyperdriveCached) {
-          // max 5 is CF's node-postgres example; we share one pool for auth+SQL.
-          hyperdriveCached = buildApp(env, 5);
-        }
-        return await hyperdriveCached.app.fetch(request);
-      }
-
-      // Direct MySQL/Postgres: Workers freeze isolates and close TCP sockets.
-      // A cached mysql2 pool then fails with
-      // "Can't add new command when connection is in closed state".
-      // Build a fresh pool per request and dispose after the response.
-      const { app, container } = buildApp(env, 1);
-      try {
-        return await app.fetch(request);
-      } finally {
-        ctx.waitUntil(
-          container.dispose().catch((err) => {
-            console.error("Failed to dispose DB pools:", err);
-          }),
-        );
-      }
+      return await app.fetch(request);
     } catch (err) {
       console.error("Worker fetch failed:", err);
-      // Drop broken Hyperdrive cache so the next request rebuilds pools.
-      hyperdriveCached = null;
       return emergencyCorsResponse(
         request,
         env,
         500,
         "Something went wrong",
+      );
+    } finally {
+      ctx.waitUntil(
+        container.dispose().catch((err) => {
+          console.error("Failed to dispose DB pools:", err);
+        }),
       );
     }
   },

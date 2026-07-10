@@ -8,8 +8,8 @@ export interface PgPoolOptions {
   idleTimeoutMillis?: number;
 }
 
-const DEFAULT_CONNECTION_TIMEOUT_MS = 8_000;
-const DEFAULT_IDLE_TIMEOUT_MS = 20_000;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+const DEFAULT_IDLE_TIMEOUT_MS = 10_000;
 
 function poolConfig(
   connectionString: string,
@@ -22,7 +22,6 @@ function poolConfig(
     connectionTimeoutMillis:
       options?.connectionTimeoutMillis ?? DEFAULT_CONNECTION_TIMEOUT_MS,
     idleTimeoutMillis: options?.idleTimeoutMillis ?? DEFAULT_IDLE_TIMEOUT_MS,
-    allowExitOnIdle: true,
   };
 }
 

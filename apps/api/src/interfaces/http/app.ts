@@ -192,8 +192,16 @@ export function createApp(container: Container) {
     await next();
   });
 
-  // Better Auth handler.
-  app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+  // Better Auth handler. Surface driver errors as JSON (Better Auth sometimes
+  // returns empty 500s when the pool times out).
+  app.on(["GET", "POST"], "/api/auth/*", async (c) => {
+    try {
+      return await auth.handler(c.req.raw);
+    } catch (err) {
+      console.error("Better Auth handler error:", err);
+      throw err instanceof Error ? err : new Error(String(err));
+    }
+  });
 
   // Native clients authenticate in ASWebAuthenticationSession. The start
   // endpoint must be opened inside that session so Better Auth's OAuth state
