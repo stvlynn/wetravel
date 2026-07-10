@@ -15,6 +15,7 @@ deploy/**/.secrets*.json
 deploy/**/.env.production
 deploy/**/mysql-origin.env
 deploy/**/*.local.env
+deploy/cloudflare/wrangler.api.generated.json
 
 # logs
 *.log

@@ -10,20 +10,20 @@
  * Usage:
  *   CLOUDFLARE_API_TOKEN=… HYPERDRIVE_ID=… node deploy/cloudflare/scripts/deploy-api.mjs
  */
-import {
-  readFileSync,
-  writeFileSync,
-  unlinkSync,
-  mkdtempSync,
-} from "node:fs";
-import { resolve, dirname, join } from "node:path";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../../..");
-const baseConfigPath = resolve(__dirname, "../wrangler.api.jsonc");
+const cloudflareDir = resolve(__dirname, "..");
+const baseConfigPath = resolve(cloudflareDir, "wrangler.api.jsonc");
+// Keep generated config beside the base file so relative `main` paths resolve.
+const generatedConfigPath = resolve(
+  cloudflareDir,
+  "wrangler.api.generated.json",
+);
 
 if (!process.env.CLOUDFLARE_API_TOKEN) {
   console.error("CLOUDFLARE_API_TOKEN is required.");
@@ -66,22 +66,22 @@ if (hyperdriveId) {
   );
 }
 
-const tmpDir = mkdtempSync(join(tmpdir(), "opentrip-wrangler-"));
-const tmpConfigPath = join(tmpDir, "wrangler.api.generated.json");
-writeFileSync(tmpConfigPath, `${JSON.stringify(config, null, 2)}\n`, {
+writeFileSync(generatedConfigPath, `${JSON.stringify(config, null, 2)}\n`, {
   mode: 0o600,
 });
 
-console.log(`Deploying API Worker with generated config (tmpdir).`);
+console.log(
+  `Deploying API Worker with generated config (gitignored, same dir as base).`,
+);
 
 const result = spawnSync(
   "npx",
-  ["--yes", "wrangler@4", "deploy", "--config", tmpConfigPath],
+  ["--yes", "wrangler@4", "deploy", "--config", generatedConfigPath],
   { cwd: root, stdio: "inherit", env: process.env },
 );
 
 try {
-  unlinkSync(tmpConfigPath);
+  unlinkSync(generatedConfigPath);
 } catch {
   /* ignore */
 }
