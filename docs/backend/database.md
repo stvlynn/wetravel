@@ -24,9 +24,13 @@ DATABASE_PROVIDER=mysql
 DATABASE_URL=mysql://opentrip:opentrip@localhost:3306/opentrip
 ```
 
-On Cloudflare Workers the Hyperdrive binding still supplies the connection
-string at runtime; set `DATABASE_PROVIDER` as a Worker var to match the origin
-database (`postgres` or `mysql`). Hyperdrive supports both.
+On Cloudflare Workers, prefer either:
+
+1. **Worker secret `DATABASE_URL`** (direct connect; use when Hyperdrive TLS
+   fails — e.g. some managed MySQL SSL modes), plus vars `DATABASE_PROVIDER`
+   and optional `DATABASE_SSL` (`required` | `off` | `verify`), or
+2. **Hyperdrive binding** `HYPERDRIVE` (pooling). Worker uses Hyperdrive when
+   present, otherwise `DATABASE_URL`.
 
 ## Runtime architecture
 

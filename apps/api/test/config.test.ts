@@ -15,6 +15,7 @@ describe("loadConfig database provider", () => {
       STORAGE_ROOT: "/data",
     });
     expect(pg.databaseProvider).toBe("postgres");
+    expect(pg.databaseSsl).toBe("off");
 
     const fromUrl = loadConfig({
       ...BASE_ENV,
@@ -23,14 +24,18 @@ describe("loadConfig database provider", () => {
       STORAGE_ROOT: "/data",
     });
     expect(fromUrl.databaseProvider).toBe("mysql");
+    // MySQL defaults to TLS required for managed clouds / Workers direct connect.
+    expect(fromUrl.databaseSsl).toBe("required");
 
     const explicit = loadConfig({
       ...BASE_ENV,
       DATABASE_PROVIDER: "mysql",
+      DATABASE_SSL: "off",
       STORAGE_BACKEND: "fs",
       STORAGE_ROOT: "/data",
     });
     expect(explicit.databaseProvider).toBe("mysql");
+    expect(explicit.databaseSsl).toBe("off");
   });
 });
 

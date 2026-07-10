@@ -44,11 +44,10 @@ export interface Container {
 
 /** Wire the runtime-neutral object graph around a selected storage adapter. */
 export function createContainer(config: AppConfig, fileStorage: FileStorage): Container {
-  const pool = createPool(config.databaseUrl, config.databaseProvider);
-  const authDatabase = createAuthDatabase(
-    config.databaseUrl,
-    config.databaseProvider,
-  );
+  // Workers: keep the pool small — isolates are short-lived and do not need
+  // Hyperdrive-scale pooling when using a direct DATABASE_URL secret.
+  const pool = createPool(config, { max: 5 });
+  const authDatabase = createAuthDatabase(config, { max: 5 });
   const tripRepository = new SqlTripRepository(pool);
   const auth = createAuth(config, authDatabase, {
     tripRepository,

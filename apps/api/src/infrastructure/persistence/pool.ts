@@ -7,11 +7,11 @@ import {
 } from "./sql";
 
 /** Create the shared SqlClient used by domain repositories. */
-export function createPool(
-  databaseUrl: string,
-  provider: AppConfig["databaseProvider"] = "postgres",
-): SqlClient {
-  return createSqlClient(provider, databaseUrl);
+export function createPool(config: AppConfig, options?: { max?: number }): SqlClient {
+  return createSqlClient(config.databaseProvider, config.databaseUrl, {
+    max: options?.max ?? 10,
+    ssl: config.databaseSsl,
+  });
 }
 
 /**
@@ -20,13 +20,16 @@ export function createPool(
  * - MySQL: mysql2/promise `Pool` (Kysely MysqlDialect)
  */
 export function createAuthDatabase(
-  databaseUrl: string,
-  provider: AppConfig["databaseProvider"],
+  config: AppConfig,
+  options?: { max?: number },
 ): unknown {
-  if (provider === "mysql") {
-    return createRawMysqlPool(databaseUrl);
+  if (config.databaseProvider === "mysql") {
+    return createRawMysqlPool(config.databaseUrl, {
+      max: options?.max ?? 10,
+      ssl: config.databaseSsl,
+    });
   }
-  return createRawPgPool(databaseUrl);
+  return createRawPgPool(config.databaseUrl, { max: options?.max ?? 10 });
 }
 
 export type { SqlClient as Pool } from "./sql";

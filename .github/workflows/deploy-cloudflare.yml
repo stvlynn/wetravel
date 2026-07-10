@@ -1,10 +1,11 @@
 # Deploy OpenTrip to Cloudflare on push to main.
 # - Pages (SPA) → opentrip.im / opentrip-web.pages.dev
-# - Workers (API) → api.opentrip.im  (requires Hyperdrive id in wrangler.api.jsonc)
+# - Workers (API) → api.opentrip.im
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-# Optional (synced to Worker on each API deploy when present):
+# Worker secrets synced when present (never commit values):
+#   DATABASE_URL (MySQL/Postgres direct connect when Hyperdrive is unused),
 #   BETTER_AUTH_SECRET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
 #   AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_CLIENT_ID,
 #   GOOGLE_CLIENT_SECRET, GOOGLE_MAPS_API_KEY, CAPTCHA_SECRET_KEY
@@ -17,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy_api:
-        description: "Deploy API Worker (requires Hyperdrive)"
+        description: "Deploy API Worker"
         type: boolean
         default: true
       deploy_web:
@@ -25,7 +26,7 @@ on:
         type: boolean
         default: true
       sync_secrets:
-        description: "Sync GitHub secrets → Worker secrets before API deploy"
+        description: "Sync GitHub secrets → Worker secrets after API deploy"
         type: boolean
         default: true
 
@@ -86,40 +87,18 @@ jobs:
       - name: Install workspace deps (wrangler bundle needs package resolution)
         run: pnpm install --frozen-lockfile
 
-      - name: Check Hyperdrive configuration
-        id: hyperdrive
-        run: |
-          set -euo pipefail
-          id=$(node -e '
-            const fs = require("fs");
-            const s = fs.readFileSync("deploy/cloudflare/wrangler.api.jsonc", "utf8");
-            const m = s.match(/"binding"\s*:\s*"HYPERDRIVE"\s*,\s*"id"\s*:\s*"([^"]+)"/);
-            const id = m?.[1] ?? "";
-            process.stdout.write(id);
-          ')
-          echo "id=$id" >> "$GITHUB_OUTPUT"
-          if [[ -z "$id" || "$id" == \<* || "$id" == *your-hyperdrive* ]]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Hyperdrive id is not set in wrangler.api.jsonc — skipping API deploy. Create Hyperdrive, run set-hyperdrive.mjs, commit, and re-push."
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "Hyperdrive id is set ($id)"
-          fi
-
       - name: Deploy API Worker
-        if: steps.hyperdrive.outputs.configured == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node deploy/cloudflare/scripts/deploy-api.mjs
 
       - name: Sync Worker secrets from GitHub secrets
-        if: >-
-          steps.hyperdrive.outputs.configured == 'true' &&
-          (github.event_name == 'push' || inputs.sync_secrets)
+        if: github.event_name == 'push' || inputs.sync_secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}

@@ -28,6 +28,7 @@ const configPath = resolve(cloudflareDir, "wrangler.api.jsonc");
 const defaultSecretsPath = resolve(cloudflareDir, ".secrets.local.json");
 
 const SECRET_KEYS = [
+  "DATABASE_URL",
   "BETTER_AUTH_SECRET",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",

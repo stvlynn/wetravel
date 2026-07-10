@@ -4,9 +4,16 @@ import type {
   PoolConnection as MysqlPoolConnection,
   QueryResult as MysqlQueryResult,
   ResultSetHeader,
+  SslOptions,
 } from "mysql2/promise";
+import type { DatabaseSslMode } from "../../config";
 import { toMysqlPlaceholders } from "./placeholders";
 import type { QueryResult, SqlClient, SqlConnection } from "./types";
+
+export interface MysqlClientOptions {
+  max?: number;
+  ssl?: DatabaseSslMode;
+}
 
 function mapResult<T>(result: MysqlQueryResult): QueryResult<T> {
   // SELECT → RowDataPacket[]; INSERT/UPDATE → ResultSetHeader
@@ -28,28 +35,55 @@ function normalizeParams(params: unknown[]): unknown[] {
   return params.map((p) => {
     if (p instanceof Date) return p;
     if (typeof p === "boolean") return p ? 1 : 0;
-    // Objects that are plain JSON payloads (already stringified by callers).
     return p;
   });
 }
 
-export function createMysqlClient(
+/** Build mysql2 SSL option from app config + URL hints. */
+export function resolveMysqlSsl(
   connectionString: string,
-  options?: { max?: number },
-): SqlClient {
-  const pool = mysql.createPool({
+  mode: DatabaseSslMode = "required",
+): SslOptions | undefined {
+  const urlHintsSsl =
+    /[?&](ssl|sslmode)=(true|require|required|verify|verify-ca|verify-full)/i.test(
+      connectionString,
+    ) ||
+    connectionString.includes("sslaccept=") ||
+    connectionString.includes("ssl-mode=");
+
+  const effective: DatabaseSslMode =
+    mode === "off" && urlHintsSsl ? "required" : mode;
+
+  if (effective === "off") return undefined;
+  // Managed MySQL (e.g. Tencent CynosDB) often presents a provider CA that is
+  // not in the default trust store; `required` enables TLS without CA pin.
+  if (effective === "required") {
+    return { rejectUnauthorized: false };
+  }
+  return { rejectUnauthorized: true };
+}
+
+function poolConfig(
+  connectionString: string,
+  options?: MysqlClientOptions,
+): mysql.PoolOptions {
+  const ssl = resolveMysqlSsl(connectionString, options?.ssl ?? "required");
+  return {
     uri: connectionString,
     connectionLimit: options?.max ?? 10,
-    // Return Date objects for DATETIME/TIMESTAMP.
     dateStrings: false,
-    // JSON columns come back as objects.
     supportBigNumbers: true,
-    // Match Hyperdrive / managed MySQL SSL when URL requests it.
-    ssl: connectionString.includes("sslaccept=") ||
-      connectionString.includes("sslmode=")
-      ? { rejectUnauthorized: false }
-      : undefined,
-  });
+    // Enable TCP keep-alive; helps long-lived Node processes.
+    enableKeepAlive: true,
+    ...(ssl ? { ssl } : {}),
+  };
+}
+
+export function createMysqlClient(
+  connectionString: string,
+  options?: MysqlClientOptions,
+): SqlClient {
+  const pool = mysql.createPool(poolConfig(connectionString, options));
 
   async function runQuery<T>(
     executor: Pick<MysqlPool, "query"> | Pick<MysqlPoolConnection, "query">,
@@ -82,12 +116,7 @@ export function createMysqlClient(
 /** Raw mysql2 pool for Better Auth Kysely MysqlDialect. */
 export function createRawMysqlPool(
   connectionString: string,
-  options?: { max?: number },
+  options?: MysqlClientOptions,
 ): MysqlPool {
-  return mysql.createPool({
-    uri: connectionString,
-    connectionLimit: options?.max ?? 10,
-    dateStrings: false,
-    supportBigNumbers: true,
-  });
+  return mysql.createPool(poolConfig(connectionString, options));
 }

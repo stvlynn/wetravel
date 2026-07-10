@@ -5,7 +5,7 @@
   "name": "opentrip-api",
   "main": "../../apps/api/src/worker.ts",
   "compatibility_date": "2025-01-01",
-  // pg + Better Auth need Node built-ins on Workers.
+  // pg / mysql2 + Better Auth need Node built-ins on Workers.
   "compatibility_flags": ["nodejs_compat_v2"],
   "account_id": "<CLOUDFLARE_ACCOUNT_ID>",
   "workers_dev": true,
@@ -19,25 +19,24 @@
       "custom_domain": true
     }
   ],
-  // Hyperdrive fronts the origin database. Credentials live only in Hyperdrive
-  // (set via wrangler / dashboard env — never commit host/user/password).
-  //   npx wrangler hyperdrive create opentrip-db --connection-string "$DATABASE_URL"
-  //   node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
-  // See mysql-origin.example.env for required env keys (local only).
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "<your-hyperdrive-id>"
-    }
-  ],
+  // Optional Hyperdrive binding — omit when using a direct DATABASE_URL secret
+  // (e.g. managed MySQL that Hyperdrive cannot TLS-handshake). To re-enable:
+  //   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<id>" }]
+  //
+  // Direct MySQL (recommended when Hyperdrive SSL fails): set Worker secrets
+  //   DATABASE_URL   mysql://USER:PASS@HOST:PORT/DB
+  //   DATABASE_SSL   required | off | verify   (default required for mysql)
+  // via Dashboard or: wrangler secret put DATABASE_URL --config …
+  //
   // Non-secret vars. Secrets go through `wrangler secret put` or
   // `node deploy/cloudflare/scripts/sync-secrets.mjs`.
   // Frontend: https://opentrip.im  ·  API: https://api.opentrip.im
   "vars": {
     "BASE_URL": "https://api.opentrip.im",
     "TRUSTED_ORIGINS": "https://opentrip.im,https://www.opentrip.im,https://opentrip-web.pages.dev",
-    // Must match the Hyperdrive origin engine: postgres | mysql
     "DATABASE_PROVIDER": "mysql",
+    // TLS for direct DATABASE_URL connections (not used by Hyperdrive).
+    "DATABASE_SSL": "required",
     "STORAGE_BACKEND": "s3",
     "STORAGE_ROOT": "uploads",
     "S3_BUCKET": "opentrip-uploads",

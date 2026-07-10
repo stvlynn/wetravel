@@ -46,10 +46,20 @@ export interface GeoConfig {
 
 export type DatabaseProvider = "postgres" | "mysql";
 
+/** MySQL TLS mode for direct connections (Hyperdrive manages TLS separately). */
+export type DatabaseSslMode = "off" | "required" | "verify";
+
 export interface AppConfig {
     /** SQL backend: PostgreSQL (default) or MySQL/MariaDB. */
     databaseProvider: DatabaseProvider;
     databaseUrl: string;
+    /**
+     * TLS for direct MySQL (Worker secret `DATABASE_URL` path).
+     * - off: plain TCP
+     * - required: TLS, do not verify CA (common for managed cloud MySQL)
+     * - verify: TLS + verify server certificate
+     */
+    databaseSsl: DatabaseSslMode;
     betterAuthSecret: string;
     betterAuthUrl: string;
     trustedOrigins: string[];
@@ -89,6 +99,11 @@ export interface RawEnv {
     /** Explicit SQL backend: `postgres` | `mysql`. Inferred from DATABASE_URL when omitted. */
     DATABASE_PROVIDER?: string;
     DATABASE_URL?: string;
+    /**
+     * MySQL TLS for direct connections: `off` | `required` (default for mysql) | `verify`.
+     * Also accepts `true`/`false`. Ignored for Postgres / Hyperdrive.
+     */
+    DATABASE_SSL?: string;
     BETTER_AUTH_SECRET?: string;
     TRUSTED_ORIGINS?: string;
     GOOGLE_CLIENT_ID?: string;
@@ -160,6 +175,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
         env.DATABASE_PROVIDER,
         databaseUrl,
     );
+    const databaseSsl = resolveDatabaseSsl(env.DATABASE_SSL, databaseProvider);
 
     const betterAuthSecret = env.BETTER_AUTH_SECRET;
     if (!betterAuthSecret || betterAuthSecret.length < 32) {
@@ -179,6 +195,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
     return {
         databaseProvider,
         databaseUrl,
+        databaseSsl,
         betterAuthSecret,
         betterAuthUrl: baseUrl,
         trustedOrigins: (env.TRUSTED_ORIGINS ?? `${baseUrl},opentrip://`)
@@ -339,6 +356,26 @@ function resolveDatabaseProvider(
         return "mysql";
     }
     return "postgres";
+}
+
+/**
+ * Resolve MySQL TLS mode. Default `required` for mysql (managed clouds often
+ * force TLS); postgres defaults to `off` (use URL sslmode instead).
+ */
+function resolveDatabaseSsl(
+    raw: string | undefined,
+    provider: DatabaseProvider,
+): DatabaseSslMode {
+    const v = raw?.trim().toLowerCase();
+    if (!v) return provider === "mysql" ? "required" : "off";
+    if (v === "off" || v === "false" || v === "0" || v === "disable") return "off";
+    if (v === "required" || v === "require" || v === "true" || v === "1") {
+        return "required";
+    }
+    if (v === "verify" || v === "verify-ca" || v === "verify-full") return "verify";
+    throw new Error(
+        `DATABASE_SSL must be "off", "required", or "verify" (got "${raw}")`,
+    );
 }
 
 function parseBoolean(value: string | undefined, name: string): boolean {

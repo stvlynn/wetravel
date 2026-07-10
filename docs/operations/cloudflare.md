@@ -48,25 +48,44 @@ Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.
 - An external PostgreSQL reachable from Cloudflare (for Hyperdrive).
 - Cloudflare zone for `opentrip.im` (already active on the deploy account).
 
-## 1. Hyperdrive
+## 1. Database connection (Worker)
 
-Postgres or MySQL origin (set Worker var `DATABASE_PROVIDER` to match):
+Two modes (pick one):
+
+### A. Direct `DATABASE_URL` secret (default for MySQL when Hyperdrive TLS fails)
+
+Store the connection string as a **Worker secret** (never in git):
 
 ```bash
-# Postgres
-npx wrangler hyperdrive create opentrip-db \
-  --connection-string "postgres://USER:PASSWORD@HOST:5432/DBNAME"
+export CLOUDFLARE_API_TOKEN=…
+# From a private shell / CI secret — do not echo into logs
+echo -n "$DATABASE_URL" | npx wrangler secret put DATABASE_URL \
+  --config deploy/cloudflare/wrangler.api.jsonc
+```
 
-# or MySQL
-npx wrangler hyperdrive create opentrip-db \
-  --connection-string "mysql://USER:PASSWORD@HOST:3306/DBNAME"
+Worker vars (non-secret, in `wrangler.api.jsonc` or Dashboard):
 
+| Var | Example | Notes |
+| --- | --- | --- |
+| `DATABASE_PROVIDER` | `mysql` | or `postgres` |
+| `DATABASE_SSL` | `required` | MySQL TLS without CA pin (managed DBs). `off` / `verify` also valid |
+
+GitHub Actions syncs repo secret `DATABASE_URL` → Worker on each API deploy when set.
+
+### B. Hyperdrive binding (optional)
+
+Use when the origin works with Hyperdrive TLS/pooling:
+
+```bash
+npx wrangler hyperdrive create opentrip-db --connection-string "$DATABASE_URL"
 node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
-# commit deploy/cloudflare/wrangler.api.jsonc
-# set Worker var DATABASE_PROVIDER=postgres|mysql
+# add hyperdrive binding back to wrangler.api.jsonc and commit the id only
 ```
 
 Details: [deploy/cloudflare/hyperdrive.md](../../deploy/cloudflare/hyperdrive.md).
+
+Worker prefers `env.HYPERDRIVE.connectionString` when the binding exists; otherwise
+`env.DATABASE_URL`.
 
 ## 2. Migrate + seed
 
@@ -74,16 +93,13 @@ Run schema apply + seed against the same database (from a machine that can reach
 
 ```bash
 # Postgres
-DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:migrate
-DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:seed
+DATABASE_URL="postgres://…" pnpm db:migrate
+DATABASE_URL="postgres://…" pnpm db:seed
 
 # MySQL
-DATABASE_PROVIDER=mysql \
-DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DBNAME" \
-  pnpm --filter @opentrip/api exec tsx --env-file-if-exists=../../.env \
-  prisma/mysql/apply-schema.ts
-DATABASE_PROVIDER=mysql \
-DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DBNAME" pnpm db:seed
+DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" \
+  pnpm --filter @opentrip/api db:mysql-schema
+DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" pnpm db:seed
 ```
 
 ## 3. API (Workers)

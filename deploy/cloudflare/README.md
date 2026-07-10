@@ -51,36 +51,39 @@ gh secret set AI_API_KEY -R stvlynn/OpenTrip
 
 ## One-time bootstrap
 
-### 1. Hyperdrive (manual — external MySQL)
+### 1. Database: direct MySQL secret (default)
 
-Production vars use `DATABASE_PROVIDER=mysql`. Put origin credentials in
-**local env only** (see [mysql-origin.example.env](mysql-origin.example.env)) —
-never commit host, user, or password.
-
-Hyperdrive **validates the origin on create**, so `DATABASE_URL` must work and
-the host must accept Cloudflare egress.
+When Hyperdrive cannot complete TLS to your managed MySQL, use a **Worker
+secret** instead of a Hyperdrive binding.
 
 ```bash
-# Export MYSQL_* or DATABASE_URL from a private env file (gitignored)
-export DATABASE_URL="mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
+export CLOUDFLARE_API_TOKEN=…
+export CLOUDFLARE_ACCOUNT_ID=<CLOUDFLARE_ACCOUNT_ID>
 
-npx wrangler hyperdrive create opentrip-db \
-  --connection-string "$DATABASE_URL"
+# Never commit this value. Load from a private shell / password manager.
+echo -n "$DATABASE_URL" | npx wrangler secret put DATABASE_URL \
+  --config deploy/cloudflare/wrangler.api.jsonc
+```
 
-node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
-# commit only the Hyperdrive id in wrangler.api.jsonc (not credentials)
+Vars already in `wrangler.api.jsonc`:
 
-# Schema + seed (same URL, from a machine that can reach the DB)
+- `DATABASE_PROVIDER=mysql`
+- `DATABASE_SSL=required` — TLS on, no CA pin (typical for cloud MySQL)
+
+Or set GitHub repo secret `DATABASE_URL`; CI syncs it on each API deploy.
+
+Local schema/seed (from a machine that can reach the DB):
+
+```bash
 DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" \
   pnpm --filter @opentrip/api db:mysql-schema
 DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" pnpm db:seed
 ```
 
-Update credentials later (dashboard or wrangler — still not in git):
+### 1b. Optional Hyperdrive
 
-```bash
-npx wrangler hyperdrive update <id> --connection-string "$DATABASE_URL"
-```
+If the origin works with Hyperdrive, bind it and omit `DATABASE_URL` (Worker
+prefers Hyperdrive when present). See [hyperdrive.md](hyperdrive.md).
 
 ### 2. Local secret file (optional, gitignored)
 
