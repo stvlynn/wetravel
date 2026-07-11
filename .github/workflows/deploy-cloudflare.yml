@@ -19,7 +19,8 @@
 #   Vars:    CAPTCHA_PROVIDER, EMAIL_PROVIDER, EMAIL_FROM, API_BASE_URL,
 #            TRUSTED_ORIGINS
 #
-# Optional: AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_MAPS_API_KEY + matching vars.
+# Optional: AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_MAPS_API_KEY,
+#           UNSPLASH_ACCESS_KEY + matching vars.
 
 name: Deploy Cloudflare
 
@@ -199,4 +200,5 @@ jobs:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           CAPTCHA_SECRET_KEY: ${{ secrets.CAPTCHA_SECRET_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
         run: node deploy/cloudflare/scripts/sync-secrets.mjs --from-env

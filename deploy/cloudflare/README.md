@@ -58,10 +58,13 @@ Production config lives in **GitHub Actions secrets/variables**, not in git.
 
 ### Optional secrets
 
-`AI_API_KEY`, `OPENWEATHERMAP_API_KEY`, `GOOGLE_MAPS_API_KEY`.
+`AI_API_KEY`, `OPENWEATHERMAP_API_KEY`, `GOOGLE_MAPS_API_KEY`,
+`UNSPLASH_ACCESS_KEY` (trip cover on create; without it cards keep the SVG
+placeholder).
 
 ```bash
 gh secret set RESEND_API_KEY -R stvlynn/OpenTrip
+gh secret set UNSPLASH_ACCESS_KEY -R stvlynn/OpenTrip
 gh variable set EMAIL_PROVIDER --body "resend" -R stvlynn/OpenTrip
 ```
 

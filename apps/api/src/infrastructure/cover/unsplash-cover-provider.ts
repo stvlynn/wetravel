@@ -13,7 +13,11 @@ export class UnsplashCoverProvider implements CoverImageProvider {
 
   async searchLandscape(query: string): Promise<string | null> {
     const q = query.trim();
-    if (!this.accessKey || !q) return null;
+    if (!this.accessKey) {
+      console.warn("[cover] UNSPLASH_ACCESS_KEY unset; skipping cover fetch");
+      return null;
+    }
+    if (!q) return null;
 
     const params = new URLSearchParams({
       query: `${q} landscape travel`,
@@ -32,11 +36,20 @@ export class UnsplashCoverProvider implements CoverImageProvider {
           },
         },
       );
-      if (!res.ok) return null;
+      if (!res.ok) {
+        console.warn(
+          `[cover] Unsplash search failed: ${res.status} ${res.statusText}`,
+        );
+        return null;
+      }
       const body = (await res.json()) as UnsplashSearchResponse;
       const url = body.results?.[0]?.urls?.regular?.trim();
+      if (!url) {
+        console.warn(`[cover] Unsplash returned no photos for query=${q}`);
+      }
       return url || null;
-    } catch {
+    } catch (err) {
+      console.warn("[cover] Unsplash request error", err);
       return null;
     }
   }

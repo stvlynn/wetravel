@@ -39,6 +39,7 @@ const SECRET_KEYS = [
   "GOOGLE_MAPS_API_KEY",
   "CAPTCHA_SECRET_KEY",
   "RESEND_API_KEY",
+  "UNSPLASH_ACCESS_KEY",
 ];
 
 function parseArgs(argv) {

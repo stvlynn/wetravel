@@ -8,7 +8,7 @@ stores it on `trips.cover_url`.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `UNSPLASH_ACCESS_KEY` | no | Unsplash [Access Key](https://unsplash.com/oauth/applications). When unset, create skips the cover and the trips list keeps the SVG placeholder. |
+| `UNSPLASH_ACCESS_KEY` | no | Unsplash [Access Key](https://unsplash.com/oauth/applications). When unset, create skips the cover and the trips list keeps the SVG placeholder. Must be a **Worker secret** in production (`gh secret set UNSPLASH_ACCESS_KEY` + sync via `deploy/cloudflare/scripts/sync-secrets.mjs`). |
 
 The provider is server-only (no public HTTP route) to avoid key exposure and
 quota abuse. Failures (network, empty results, missing key) return `null` and

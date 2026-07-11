@@ -48,6 +48,7 @@ local/manual defaults only.
 | `AI_API_KEY` | optional | Trip agent |
 | `OPENWEATHERMAP_API_KEY` | optional | Weather proxy |
 | `GOOGLE_MAPS_API_KEY` | optional | When `GEO_PROVIDER=google` |
+| `UNSPLASH_ACCESS_KEY` | optional | Trip cover on create; omit → SVG placeholder |
 
 ### GitHub variables
 
