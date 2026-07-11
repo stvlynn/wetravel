@@ -18,11 +18,17 @@ import { config } from "@/shared/config";
 import { CaptchaField, type CaptchaFieldRef } from "./ui/CaptchaField";
 
 type Mode = "signIn" | "signUp";
-type Step = "credentials" | "otp" | "twoFactor";
+type Step =
+  | "credentials"
+  | "otp"
+  | "twoFactor"
+  | "forgotEmail"
+  | "forgotReset";
 type TwoFactorMethod = "totp" | "backup";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
+const MIN_PASSWORD_LENGTH = 8;
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -62,6 +68,9 @@ function captchaHeaders(token: string | null): Record<string, string> {
     return { "x-captcha-response": token ?? "" };
 }
 
+const linkButtonClassName =
+    "inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]";
+
 export function AuthForm() {
     const { t } = useTranslation("auth");
     const [mode, setMode] = useState<Mode>("signIn");
@@ -69,6 +78,8 @@ export function AuthForm() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [otp, setOtp] = useState("");
     const [twoFactorCode, setTwoFactorCode] = useState("");
     const [twoFactorMethod, setTwoFactorMethod] =
@@ -118,6 +129,24 @@ export function AuthForm() {
         captchaRef.current?.reset();
     }
 
+    function enterForgotEmail() {
+        setMode("signIn");
+        setStep("forgotEmail");
+        setOtp("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setResendIn(0);
+        captchaRef.current?.reset();
+    }
+
+    function enterForgotReset() {
+        setOtp("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setStep("forgotReset");
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+    }
+
     async function sendOtp(options?: { announce?: boolean }) {
         if (captchaEnabled && !captchaToken) return false;
 
@@ -130,6 +159,26 @@ export function AuthForm() {
         });
 
         captchaRef.current?.reset();
+
+        if (result.error) {
+            showAuthError(t("errors.otpSend"));
+            return false;
+        }
+
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+        if (options?.announce) {
+            toastManager.add({
+                title: t("otp.sent"),
+                type: "success",
+            });
+        }
+        return true;
+    }
+
+    async function sendForgotPasswordOtp(options?: { announce?: boolean }) {
+        const result = await authClient.emailOtp.requestPasswordReset({
+            email,
+        });
 
         if (result.error) {
             showAuthError(t("errors.otpSend"));
@@ -191,6 +240,72 @@ export function AuthForm() {
         } catch {
             showAuthError();
             captchaRef.current?.reset();
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function submitForgotEmail(e: React.FormEvent) {
+        e.preventDefault();
+        if (!email.trim()) return;
+
+        setPending(true);
+        try {
+            const ok = await sendForgotPasswordOtp();
+            if (ok) enterForgotReset();
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function submitForgotReset(e: React.FormEvent) {
+        e.preventDefault();
+        if (otp.length !== OTP_LENGTH) return;
+        if (newPassword !== confirmPassword) {
+            showAuthError(t("errors.passwordMismatch"));
+            return;
+        }
+        if (newPassword.length < MIN_PASSWORD_LENGTH) {
+            showAuthError(t("errors.passwordTooShort"));
+            return;
+        }
+
+        setPending(true);
+        try {
+            const result = await authClient.emailOtp.resetPassword({
+                email,
+                otp,
+                password: newPassword,
+            });
+            if (result.error) {
+                showAuthError(t("errors.passwordResetFailed"));
+                setOtp("");
+                return;
+            }
+            toastManager.add({
+                title: t("forgotPassword.done"),
+                type: "success",
+            });
+            setPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setOtp("");
+            setStep("credentials");
+            setMode("signIn");
+            setResendIn(0);
+        } catch {
+            showAuthError(t("errors.passwordResetFailed"));
+            setOtp("");
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function resendForgotPasswordOtp() {
+        if (resendIn > 0 || pending) return;
+        setPending(true);
+        try {
+            await sendForgotPasswordOtp({ announce: true });
         } finally {
             setPending(false);
         }
@@ -284,6 +399,8 @@ export function AuthForm() {
         setStep("credentials");
         setOtp("");
         setTwoFactorCode("");
+        setNewPassword("");
+        setConfirmPassword("");
         setResendIn(0);
         captchaRef.current?.reset();
     }
@@ -292,6 +409,8 @@ export function AuthForm() {
         setStep("credentials");
         setOtp("");
         setTwoFactorCode("");
+        setNewPassword("");
+        setConfirmPassword("");
         setResendIn(0);
         captchaRef.current?.reset();
     }
@@ -340,7 +459,7 @@ export function AuthForm() {
                     </Button>
                     <button
                         type="button"
-                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        className={linkButtonClassName}
                         onClick={() => {
                             setTwoFactorMethod((m) =>
                                 m === "totp" ? "backup" : "totp",
@@ -354,10 +473,150 @@ export function AuthForm() {
                     </button>
                     <button
                         type="button"
-                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        className={linkButtonClassName}
                         onClick={backToCredentials}
                     >
                         {t("otp.back")}
+                    </button>
+                </div>
+            </form>
+        );
+    }
+
+    if (step === "forgotEmail") {
+        return (
+            <form
+                onSubmit={submitForgotEmail}
+                className="flex flex-col gap-4 wf-enter-stagger"
+            >
+                <div className="wf-enter flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
+                        {t("forgotPassword.title")}
+                    </h1>
+                    <p className="text-sm text-pretty text-muted-foreground">
+                        {t("forgotPassword.subtitle")}
+                    </p>
+                </div>
+
+                <label className="wf-enter flex flex-col gap-1.5 text-sm font-medium">
+                    {t("forgotPassword.email")}
+                    <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
+                        required
+                    />
+                </label>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <Button
+                        type="submit"
+                        size="lg"
+                        disabled={pending || !email.trim()}
+                    >
+                        {t("forgotPassword.submit")}
+                    </Button>
+                    <button
+                        type="button"
+                        className={linkButtonClassName}
+                        onClick={backToCredentials}
+                    >
+                        {t("forgotPassword.back")}
+                    </button>
+                </div>
+            </form>
+        );
+    }
+
+    if (step === "forgotReset") {
+        return (
+            <form
+                onSubmit={submitForgotReset}
+                className="flex flex-col gap-4 wf-enter-stagger"
+            >
+                <div className="wf-enter flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
+                        {t("forgotPassword.otpTitle")}
+                    </h1>
+                    <p className="text-sm text-pretty text-muted-foreground">
+                        {t("forgotPassword.otpSubtitle", { email })}
+                    </p>
+                </div>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <span className="text-sm font-medium">{t("otp.label")}</span>
+                    <OTPField
+                        length={OTP_LENGTH}
+                        value={otp}
+                        onValueChange={(value) => setOtp(value)}
+                        disabled={pending}
+                        aria-label={t("otp.label")}
+                    >
+                        <OTPFieldInput />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 2 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 3 })} />
+                        <OTPFieldSeparator />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 4 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 5 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 6 })} />
+                    </OTPField>
+                </div>
+
+                <label className="wf-enter flex flex-col gap-1.5 text-sm font-medium">
+                    {t("forgotPassword.newPassword")}
+                    <Input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        autoComplete="new-password"
+                        minLength={MIN_PASSWORD_LENGTH}
+                        required
+                    />
+                </label>
+
+                <label className="wf-enter flex flex-col gap-1.5 text-sm font-medium">
+                    {t("forgotPassword.confirmPassword")}
+                    <Input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        minLength={MIN_PASSWORD_LENGTH}
+                        required
+                    />
+                </label>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <Button
+                        type="submit"
+                        size="lg"
+                        disabled={
+                            pending ||
+                            otp.length !== OTP_LENGTH ||
+                            !newPassword ||
+                            !confirmPassword
+                        }
+                    >
+                        {t("forgotPassword.submitReset")}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        disabled={pending || resendIn > 0}
+                        onClick={resendForgotPasswordOtp}
+                    >
+                        {resendIn > 0
+                            ? t("otp.resendIn", { seconds: resendIn })
+                            : t("otp.resend")}
+                    </Button>
+                    <button
+                        type="button"
+                        className={linkButtonClassName}
+                        onClick={enterForgotEmail}
+                    >
+                        {t("forgotPassword.back")}
                     </button>
                 </div>
             </form>
@@ -432,7 +691,7 @@ export function AuthForm() {
                     </Button>
                     <button
                         type="button"
-                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        className={linkButtonClassName}
                         onClick={backToCredentials}
                     >
                         {t("otp.back")}
@@ -476,9 +735,26 @@ export function AuthForm() {
                 />
             </label>
 
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-                {t(`${ns}.password`)}
+            <div className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                    <label
+                        htmlFor="auth-password"
+                        className="text-sm font-medium"
+                    >
+                        {t(`${ns}.password`)}
+                    </label>
+                    {!isSignUp ? (
+                        <button
+                            type="button"
+                            className="shrink-0 text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                            onClick={enterForgotEmail}
+                        >
+                            {t("signIn.forgotPassword")}
+                        </button>
+                    ) : null}
+                </div>
                 <Input
+                    id="auth-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -487,7 +763,7 @@ export function AuthForm() {
                     }
                     required
                 />
-            </label>
+            </div>
 
             <CaptchaField
                 key={mode}

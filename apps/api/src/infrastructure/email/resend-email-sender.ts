@@ -51,7 +51,8 @@ export function createResendEmailSender(
       const payload = (await response.json().catch(() => null)) as {
         id?: string;
       } | null;
-      console.info(
+      // warn so Workers Observability indexes the line (info is often dropped).
+      console.warn(
         `[email:resend] accepted id=${payload?.id ?? "unknown"} to=${toLog} from=${from} subject=${message.subject}`,
       );
     },

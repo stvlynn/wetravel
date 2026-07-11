@@ -15,6 +15,10 @@ import type { Trip, TripRepository } from "../../domain/trip";
 import { createEmailSender } from "../email/create-email-sender";
 import { buildLinkEmail } from "../email/link-email";
 import { buildOtpEmail } from "../email/otp-email";
+import {
+  localeFromAuthContext,
+  localeFromRequest,
+} from "../email/email-locale";
 import type { AppConfig } from "../config";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
 
@@ -75,11 +79,12 @@ export function createAuth(
         emailAndPassword: {
             enabled: true,
             requireEmailVerification: true,
-            sendResetPassword: async ({ user, url }) => {
+            sendResetPassword: async ({ user, url }, request) => {
                 const message = buildLinkEmail({
                     to: user.email,
                     type: "reset-password",
                     url,
+                    locale: localeFromRequest(request),
                 });
                 try {
                     await emailSender.send(message);
@@ -117,12 +122,13 @@ export function createAuth(
         user: {
             changeEmail: {
                 enabled: true,
-                sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+                sendChangeEmailConfirmation: async ({ user, newEmail, url }, request) => {
                     const message = buildLinkEmail({
                         to: user.email,
                         type: "change-email-confirmation",
                         url,
-                        detail: `Requested new email: ${newEmail}`,
+                        detail: newEmail,
+                        locale: localeFromRequest(request),
                     });
                     try {
                         await emailSender.send(message);
@@ -183,12 +189,13 @@ export function createAuth(
                     enabled: true,
                     verifyCurrentEmail: true,
                 },
-                async sendVerificationOTP({ email, otp, type }) {
+                async sendVerificationOTP({ email, otp, type }, ctx) {
                     const message = buildOtpEmail({
                         to: email,
                         otp,
                         type,
                         expiresInSeconds: OTP_EXPIRES_IN_SECONDS,
+                        locale: localeFromAuthContext(ctx),
                     });
                     // Await so Workers waitUntil / Node keep the request alive
                     // until the provider accepts the message. Better Auth already

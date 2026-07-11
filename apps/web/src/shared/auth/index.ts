@@ -5,6 +5,7 @@ import {
   twoFactorClient,
 } from "better-auth/client/plugins";
 import { config } from "@/shared/config";
+import i18n from "@/shared/i18n";
 
 /** Set by AuthForm so twoFactorClient can switch the UI without a full reload. */
 let onTwoFactorRequired: (() => void) | null = null;
@@ -22,10 +23,23 @@ export function setTwoFactorRequiredHandler(handler: (() => void) | null): void 
  * inferred from the server `auth` instance.
  *
  * `emailOTPClient` enables OTP send/verify for email registration and change.
- * `twoFactorClient` handles TOTP enrollment and the post-sign-in challenge. */
+ * `twoFactorClient` handles TOTP enrollment and the post-sign-in challenge.
+ *
+ * Every auth request sends `x-opentrip-lang` so transactional mail matches
+ * the SPA language (`en` | `zh`). */
 export const authClient = createAuthClient({
   baseURL: config.baseUrl,
   basePath: "/api/auth",
+  fetchOptions: {
+    onRequest(context) {
+      const headers = new Headers(context.headers);
+      headers.set(
+        "x-opentrip-lang",
+        i18n.resolvedLanguage?.split("-")[0] ?? i18n.language?.split("-")[0] ?? "en",
+      );
+      return { ...context, headers };
+    },
+  },
   plugins: [
     emailOTPClient(),
     twoFactorClient({

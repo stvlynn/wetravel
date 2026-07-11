@@ -1,37 +1,57 @@
 import type { EmailMessage } from "./types";
+import { escapeHtml } from "./email-brand";
+import { otpEmailCopy, type OtpEmailType } from "./email-copy";
+import type { EmailLocale } from "./email-locale";
+import { DEFAULT_EMAIL_LOCALE } from "./email-locale";
+import {
+  renderEmailLayout,
+  renderMutedLine,
+  renderOtpCode,
+  renderParagraph,
+} from "./email-layout";
 
-export type OtpEmailType =
-  | "sign-in"
-  | "email-verification"
-  | "forget-password"
-  | "change-email";
+export type { OtpEmailType };
 
-const SUBJECTS: Record<OtpEmailType, string> = {
-  "sign-in": "Your OpenTrip sign-in code",
-  "email-verification": "Verify your OpenTrip email",
-  "forget-password": "Reset your OpenTrip password",
-  "change-email": "Confirm your new OpenTrip email",
-};
-
-/** Build a plain-text OTP email. Keep copy short; the code is the payload. */
+/** Build OTP mail with branded HTML + plain-text fallback. */
 export function buildOtpEmail(input: {
   to: string;
   otp: string;
   type: OtpEmailType;
   expiresInSeconds: number;
+  locale?: EmailLocale;
 }): EmailMessage {
+  const locale = input.locale ?? DEFAULT_EMAIL_LOCALE;
+  const copy = otpEmailCopy(locale, input.type);
   const minutes = Math.max(1, Math.round(input.expiresInSeconds / 60));
-  const subject = SUBJECTS[input.type];
+  const expiryLine = copy.expiry(minutes);
+
   const text = [
-    `Your verification code is ${input.otp}.`,
-    `It expires in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    copy.intro,
     "",
-    "If you did not request this, you can ignore this email.",
+    locale === "zh"
+      ? `验证码：${input.otp}`
+      : `Your verification code is ${input.otp}.`,
+    expiryLine,
+    "",
+    copy.ignore,
   ].join("\n");
+
+  const bodyHtml = [
+    renderParagraph(copy.intro),
+    renderOtpCode(input.otp),
+    `<p style="margin:0;font-size:14px;color:#6d788f;">${escapeHtml(expiryLine)}</p>`,
+    renderMutedLine(copy.ignore),
+  ].join("");
 
   return {
     to: input.to,
-    subject,
+    subject: copy.subject,
     text,
+    html: renderEmailLayout({
+      locale,
+      preview: `${input.otp} · ${copy.subject}`,
+      heading: copy.heading,
+      bodyHtml,
+    }),
   };
 }

@@ -5,7 +5,7 @@ export function createConsoleEmailSender(): EmailSender {
   return {
     async send(message: EmailMessage): Promise<void> {
       console.info(
-        `[email:console] to=${message.to} subject=${JSON.stringify(message.subject)}\n${message.text}`,
+        `[email:console] to=${message.to} subject=${JSON.stringify(message.subject)} html=${message.html ? "yes" : "no"}\n${message.text}`,
       );
     },
   };

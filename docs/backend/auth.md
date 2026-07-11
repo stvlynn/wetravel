@@ -121,9 +121,14 @@ Google-only accounts (no credential row) set a first password via email OTP:
 2. `POST /api/auth/email-otp/reset-password` — `{ email, otp, password }`
    creates or updates the credential account.
 
+The sign-in form exposes **Forgot password?** and uses the same OTP reset
+flow (request → OTP + new password → back to sign-in). Settings → Profile
+reuses these endpoints for Google-only first-password setup.
+
 `emailAndPassword.sendResetPassword` also sends a **link** email for the
-standard `/request-password-reset` endpoint (captcha-protected). A dedicated
-forgot-password SPA page is not shipped yet; the link handler is ready for it.
+standard `/request-password-reset` endpoint (captcha-protected). The SPA
+prefers the OTP path above; the link handler remains available if a
+token-based page is added later.
 
 ### Two-factor authentication (TOTP)
 
@@ -162,6 +167,24 @@ Outbound mail is selected by env (see `infrastructure/email/`):
 OTP copy is built by `buildOtpEmail` (`sign-in`, `email-verification`,
 `forget-password`, `change-email`). Link copy is built by `buildLinkEmail`
 (`reset-password`, `change-email-confirmation`).
+
+Both builders emit **HTML + plain-text** via a shared card layout
+(`email-layout.ts`) that mirrors SPA tokens from `apps/web/.../colors.css`
+(silver canvas, white card, navy primary, cornflower accent bar). Composition
+follows React Email’s Container / Section / Button patterns but stays as
+inline-styled tables so Cloudflare Workers need no React Email runtime.
+Visual cues draw from Mobbin OTP references (Heidi / Vercel / Visitors): large
+tabular code, generous padding, one primary CTA.
+
+**i18n:** copy lives in `email-copy.ts` for `en` | `zh` (same set as the SPA).
+Locale resolution (`email-locale.ts`):
+
+1. `x-opentrip-lang` from the auth client (current i18next language)
+2. else `Accept-Language`
+3. else `en`
+
+The web `authClient` attaches `x-opentrip-lang` on every Better Auth request
+via `fetchOptions.onRequest`.
 
 **Production diagnostics (Workers Observability):**
 
@@ -327,7 +350,9 @@ The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
 `signOut`, `useSession`, `authClient.emailOtp.*`, and `authClient.twoFactor.*`.
 
 `AuthForm` is a multi-step email flow: credentials → email OTP (`OTPField`) or
-2FA challenge (TOTP / backup code). Google OAuth is unchanged.
+2FA challenge (TOTP / backup code), plus forgot-password (email → OTP + new
+password via `emailOtp.requestPasswordReset` / `resetPassword`). Google OAuth
+is unchanged.
 
 Settings → Profile (`ProfileForm` + `AccountSecuritySection`) covers display
 name / avatar plus email change, password change or first-time setup, and 2FA

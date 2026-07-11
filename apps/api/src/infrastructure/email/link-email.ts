@@ -1,37 +1,57 @@
 import type { EmailMessage } from "./types";
+import { escapeHtml } from "./email-brand";
+import { linkEmailCopy, type LinkEmailType } from "./email-copy";
+import type { EmailLocale } from "./email-locale";
+import { DEFAULT_EMAIL_LOCALE } from "./email-locale";
+import {
+  renderEmailButton,
+  renderEmailLayout,
+  renderMutedLine,
+  renderParagraph,
+} from "./email-layout";
 
-export type LinkEmailType = "reset-password" | "change-email-confirmation";
+export type { LinkEmailType };
 
-const SUBJECTS: Record<LinkEmailType, string> = {
-  "reset-password": "Reset your OpenTrip password",
-  "change-email-confirmation": "Confirm your OpenTrip email change",
-};
-
-/** Build a plain-text email that carries an action URL (reset / confirm). */
+/** Build action-link mail with branded HTML + plain-text fallback. */
 export function buildLinkEmail(input: {
   to: string;
   type: LinkEmailType;
   url: string;
   /** Optional context line, e.g. the proposed new email. */
   detail?: string;
+  locale?: EmailLocale;
 }): EmailMessage {
-  const subject = SUBJECTS[input.type];
-  const intro =
-    input.type === "reset-password"
-      ? "Use the link below to set a new password for your OpenTrip account."
-      : "Confirm that you want to change the email on your OpenTrip account.";
+  const locale = input.locale ?? DEFAULT_EMAIL_LOCALE;
+  const copy = linkEmailCopy(locale, input.type);
+  const detailLine = input.detail ? copy.detail(input.detail) : undefined;
 
   const text = [
-    intro,
-    ...(input.detail ? [input.detail, ""] : [""]),
+    copy.intro,
+    ...(detailLine ? [detailLine, ""] : [""]),
     input.url,
     "",
-    "If you did not request this, you can ignore this email.",
+    copy.ignore,
   ].join("\n");
+
+  const bodyHtml = [
+    renderParagraph(copy.intro),
+    detailLine
+      ? `<p style="margin:0 0 12px;color:#6d788f;font-size:14px;">${escapeHtml(detailLine)}</p>`
+      : "",
+    renderEmailButton(copy.button, input.url),
+    `<p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#6d788f;word-break:break-all;">${escapeHtml(copy.orOpenLink)}<br /><a href="${escapeHtml(input.url)}" style="color:#3f6fc9;text-decoration:underline;">${escapeHtml(input.url)}</a></p>`,
+    renderMutedLine(copy.ignore),
+  ].join("");
 
   return {
     to: input.to,
-    subject,
+    subject: copy.subject,
     text,
+    html: renderEmailLayout({
+      locale,
+      preview: copy.subject,
+      heading: copy.heading,
+      bodyHtml,
+    }),
   };
 }
