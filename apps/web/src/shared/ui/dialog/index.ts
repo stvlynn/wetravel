@@ -8,8 +8,11 @@ export {
   DialogPanel,
   DialogPopup,
   DialogPortal,
+  DialogSheetPopup,
+  DialogSheetViewport,
   DialogTitle,
   DialogTrigger,
   DialogViewport,
   type DialogFooterProps,
+  type DialogSheetPopupProps,
 } from "./dialog";

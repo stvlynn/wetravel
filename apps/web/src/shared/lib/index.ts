@@ -25,3 +25,8 @@ export {
   AGENT_AVATAR_SEED,
 } from "./avatar";
 export { pressable, interactive, field } from "./motion";
+export {
+  MOBILE_MEDIA_QUERY,
+  useMediaQuery,
+  useIsMobile,
+} from "./media-query";
