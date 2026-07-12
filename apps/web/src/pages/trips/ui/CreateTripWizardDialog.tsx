@@ -23,10 +23,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogPanel,
-  DialogPopup,
+  DialogSheetPopup,
+  DialogSheetViewport,
   DialogPortal,
   DialogTitle,
-  DialogViewport,
 } from "@/shared/ui/dialog";
 import {
   cn,
@@ -291,8 +291,8 @@ export function CreateTripWizardDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-        <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 md:p-6">
-          <DialogPopup className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 ease-[var(--ease-out)] data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+        <DialogSheetViewport>
+          <DialogSheetPopup size="sm">
             <DialogHeader>
               <div className="flex items-center justify-between gap-3">
                 <DialogTitle className="text-lg font-semibold tracking-tight text-balance">
@@ -520,7 +520,7 @@ export function CreateTripWizardDialog({
               </div>
             </DialogPanel>
 
-            <DialogFooter className="flex flex-wrap items-center justify-between gap-2">
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-6">
               <div className="flex gap-2">
                 {stepIndex > 0 ? (
                   <Button
@@ -566,8 +566,8 @@ export function CreateTripWizardDialog({
                 </Button>
               </div>
             </DialogFooter>
-          </DialogPopup>
-        </DialogViewport>
+          </DialogSheetPopup>
+        </DialogSheetViewport>
       </DialogPortal>
     </Dialog>
   );

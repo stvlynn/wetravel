@@ -20,7 +20,7 @@ import { toastManager } from "@/shared/ui/toast";
 function Shell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("common");
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header className="flex items-center justify-between px-6 py-4">
         <span className="font-heading text-lg font-semibold">{t("appName")}</span>
         <LanguageSwitch />

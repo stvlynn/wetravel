@@ -52,10 +52,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogPanel,
-  DialogPopup,
   DialogPortal,
+  DialogSheetPopup,
+  DialogSheetViewport,
   DialogTitle,
-  DialogViewport,
 } from "@/shared/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/shared/ui/field";
 import { Input } from "@/shared/ui/input";
@@ -384,8 +384,8 @@ function ReservationEditor({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-200 data-[ending-style]:opacity-0" />
-        <DialogViewport className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-0 md:items-center md:p-6">
-          <DialogPopup className="flex max-h-[min(92dvh,760px)] w-full flex-col overflow-hidden rounded-t-2xl bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:max-w-2xl md:rounded-2xl">
+        <DialogSheetViewport>
+          <DialogSheetPopup size="lg">
             <DialogHeader className="pt-[max(1.5rem,env(safe-area-inset-top))] md:pt-6">
               <DialogTitle className="text-lg font-semibold text-foreground text-balance">
                 {reservation ? t("reservations.edit") : t("reservations.add")}
@@ -483,8 +483,8 @@ function ReservationEditor({
                 {canEdit && reservation?.status !== "cancelled" ? <Button type="submit" variant="brand" disabled={pending}>{pending ? t("reservations.saving") : t("reservations.save")}</Button> : null}
               </DialogFooter>
             </form>
-          </DialogPopup>
-        </DialogViewport>
+          </DialogSheetPopup>
+        </DialogSheetViewport>
       </DialogPortal>
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogPopup>

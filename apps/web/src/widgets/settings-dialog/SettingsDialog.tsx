@@ -64,8 +64,8 @@ export function SettingsDialog(): React.ReactElement {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogPortal>
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-200 data-[ending-style]:opacity-0" />
-        <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 md:p-6">
-          <DialogPopup className="flex h-[min(42rem,calc(100dvh-1.5rem))] w-full max-w-[860px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:h-[560px] md:flex-row">
+        <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-0 md:p-6">
+          <DialogPopup className="flex h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-card pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:h-[560px] md:max-w-[860px] md:flex-row md:rounded-2xl md:border md:border-border md:pt-0 md:pb-0">
             <SettingsNavigation
               pane={pane}
               onSelect={setPane}
