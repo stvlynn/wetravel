@@ -1,0 +1,12 @@
+# Cloudflare Pages headers. The service worker and manifest must revalidate on
+# every load — the browser HTTP cache can otherwise pin an old worker for up to
+# 24h and delay the in-app update prompt. Hashed build assets are immutable.
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

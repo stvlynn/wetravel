@@ -57,12 +57,32 @@ export default defineConfig(({ mode }) => {
                     name: "OpenTrip",
                     short_name: "OpenTrip",
                     description: "Plan trips together, wherever you are.",
-                    theme_color: "#f7f5ef",
-                    background_color: "#f7f5ef",
+                    // Matches the app background (--ink-50 / --ink-950 tokens)
+                    // so the install splash and title bar blend into the UI.
+                    theme_color: "#fafbfd",
+                    background_color: "#fafbfd",
                     display: "standalone",
                     start_url: "/",
                     scope: "/",
                     icons: [
+                        {
+                            src: "/pwa-192x192.png",
+                            sizes: "192x192",
+                            type: "image/png",
+                            purpose: "any",
+                        },
+                        {
+                            src: "/pwa-512x512.png",
+                            sizes: "512x512",
+                            type: "image/png",
+                            purpose: "any",
+                        },
+                        {
+                            src: "/pwa-maskable-512x512.png",
+                            sizes: "512x512",
+                            type: "image/png",
+                            purpose: "maskable",
+                        },
                         {
                             src: "/pwa-192x192.svg",
                             sizes: "192x192",
@@ -84,7 +104,7 @@ export default defineConfig(({ mode }) => {
                     ],
                 },
                 injectManifest: {
-                    globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+                    globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
                     // Main SPA chunk exceeds Workbox's 2 MiB default; raise so
                     // the planner shell is still precached for offline use.
                     // https://vite-pwa-org.netlify.app/guide/faq.html
