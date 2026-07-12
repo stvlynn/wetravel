@@ -92,8 +92,45 @@ model expenses {
   category             String                 @default("Plan")
   expense_participants expense_participants[]
   trips                trips                  @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reservations         reservations[]
 
   @@index([trip_id], map: "expenses_trip_idx")
+}
+
+model reservations {
+  id                  String    @id
+  trip_id             String
+  type                String
+  status              String    @default("tentative")
+  title               String
+  provider            String    @default("")
+  confirmation_number String    @default("")
+  start_at            DateTime  @db.Timestamptz(6)
+  end_at              DateTime? @db.Timestamptz(6)
+  timezone            String
+  location_name       String    @default("")
+  address             String    @default("")
+  latitude            Float?
+  longitude           Float?
+  day_number          Int?
+  stop_id             String?
+  expense_id          String?
+  amount_minor        BigInt?
+  currency            String?   @db.Char(3)
+  notes               String
+  created_by          String
+  idempotency_key     String
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+  revision            Int       @default(0)
+  expenses            expenses? @relation(fields: [expense_id], references: [id], onUpdate: NoAction)
+  stops               stops?    @relation(fields: [stop_id], references: [id], onUpdate: NoAction)
+  trips               trips     @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([trip_id, created_by, idempotency_key], map: "reservations_idempotency_key")
+  @@index([expense_id], map: "reservations_expense_idx")
+  @@index([stop_id], map: "reservations_stop_idx")
+  @@index([trip_id, start_at], map: "reservations_trip_start_idx")
 }
 
 model schema_migrations {
@@ -152,6 +189,7 @@ model stops {
   note          String          @default("")
   sort_order    Int             @default(0)
   cost_currency String          @default("")
+  reservations  reservations[]
   stop_comments stop_comments[]
   stop_votes    stop_votes[]
   trips         trips           @relation(fields: [trip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -243,6 +281,7 @@ model trips {
   agent_messages     agent_messages[]
   agent_suggestions  agent_suggestions[]
   expenses           expenses[]
+  reservations       reservations[]
   stops              stops[]
   trip_days          trip_days[]
   trip_invites       trip_invites[]

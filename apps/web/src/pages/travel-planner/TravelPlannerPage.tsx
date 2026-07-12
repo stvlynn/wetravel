@@ -22,7 +22,7 @@ import {
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { stopNumbers, upsertTripSummary, type Trip, type TripSummary } from "@/entities/trip";
-import { CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
+import { CalendarCheck2, CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
 import { cn } from "@/shared/lib";
@@ -43,8 +43,9 @@ import { TripMapView } from "./ui/TripMapView";
 import { ScheduleBoard, type ComposeDraft } from "./ui/ScheduleBoard";
 import { BudgetBoard } from "./ui/BudgetBoard";
 import { FloatingMembers } from "./ui/FloatingMembers";
+import { ReservationsBoard } from "./ui/ReservationsBoard";
 
-type Tab = "map" | "schedule" | "budget";
+type Tab = "map" | "schedule" | "reservations" | "budget";
 
 const MIN_SIDEBAR_WIDTH = 0;
 const MAX_SIDEBAR_WIDTH = 55;
@@ -475,6 +476,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const tabItems = [
     { value: "map", label: t("tabs.map"), icon: MapIcon },
     { value: "schedule", label: t("tabs.schedule"), icon: CalendarRange },
+    { value: "reservations", label: t("tabs.reservations"), icon: CalendarCheck2 },
     { value: "budget", label: t("tabs.budget"), icon: Wallet },
   ];
 
@@ -648,6 +650,8 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
                     : undefined
                 }
               />
+            ) : tab === "reservations" ? (
+              <ReservationsBoard trip={trip} canEdit={trip.permissions.canEdit} />
             ) : (
               <BudgetBoard
                 trip={trip}

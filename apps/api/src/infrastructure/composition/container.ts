@@ -8,6 +8,7 @@ import {
   LodgingService,
   AgentService,
   TripMediaService,
+  ReservationService,
 } from "../../application";
 import { AvatarService } from "../../application/avatar";
 import type { FileStorage } from "../../application/storage";
@@ -16,6 +17,7 @@ import { SqlTripRepository } from "../persistence/trip-repository.db";
 import { SqlTripInviteRepository } from "../persistence/invite-repository.db";
 import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.db";
 import { SqlAgentSessionRepository } from "../persistence/agent-repository.db";
+import { SqlReservationRepository } from "../persistence/reservation-repository.db";
 import { createAuth, type Auth } from "../auth/auth";
 import { createSampleTripTemplateLoader } from "../persistence/sample-trip-template";
 import { CachedWeatherClient } from "../weather/cached-weather-client";
@@ -63,6 +65,7 @@ export interface Container {
   auth: Auth;
   tripService: TripService;
   tripInviteService: TripInviteService;
+  reservationService: ReservationService;
   preferenceService: PreferenceService;
   weatherService: WeatherService;
   fxService: FxService;
@@ -143,6 +146,11 @@ export function createContainer(
     tripRepository,
     options?.tripChangePublisher ?? null,
   );
+  const reservationService = new ReservationService(
+    tripRepository,
+    new SqlReservationRepository(poolFresh),
+    options?.tripChangePublisher ?? null,
+  );
   const preferenceService = new PreferenceService(
     new SqlUserPreferenceRepository(poolFresh),
   );
@@ -197,6 +205,7 @@ export function createContainer(
     auth,
     tripService,
     tripInviteService,
+    reservationService,
     preferenceService,
     weatherService,
     fxService,

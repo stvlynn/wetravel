@@ -5,6 +5,7 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public status: number,
+    public current?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -16,7 +17,7 @@ interface SuccessEnvelope<T> {
 }
 
 interface ErrorEnvelope {
-  error: { code: string; message: string };
+  error: { code: string; message: string; current?: unknown };
 }
 
 /** Typed fetch against the API. Sends cookies (Better Auth session), parses the
@@ -42,6 +43,7 @@ export async function apiFetch<T>(
       err?.code ?? "unknown",
       err?.message ?? res.statusText,
       res.status,
+      err?.current,
     );
   }
 

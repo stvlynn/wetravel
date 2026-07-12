@@ -7,7 +7,8 @@
   "tabs": {
     "map": "Map",
     "schedule": "Schedule",
-    "budget": "Budget"
+    "budget": "Budget",
+    "reservations": "Reservations"
   },
   "days": {
     "all": "All days",
@@ -183,6 +184,65 @@
   },
   "splitter": {
     "sidebarLabel": "Resize itinerary sidebar"
+  },
+  "reservations": {
+    "title": "Reservations",
+    "subtitle": "Flights, stays, tables, and tickets in one timeline.",
+    "add": "Add reservation",
+    "edit": "Edit reservation",
+    "empty": "No reservations yet",
+    "emptyHint": "Keep confirmation details next to the plan so everyone can find them.",
+    "unscheduled": "Unscheduled",
+    "day": "Day {{day}}",
+    "loading": "Loading reservations…",
+    "loadError": "Reservations could not be loaded.",
+    "retry": "Try again",
+    "save": "Save reservation",
+    "saving": "Saving…",
+    "cancel": "Cancel booking",
+    "delete": "Delete",
+    "close": "Close",
+    "conflict": "This reservation changed elsewhere. Review the latest version before trying again.",
+    "saveError": "Reservation could not be saved.",
+    "labels": {
+      "type": "Type",
+      "status": "Status",
+      "name": "Name",
+      "provider": "Provider",
+      "confirmation": "Confirmation number",
+      "start": "Starts",
+      "end": "Ends",
+      "timezone": "Timezone",
+      "location": "Location",
+      "day": "Trip day",
+      "stop": "Linked stop",
+      "amount": "Amount",
+      "currency": "Currency",
+      "notes": "Notes"
+    },
+    "types": {
+      "flight": "Flight",
+      "accommodation": "Accommodation",
+      "restaurant": "Restaurant",
+      "rail": "Rail",
+      "ground_transport": "Ground transport",
+      "activity": "Activity",
+      "other": "Other"
+    },
+    "statuses": {
+      "tentative": "Tentative",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "placeholders": {
+      "name": "Flight number, hotel, restaurant…",
+      "provider": "Airline, property, operator…",
+      "confirmation": "Booking reference",
+      "location": "Terminal, address, meeting point…",
+      "notes": "Check-in details, policies, useful context…",
+      "noStop": "No linked stop"
+    }
   },
   "members": {
     "title": "Travelers"

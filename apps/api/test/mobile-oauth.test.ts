@@ -86,6 +86,7 @@ function createTestApp(options: {
     auth: auth as unknown as Container["auth"],
     tripService: {} as Container["tripService"],
     tripInviteService: {} as Container["tripInviteService"],
+    reservationService: {} as Container["reservationService"],
     preferenceService: {} as Container["preferenceService"],
     weatherService: {} as Container["weatherService"],
     fxService: {} as Container["fxService"],

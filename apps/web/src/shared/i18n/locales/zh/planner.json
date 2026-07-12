@@ -7,7 +7,8 @@
   "tabs": {
     "map": "地图",
     "schedule": "日程",
-    "budget": "预算"
+    "budget": "预算",
+    "reservations": "预订"
   },
   "days": {
     "all": "全部日期",
@@ -181,6 +182,65 @@
   },
   "splitter": {
     "sidebarLabel": "调整行程侧边栏大小"
+  },
+  "reservations": {
+    "title": "预订",
+    "subtitle": "集中管理航班、住宿、餐厅与门票。",
+    "add": "添加预订",
+    "edit": "编辑预订",
+    "empty": "还没有预订",
+    "emptyHint": "把确认信息放在行程旁，所有同行者都能随时找到。",
+    "unscheduled": "未安排日期",
+    "day": "第 {{day}} 天",
+    "loading": "正在加载预订…",
+    "loadError": "无法加载预订。",
+    "retry": "重试",
+    "save": "保存预订",
+    "saving": "正在保存…",
+    "cancel": "取消预订",
+    "delete": "删除",
+    "close": "关闭",
+    "conflict": "此预订已被其他成员修改。请查看最新版本后重试。",
+    "saveError": "无法保存预订。",
+    "labels": {
+      "type": "类型",
+      "status": "状态",
+      "name": "名称",
+      "provider": "供应方",
+      "confirmation": "确认编号",
+      "start": "开始时间",
+      "end": "结束时间",
+      "timezone": "时区",
+      "location": "地点",
+      "day": "行程日期",
+      "stop": "关联地点",
+      "amount": "金额",
+      "currency": "货币",
+      "notes": "备注"
+    },
+    "types": {
+      "flight": "航班",
+      "accommodation": "住宿",
+      "restaurant": "餐厅",
+      "rail": "铁路",
+      "ground_transport": "地面交通",
+      "activity": "活动",
+      "other": "其他"
+    },
+    "statuses": {
+      "tentative": "待确认",
+      "confirmed": "已确认",
+      "cancelled": "已取消",
+      "completed": "已完成"
+    },
+    "placeholders": {
+      "name": "航班号、酒店、餐厅……",
+      "provider": "航空公司、酒店、运营方……",
+      "confirmation": "预订参考号",
+      "location": "航站楼、地址、集合点……",
+      "notes": "入住信息、政策或其他有用说明……",
+      "noStop": "不关联地点"
+    }
   },
   "members": {
     "title": "同行者"

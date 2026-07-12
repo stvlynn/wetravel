@@ -28,6 +28,11 @@ export function useTripRealtime(tripId: string, enabled: boolean) {
       onResync: resync,
       onChange: (change: TripChangeMessage) => {
         if (change.tripId !== tripId) return;
+        if (change.scopes.includes("reservations")) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.reservations(tripId),
+          });
+        }
         const cached = queryClient.getQueryData<Trip>(queryKeys.trip(tripId));
         if (cached && change.revision <= cached.version) return;
         resync();

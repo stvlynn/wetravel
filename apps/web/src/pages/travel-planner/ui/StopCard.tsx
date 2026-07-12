@@ -10,6 +10,7 @@ import { CategoryIcon, type Stop } from "@/entities/stop";
 import { useWeather } from "@/features/weather";
 import { cn, formatMoney } from "@/shared/lib";
 import { WeatherIcon } from "@/shared/ui/weather-icon";
+import { TicketCheck } from "lucide-react";
 
 export interface StopCardDragHandleProps {
   onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
@@ -24,6 +25,7 @@ export interface StopCardProps {
   stop: Stop;
   /** Highlight the card as the active selection. */
   selected?: boolean;
+  reservationCount?: number;
   /** Visual and pointer state when the schedule board uses the card as a drag handle. */
   dragging?: boolean;
   dragHandleProps?: StopCardDragHandleProps;
@@ -38,6 +40,7 @@ export function StopCard({
   trip,
   stop,
   selected,
+  reservationCount = 0,
   dragging = false,
   dragHandleProps,
   className,
@@ -104,6 +107,12 @@ export function StopCard({
       <span className="pl-7 text-xs text-muted-foreground text-pretty tabular-nums">
         {meta}
       </span>
+      {reservationCount > 0 ? (
+        <span className="ml-7 inline-flex items-center gap-1 text-[11px] text-corn-600 tabular-nums">
+          <TicketCheck className="size-3.5" aria-hidden="true" />
+          {reservationCount}
+        </span>
+      ) : null}
     </button>
   );
 }

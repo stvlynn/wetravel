@@ -166,6 +166,10 @@ docker compose -f deploy/docker/compose.yaml --profile mysql up -d mysql
   selected ISO code for display and future FX support. `category` reuses the stop
   category set and defaults to `Plan`.
 - `expense_participants` — `expense_id`, `member_id` (unique together).
+- `reservations` — trip-owned bookings (`type`, `status`, `title`, schedule,
+  location, optional `day_number` / `stop_id` / `expense_id`, `amount_minor`,
+  `currency`, `notes`, `revision`). Unique
+  `(trip_id, created_by, idempotency_key)` supports idempotent creates.
 - `user_preferences` — `user_id` (PK, references `user`), `planner_sidebar_width`,
   `planner_sidebar_collapsed`, `agent_panel_collapsed`, `updated_at`. Stores UI
   chrome such as the travel-planner resizable sidebar and agent panel collapsed

@@ -37,6 +37,7 @@ export const config = {
 export const queryKeys = {
   trips: ["trips"] as const,
   trip: (id: string) => ["trips", id] as const,
+  reservations: (tripId: string) => ["trips", tripId, "reservations"] as const,
   session: ["session"] as const,
   preferences: ["preferences"] as const,
   agentStatus: ["agent", "status"] as const,

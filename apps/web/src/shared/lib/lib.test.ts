@@ -61,6 +61,22 @@ describe("formatFxRate", () => {
   });
 });
 
+describe("zoned datetime locals", () => {
+  it("encodes and decodes wall time in an explicit IANA timezone", async () => {
+    const { fromZonedDateTimeLocal, toZonedDateTimeLocal } = await import("./time");
+    const iso = fromZonedDateTimeLocal("2026-08-01T15:00", "Asia/Ho_Chi_Minh");
+    expect(iso).toBe("2026-08-01T08:00:00.000Z");
+    expect(toZonedDateTimeLocal(iso, "Asia/Ho_Chi_Minh")).toBe("2026-08-01T15:00");
+  });
+
+  it("does not interpret datetime-local values in the browser timezone", async () => {
+    const { fromZonedDateTimeLocal } = await import("./time");
+    expect(fromZonedDateTimeLocal("2026-01-15T09:30", "America/New_York")).toBe(
+      "2026-01-15T14:30:00.000Z",
+    );
+  });
+});
+
 describe("sumMinor", () => {
   it("sums amounts", () => {
     expect(sumMinor([100, 200, 50])).toBe(350);

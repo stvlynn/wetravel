@@ -32,6 +32,7 @@ export {
   type LodgingListingSummaryDto,
 } from "./lodging/lodging-data";
 export { LodgingError } from "./lodging/lodging-error";
+export { ReservationService, ReservationConflictError } from "./reservation";
 export {
   AgentService,
   ConflictError,

@@ -54,6 +54,16 @@ API origin. **Auth**: `public` | `session` | `session + member` | `session + edi
 | POST | `/api/trips/:id/expenses` | session + edit | Add expense |
 | PATCH | `/api/trips/:id/expenses/:expenseId` | session + edit | Replace expense fields |
 
+### Reservations
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/trips/:id/reservations` | session + member | List reservations |
+| POST | `/api/trips/:id/reservations` | session + edit | Create idempotently |
+| PATCH | `/api/trips/:id/reservations/:reservationId` | session + edit | Update by revision |
+| POST | `/api/trips/:id/reservations/:reservationId/cancel` | session + edit | Cancel by revision |
+| DELETE | `/api/trips/:id/reservations/:reservationId` | session + edit | Delete by revision |
+
 ### Invites
 
 | Method | Path | Auth | Purpose |
@@ -89,4 +99,4 @@ configured. Membership rules still apply when the agent is enabled.
 
 ---
 
-[← API index](./README.md) · [Platform](./platform.md) · [Trips](./trips.md) · [Itinerary](./itinerary.md) · [Expenses](./expenses.md) · [Invites](./invites.md) · [User](./user.md) · [Agent](./agent-endpoints.md)
+[← API index](./README.md) · [Platform](./platform.md) · [Trips](./trips.md) · [Itinerary](./itinerary.md) · [Expenses](./expenses.md) · [Reservations](./reservations.md) · [Invites](./invites.md) · [User](./user.md) · [Agent](./agent-endpoints.md)

@@ -20,6 +20,7 @@ DTOs, invite service types, weather/FX data types).
 | [trips.md](./trips.md) | List / create / get / rename trips |
 | [itinerary.md](./itinerary.md) | Days, stops, votes, comments, media |
 | [expenses.md](./expenses.md) | Add / update expenses |
+| [reservations.md](./reservations.md) | Booking lifecycle and optimistic concurrency |
 | [invites.md](./invites.md) | Create, preview, accept invites |
 | [user.md](./user.md) | Preferences and avatar |
 | [agent-endpoints.md](./agent-endpoints.md) | Agent messages, chat stream, events, suggestions |

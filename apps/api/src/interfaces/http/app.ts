@@ -38,6 +38,47 @@ const dayNumberSchema = dayNumberParamSchema;
 
 const commentSchema = z.object({ text: z.string().min(1) });
 
+const reservationTypeSchema = z.enum([
+  "flight",
+  "accommodation",
+  "restaurant",
+  "rail",
+  "ground_transport",
+  "activity",
+  "other",
+]);
+const reservationStatusSchema = z.enum([
+  "tentative",
+  "confirmed",
+  "cancelled",
+  "completed",
+]);
+const reservationDraftSchema = z.object({
+  type: reservationTypeSchema,
+  status: reservationStatusSchema.optional(),
+  title: z.string().trim().min(1).max(160),
+  provider: z.string().max(160).optional(),
+  confirmationNumber: z.string().max(160).optional(),
+  startAt: z.string().datetime({ offset: true }),
+  endAt: z.string().datetime({ offset: true }).nullable().optional(),
+  timezone: z.string().trim().min(1).max(100),
+  locationName: z.string().max(200).optional(),
+  address: z.string().max(500).optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  dayNumber: z.number().int().min(1).nullable().optional(),
+  stopId: z.string().max(120).nullable().optional(),
+  expenseId: z.string().max(120).nullable().optional(),
+  amountMinor: z.number().int().min(0).nullable().optional(),
+  currency: z.string().trim().length(3).nullable().optional(),
+  notes: z.string().max(10_000).optional(),
+});
+const updateReservationSchema = reservationDraftSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one reservation field is required",
+  });
+
 const mobileOAuthStartQuerySchema = z.object({
   provider: z.literal("google"),
 });
@@ -160,6 +201,7 @@ export function createApp(container: Container) {
     weatherService,
     fxService,
     agentService,
+    reservationService,
   } = container;
 
   /** Schedule work past the response: waitUntil on Workers, floating on Node.
@@ -599,6 +641,87 @@ export function createApp(container: Container) {
     return ok(c, dto);
   });
 
+  guard.get("/trips/:id/reservations", async (c) =>
+    ok(
+      c,
+      await reservationService.list(
+        c.req.param("id"),
+        c.get("user")!.id,
+      ),
+    ),
+  );
+
+  guard.post("/trips/:id/reservations", async (c) => {
+    const idempotencyKey = c.req.header("Idempotency-Key") ?? "";
+    if (!idempotencyKey.trim()) {
+      return fail(
+        c,
+        "idempotency_key_required",
+        "Idempotency-Key header is required",
+        400,
+      );
+    }
+    const input = reservationDraftSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await reservationService.create(
+        c.req.param("id"),
+        c.get("user")!.id,
+        input,
+        idempotencyKey,
+      ),
+      201,
+    );
+  });
+
+  guard.patch("/trips/:id/reservations/:reservationId", async (c) => {
+    const revision = parseRevisionHeader(c.req.header("If-Match"));
+    if (revision == null) {
+      return fail(c, "revision_required", "A numeric If-Match header is required", 428);
+    }
+    const input = updateReservationSchema.parse(await c.req.json());
+    return ok(
+      c,
+      await reservationService.update(
+        c.req.param("id"),
+        c.req.param("reservationId"),
+        c.get("user")!.id,
+        revision,
+        input,
+      ),
+    );
+  });
+
+  guard.post("/trips/:id/reservations/:reservationId/cancel", async (c) => {
+    const revision = parseRevisionHeader(c.req.header("If-Match"));
+    if (revision == null) {
+      return fail(c, "revision_required", "A numeric If-Match header is required", 428);
+    }
+    return ok(
+      c,
+      await reservationService.cancel(
+        c.req.param("id"),
+        c.req.param("reservationId"),
+        c.get("user")!.id,
+        revision,
+      ),
+    );
+  });
+
+  guard.delete("/trips/:id/reservations/:reservationId", async (c) => {
+    const revision = parseRevisionHeader(c.req.header("If-Match"));
+    if (revision == null) {
+      return fail(c, "revision_required", "A numeric If-Match header is required", 428);
+    }
+    await reservationService.delete(
+      c.req.param("id"),
+      c.req.param("reservationId"),
+      c.get("user")!.id,
+      revision,
+    );
+    return ok(c, { deleted: true });
+  });
+
   guard.post("/trips/:id/invites", async (c) => {
     const user = c.get("user")!;
     const { previousToken, ...input } = createInviteSchema.parse(
@@ -852,4 +975,12 @@ function decodeStoragePath(path: string): string | null {
   } catch {
     return null;
   }
+}
+
+function parseRevisionHeader(value: string | undefined): number | null {
+  if (!value) return null;
+  const normalized = value.trim().replace(/^W\//, "").replace(/^"|"$/g, "");
+  if (!/^\d+$/.test(normalized)) return null;
+  const revision = Number(normalized);
+  return Number.isSafeInteger(revision) ? revision : null;
 }

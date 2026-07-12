@@ -305,6 +305,24 @@ Discriminated by `kind` (must match trip ops the aggregate supports):
 
 Applying a patch always goes through domain trip methods after human approval.
 
+### `ReservationDto`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id`, `tripId` | string | Reservation and owning trip ids |
+| `type` | `flight \| accommodation \| restaurant \| rail \| ground_transport \| activity \| other` | Booking kind |
+| `status` | `tentative \| confirmed \| cancelled \| completed` | Lifecycle |
+| `title`, `provider`, `confirmationNumber` | string | Booking identity |
+| `startAt`, `endAt` | ISO string / null | UTC instants |
+| `timezone` | string | Display IANA timezone |
+| `locationName`, `address` | string | Display location |
+| `latitude`, `longitude` | number / null | Optional coordinate pair |
+| `dayNumber`, `stopId`, `expenseId` | number/string / null | Optional trip links |
+| `amountMinor`, `currency` | number/string / null | Optional booking amount |
+| `notes` | string | Member notes |
+| `createdBy`, `createdAt`, `updatedAt` | string | Audit fields |
+| `revision` | number | `If-Match` concurrency token |
+
 ---
 
 [← API index](./README.md)

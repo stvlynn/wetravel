@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -8,6 +9,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import type { Reservation } from "@/entities/reservation";
 import type { Trip, TripDay } from "@/entities/trip";
 import { dayDateLabel } from "@/entities/trip";
 import {
@@ -16,7 +19,8 @@ import {
   type Stop,
   type StopCategory,
 } from "@/entities/stop";
-import type { PlaceResult, UpdateTripDayInput } from "@/shared/api";
+import { fetchReservations, type PlaceResult, type UpdateTripDayInput } from "@/shared/api";
+import { queryKeys } from "@/shared/config";
 import { cn, CURRENCIES, currencySelectItems } from "@/shared/lib";
 import {
   CurrencyLabel,
@@ -168,6 +172,18 @@ export function ScheduleBoard({
 }: ScheduleBoardProps) {
   const { t, i18n } = useTranslation("planner");
   const locale = i18n.language;
+  const { data: reservations = [] } = useQuery<Reservation[]>({
+    queryKey: queryKeys.reservations(trip.id),
+    queryFn: () => fetchReservations(trip.id),
+  });
+  const reservationCountByStop = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const reservation of reservations) {
+      if (!reservation.stopId) continue;
+      counts.set(reservation.stopId, (counts.get(reservation.stopId) ?? 0) + 1);
+    }
+    return counts;
+  }, [reservations]);
   const dayNumbers = trip.days.map((d) => d.number);
   const drag = useDayReorderDrag(dayNumbers, onReorderDays);
   const stopDrag = useStopMoveDrag(trip, onMoveStop);
@@ -295,6 +311,7 @@ export function ScheduleBoard({
                     <StopCard
                       trip={trip}
                       stop={s}
+                      reservationCount={reservationCountByStop.get(s.id) ?? 0}
                       dragging={stopDrag.draggedStopId === s.id}
                       dragHandleProps={stopDrag.handleProps(s.id, d.number)}
                       style={stopDrag.stopStyle(s.id)}

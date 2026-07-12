@@ -11,7 +11,11 @@ export {
   currencyOptionLabel,
   currencySelectItems,
 } from "./money";
-export { formatRelativeTime } from "./time";
+export {
+  formatRelativeTime,
+  fromZonedDateTimeLocal,
+  toZonedDateTimeLocal,
+} from "./time";
 export {
   avatarHashIndex,
   AVATAR_PALETTE,

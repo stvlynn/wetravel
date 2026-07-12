@@ -190,6 +190,42 @@ CREATE TABLE IF NOT EXISTS `expense_participants` (
   CONSTRAINT `expense_participants_expense_id_fkey` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `reservations` (
+  `id` VARCHAR(191) NOT NULL,
+  `trip_id` VARCHAR(191) NOT NULL,
+  `type` VARCHAR(32) NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'tentative',
+  `title` VARCHAR(160) NOT NULL,
+  `provider` VARCHAR(160) NOT NULL DEFAULT '',
+  `confirmation_number` VARCHAR(160) NOT NULL DEFAULT '',
+  `start_at` DATETIME(6) NOT NULL,
+  `end_at` DATETIME(6) NULL,
+  `timezone` VARCHAR(100) NOT NULL,
+  `location_name` VARCHAR(200) NOT NULL DEFAULT '',
+  `address` VARCHAR(500) NOT NULL DEFAULT '',
+  `latitude` DOUBLE NULL,
+  `longitude` DOUBLE NULL,
+  `day_number` INT NULL,
+  `stop_id` VARCHAR(191) NULL,
+  `expense_id` VARCHAR(191) NULL,
+  `amount_minor` BIGINT NULL,
+  `currency` CHAR(3) NULL,
+  `notes` TEXT NOT NULL,
+  `created_by` VARCHAR(191) NOT NULL,
+  `idempotency_key` VARCHAR(200) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `revision` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `reservations_idempotency_key` (`trip_id`, `created_by`, `idempotency_key`),
+  KEY `reservations_trip_start_idx` (`trip_id`, `start_at`),
+  KEY `reservations_stop_idx` (`stop_id`),
+  KEY `reservations_expense_idx` (`expense_id`),
+  CONSTRAINT `reservations_trip_id_fkey` FOREIGN KEY (`trip_id`) REFERENCES `trips` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `reservations_stop_id_fkey` FOREIGN KEY (`stop_id`) REFERENCES `stops` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `reservations_expense_id_fkey` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `trip_invites` (
   `id` VARCHAR(191) NOT NULL,
   `trip_id` VARCHAR(191) NOT NULL,

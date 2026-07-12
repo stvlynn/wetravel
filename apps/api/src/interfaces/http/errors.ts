@@ -4,7 +4,11 @@ import { WeatherError } from "../../application/weather/weather-error";
 import { FxError } from "../../application/fx/fx-error";
 import { GeoError } from "../../application/geo/geo-error";
 import { DomainError, NotFoundError } from "../../domain/shared/errors";
-import { ConflictError, ForbiddenError } from "../../application";
+import {
+  ConflictError,
+  ForbiddenError,
+  ReservationConflictError,
+} from "../../application";
 import { AvatarError } from "../../application/avatar";
 import { TripMediaError } from "../../application/media";
 import { fail } from "./response";
@@ -20,8 +24,25 @@ export function handleError(err: Error, c: Context) {
   if (err instanceof ConflictError) {
     return fail(c, err.code, err.message, 409);
   }
+  if (err instanceof ReservationConflictError) {
+    return c.json(
+      {
+        error: {
+          code: "reservation_conflict",
+          message: err.message,
+          current: err.current,
+        },
+      },
+      409,
+    );
+  }
   if (err instanceof DomainError) {
-    return fail(c, err.code, err.message, 400);
+    return fail(
+      c,
+      err.code,
+      err.message,
+      err.code === "reservation_conflict" ? 409 : 400,
+    );
   }
   if (err instanceof AvatarError) {
     const status =
