@@ -124,7 +124,9 @@ export function TripMapView({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="relative block size-full">
+      {/* Below md the search bar spans the top edge (inset-x-3 top-3 + h-10
+          input = 52px), so the map control stack starts below it. */}
+      <ContextMenuTrigger className="relative block size-full max-md:[--map-ctrl-top-offset:52px]">
         {!picking ? (
           <div className="absolute inset-x-3 top-3 z-10 md:inset-x-auto md:left-4 md:top-4 md:w-full md:max-w-xs md:pr-8">
             <MapSearch

@@ -51,6 +51,14 @@
     0 0 0 1px rgba(20, 26, 48, 0.08) !important;
 }
 
+/* Overlays that occupy the map's top edge (e.g. a floating search bar) set
+ * --map-ctrl-top-offset on an ancestor so the control stack starts below
+ * them instead of underneath. Scoped under .maplibregl-map to outrank the
+ * library's own `top: 0` regardless of stylesheet order. */
+.maplibregl-map .maplibregl-ctrl-top-right {
+  top: var(--map-ctrl-top-offset, 0px);
+}
+
 /* No spin while waiting / recovering — keep the control calm under load. */
 .maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon {
   animation: none !important;

@@ -39,7 +39,10 @@ geocoding source.
 Below the `md` breakpoint the search control spans the top edge of the map
 (full width with side margins) instead of the fixed-width top-left box, and
 the all-days color legend is hidden — the itinerary bottom-sheet pill occupies
-that corner and carries the same per-day information. The selected stop opens
+that corner and carries the same per-day information. The zoom/locate control
+stack is pushed below the search bar via the `--map-ctrl-top-offset` CSS
+variable (defined in `map.css`, set by the page that owns the overlay) so the
+two never overlap. The selected stop opens
 as a bottom detail sheet rather than in the sidebar. See
 [mobile-pwa.md](mobile-pwa.md).
 
