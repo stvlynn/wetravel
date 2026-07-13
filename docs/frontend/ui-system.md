@@ -26,12 +26,18 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
-`popover`, `preview-card`, `dialog`, `collapsible`, `splitter`,
+`popover`, `preview-card`, `dialog`, `drawer`, `collapsible`, `splitter`,
 `scroll-edge-fade`, `markdown-editor`, `otp-field`. Each exposes a public
 `index.ts`.
 
 `otp-field` is the segmented one-time-code input (Base UI OTP Field) used by
 email registration verification in `AuthForm`.
+
+`drawer` is the mobile sheet surface (Base UI Dialog): `DrawerContent
+side="bottom"` for bottom sheets, `side="full"` for full-screen surfaces, both
+safe-area padded. For dialogs that exist on both form factors, use
+`DialogSheetViewport` + `DialogSheetPopup` from `dialog` — a bottom sheet below
+the `md` breakpoint, a centered card above. See [mobile-pwa.md](mobile-pwa.md).
 
 `preview-card` is a hover/focus-triggered rich card (Base UI PreviewCard). Use
 it, rather than `tooltip`, when the hover content is structured (e.g. the

@@ -126,7 +126,7 @@ export function TripMapView({
     <ContextMenu>
       <ContextMenuTrigger className="relative block size-full">
         {!picking ? (
-          <div className="absolute left-4 top-4 z-10 w-full max-w-xs pr-8">
+          <div className="absolute inset-x-3 top-3 z-10 md:inset-x-auto md:left-4 md:top-4 md:w-full md:max-w-xs md:pr-8">
             <MapSearch
               value={searchQuery}
               onValueChange={handleSearchChange}
@@ -169,7 +169,7 @@ export function TripMapView({
           </div>
         ) : null}
         {day === 0 ? (
-          <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 rounded-xl bg-card/90 p-3 shadow-[var(--shadow-border),var(--shadow-md)] backdrop-blur-sm">
+          <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 rounded-xl bg-card/90 p-3 shadow-[var(--shadow-border),var(--shadow-md)] backdrop-blur-sm max-md:hidden">
             {trip.days.map((d) => (
               <div key={d.number} className="flex items-center gap-2 text-xs">
                 <span

@@ -18,11 +18,13 @@ import { cn, interactive, avatarHashIndex, AVATAR_PALETTE } from "@/shared/lib";
 export interface UserMenuProps {
   /** Compact top-bar trigger: just an avatar, no name/chevron. */
   compact?: boolean;
+  /** Menu opening direction; `up` for the sidebar footer, `down` for top bars. */
+  direction?: "up" | "down";
 }
 
 /** Sidebar footer: avatar trigger that opens an upward menu holding account
  * info, settings panes, and sign out. Mirrors Kalmia's UserMenu pattern. */
-export function UserMenu({ compact }: UserMenuProps) {
+export function UserMenu({ compact, direction = "up" }: UserMenuProps) {
   const { t } = useTranslation("common");
   const { data: session } = useSession();
   const { openPane } = useSettings();
@@ -75,12 +77,24 @@ export function UserMenu({ compact }: UserMenuProps) {
           role="menu"
           aria-hidden={!open}
           className={cn(
-            "absolute bottom-full mb-2 flex flex-col rounded-xl bg-popover p-1 shadow-[var(--shadow-border),var(--shadow-lg)]",
-            compact ? "right-0 w-64 origin-bottom-right" : "inset-x-2 origin-bottom",
+            "absolute flex flex-col rounded-xl bg-popover p-1 shadow-[var(--shadow-border),var(--shadow-lg)]",
+            direction === "up" ? "bottom-full mb-2" : "top-full mt-2",
+            compact
+              ? cn(
+                  "right-0 w-64",
+                  direction === "up" ? "origin-bottom-right" : "origin-top-right",
+                )
+              : cn(
+                  "inset-x-2",
+                  direction === "up" ? "origin-bottom" : "origin-top",
+                ),
             "transition-[opacity,translate,filter] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
             open
               ? "pointer-events-auto opacity-100 translate-y-0"
-              : "pointer-events-none opacity-0 -translate-y-3 blur-sm",
+              : cn(
+                  "pointer-events-none opacity-0 blur-sm",
+                  direction === "up" ? "-translate-y-3" : "translate-y-3",
+                ),
           )}
         >
           <div className="wf-enter-stagger">

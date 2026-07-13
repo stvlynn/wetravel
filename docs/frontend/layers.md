@@ -92,7 +92,10 @@ Reusable composite blocks used by more than one page:
   profile, language, appearance, and application information.
 
 There is no top bar; global chrome lives in the sidebar. Most planner blocks
-stay page-private under `pages/travel-planner/ui` until reuse emerges.
+stay page-private under `pages/travel-planner/ui` until reuse emerges — the
+narrow-screen planner shell (bottom navigation, itinerary/detail/agent
+sheets) is page-private under `pages/travel-planner/ui/mobile`. See
+[mobile-pwa.md](mobile-pwa.md).
 
 ## features
 
@@ -113,7 +116,8 @@ Framework-agnostic reused code:
 - `shared/api` — typed API client.
 - `shared/auth` — Better Auth React client.
 - `shared/i18n` — i18next setup and locale resources.
-- `shared/lib` — utilities (class names, formatters).
+- `shared/lib` — utilities (class names, formatters, `useMediaQuery` /
+  `useIsMobile` viewport detection).
 - `shared/config` — env access, route/query keys.
 
 ## Import rule

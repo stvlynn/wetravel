@@ -34,6 +34,15 @@ reverse-geocoded (Photon) to prefill a name and area. See
 [../reference/frontend-sources.md](../reference/frontend-sources.md) for the
 geocoding source.
 
+## Mobile overlays
+
+Below the `md` breakpoint the search control spans the top edge of the map
+(full width with side margins) instead of the fixed-width top-left box, and
+the all-days color legend is hidden — the itinerary bottom-sheet pill occupies
+that corner and carries the same per-day information. The selected stop opens
+as a bottom detail sheet rather than in the sidebar. See
+[mobile-pwa.md](mobile-pwa.md).
+
 ## Context menu
 
 `TripMap` reports right-click / long-press coordinates via `onContext(lng, lat)`.

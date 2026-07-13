@@ -187,7 +187,9 @@ export TURNSTILE_SITE_KEY=…   # public site key
 node deploy/cloudflare/scripts/deploy-web.mjs
 ```
 
-See [deploy/cloudflare/pages.md](../../deploy/cloudflare/pages.md).
+See [deploy/cloudflare/pages.md](../../deploy/cloudflare/pages.md). The build
+ships `_redirects` (SPA fallback) and `_headers` (service worker + manifest
+`no-cache`, immutable hashed assets) from `apps/web/public/`.
 
 ## Secrets and variables
 

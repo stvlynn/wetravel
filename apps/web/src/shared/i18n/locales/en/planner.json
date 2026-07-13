@@ -262,5 +262,8 @@
       "humidity": "Humidity",
       "wind": "Wind"
     }
+  },
+  "nav": {
+    "label": "Trip sections"
   }
 }

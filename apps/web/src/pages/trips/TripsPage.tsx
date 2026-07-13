@@ -5,6 +5,7 @@ import { PlusIcon } from "lucide-react";
 import { fetchTrips } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { AppSidebar } from "@/widgets/app-sidebar";
+import { UserMenu } from "@/widgets/user-menu";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 import { useRouter } from "@/app/router";
@@ -13,6 +14,7 @@ import { CreateTripWizardDialog } from "./ui/CreateTripWizardDialog";
 
 export function TripsPage() {
   const { t } = useTranslation("trips");
+  const { t: tc } = useTranslation("common");
   const { navigate } = useRouter();
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -23,9 +25,15 @@ export function TripsPage() {
 
   return (
     <div className="flex h-dvh bg-sidebar">
-      <AppSidebar />
+      <AppSidebar className="max-md:hidden" />
 
-      <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
+      <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)] max-md:rounded-none max-md:border-0 max-md:shadow-none">
+        <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 md:hidden">
+          <span className="font-heading text-lg font-semibold">
+            {tc("appName")}
+          </span>
+          <UserMenu compact direction="down" />
+        </div>
         <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1">

@@ -58,10 +58,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogPanel,
-  DialogPopup,
+  DialogSheetPopup,
+  DialogSheetViewport,
   DialogPortal,
   DialogTitle,
-  DialogViewport,
 } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
@@ -1105,8 +1105,8 @@ function DayEditorDialog({
     <Dialog open={day != null} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-[var(--dur-slow)] data-[ending-style]:opacity-0" />
-        <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 md:p-6">
-          <DialogPopup className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-[var(--dur-slow)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
+        <DialogSheetViewport>
+          <DialogSheetPopup size="md">
             <DialogHeader>
               <DialogTitle className="m-0 font-heading text-xl font-semibold text-foreground">
                 {day ? t("schedule.dayDialog.title", { n: day.number }) : ""}
@@ -1168,7 +1168,7 @@ function DayEditorDialog({
               ) : null}
             </DialogPanel>
 
-            <DialogFooter>
+            <DialogFooter className="pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-6">
               <Button
                 variant="ghost"
                 size="sm"
@@ -1185,8 +1185,8 @@ function DayEditorDialog({
                 {t("schedule.dayDialog.save")}
               </Button>
             </DialogFooter>
-          </DialogPopup>
-        </DialogViewport>
+          </DialogSheetPopup>
+        </DialogSheetViewport>
       </DialogPortal>
     </Dialog>
   );

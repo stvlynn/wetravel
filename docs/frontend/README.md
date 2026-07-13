@@ -49,3 +49,5 @@ import { Button } from "@/shared/ui/button/button";
 - [i18n.md](i18n.md) — internationalization.
 - [data-caching.md](data-caching.md) — React Query write-echo vs Hyperdrive
   stale SELECTs (create-trip and other mutations).
+- [mobile-pwa.md](mobile-pwa.md) — mobile breakpoint contract, planner mobile
+  shell, responsive dialogs, PWA install metadata and headers.

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -19,13 +20,14 @@ import {
   approveAgentSuggestion,
   ApiError,
   type AgentSuggestion,
+  type UpdateStopInput,
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { stopNumbers, upsertTripSummary, type Trip, type TripSummary } from "@/entities/trip";
 import { CalendarCheck2, CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
-import { cn } from "@/shared/lib";
+import { cn, useIsMobile } from "@/shared/lib";
 import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tabs } from "@/shared/ui/tabs";
@@ -34,7 +36,13 @@ import { toastManager } from "@/shared/ui/toast";
 import { useTripActions } from "./model/useTripActions";
 import { useTripRealtime } from "./model/useTripRealtime";
 import { useAgentEvents } from "./model/useAgentEvents";
-import { Sidebar } from "./ui/Sidebar";
+import { BackButton } from "./ui/BackButton";
+import { Sidebar, type SidebarProps } from "./ui/Sidebar";
+import { MobileAgentSheet } from "./ui/mobile/MobileAgentSheet";
+import { MobileItinerarySheet } from "./ui/mobile/MobileItinerarySheet";
+import { MobilePlannerHeader } from "./ui/mobile/MobilePlannerHeader";
+import { MobileStopDetailSheet } from "./ui/mobile/MobileStopDetailSheet";
+import { MobileTabBar } from "./ui/mobile/MobileTabBar";
 import { AgentToggle } from "./ui/agent/AgentToggle";
 import { AgentDrawer } from "./ui/agent/AgentDrawer";
 import { AgentInterventionToasts } from "./ui/agent/AgentInterventionToast";
@@ -62,6 +70,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const preferredCurrency = session?.user?.defaultCurrency;
 
   const { i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<Tab>("map");
   const [day, setDay] = useState(0);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -445,8 +454,11 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     // Direct /trips/:id links without joining via /invite/:token hit this.
     return (
       <div className="flex h-dvh bg-sidebar">
-        <AppSidebar top={<BackButton onBack={() => navigate("/")} />} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background px-6 text-center">
+        <AppSidebar
+          className="max-md:hidden"
+          top={<BackButton onBack={() => navigate("/")} />}
+        />
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background px-6 text-center max-md:rounded-none max-md:border-0">
           <p className="text-sm font-medium text-pretty text-foreground">
             {tc("state.tripUnavailable")}
           </p>
@@ -502,6 +514,206 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const headerSubtitle = formatTripSubtitle(trip, i18n.language, t);
   const agentPanelOpen = agentEnabled && !agentCollapsed;
 
+  const sidebarProps: SidebarProps = {
+    trip,
+    day,
+    onDayChange: (d) => {
+      setDay(d);
+      setSelectedStopId(null);
+      setNoteEditingStopId(null);
+    },
+    selectedStopId,
+    onSelectStop: selectStop,
+    onCloseDetail: () => setSelectedStopId(null),
+    currentUserId,
+    canEdit: trip.permissions.canEdit,
+    onToggleVote: (stopId) => actions.vote.mutate(stopId),
+    onComment: (stopId, text) => actions.comment.mutate({ stopId, text }),
+    commentPending: actions.comment.isPending,
+    onUpdateStop: (stopId, patch: UpdateStopInput) =>
+      actions.stopUpdate.mutate({ stopId, patch }),
+    onChangeStopDay: (stopId, targetDay) => {
+      const index = trip.stops.filter((s) => s.day === targetDay).length;
+      actions.stopMove.mutate({ stopId, day: targetDay, index });
+    },
+    onExpandNote: openNoteEditor,
+  };
+
+  const selectedStop = selectedStopId
+    ? trip.stops.find((s) => s.id === selectedStopId)
+    : undefined;
+
+  // All four mode panes stay mounted so switching modes preserves each pane's
+  // scroll position and keeps the MapLibre canvas alive; only the active pane
+  // is visible. The note editor overlays them all while open.
+  const panes = (
+    <div className="relative min-h-0 flex-1 overflow-hidden">
+      <PlannerPane active={!noteEditingStop && tab === "map"}>
+        <TripMapView
+          trip={trip}
+          numbers={numbers}
+          day={day}
+          activeStopId={selectedStopId}
+          onSelectStop={selectStop}
+          picking={picking}
+          onPick={handleMapPick}
+          onAddStopHere={addStopAt}
+          locateSignal={locateSignal}
+          onCancelPick={() => {
+            setPicking(false);
+            setTab("schedule");
+          }}
+        />
+      </PlannerPane>
+      <PlannerPane active={!noteEditingStop && tab === "schedule"}>
+        <ScheduleBoard
+          trip={trip}
+          compose={compose}
+          defaultCurrency={preferredCurrency || trip.currency}
+          biasLat={bias?.lat}
+          biasLng={bias?.lng}
+          onOpen={openCompose}
+          onChange={patchCompose}
+          onConfirm={confirmCompose}
+          onCancel={cancelCompose}
+          onPickOnMap={startPickOnMap}
+          onSelectStop={(id) => {
+            setTab("map");
+            setDay(0);
+            selectStop(id);
+          }}
+          onAddDay={() => actions.day.mutate()}
+          onUpdateDay={(dayNumber, patch) =>
+            actions.dayUpdate.mutate({ dayNumber, patch })
+          }
+          onDeleteDay={(dayNumber) => actions.dayDelete.mutate(dayNumber)}
+          onReorderDays={(order) => actions.dayReorder.mutate(order)}
+          onMoveStop={(input) => actions.stopMove.mutate(input)}
+          addingDay={actions.day.isPending}
+          deletingDayNumber={
+            actions.dayDelete.isPending
+              ? actions.dayDelete.variables
+              : undefined
+          }
+          updatingDayNumber={
+            actions.dayUpdate.isPending
+              ? actions.dayUpdate.variables?.dayNumber
+              : undefined
+          }
+        />
+      </PlannerPane>
+      <PlannerPane active={!noteEditingStop && tab === "reservations"} scroll>
+        <ReservationsBoard trip={trip} canEdit={trip.permissions.canEdit} />
+      </PlannerPane>
+      <PlannerPane active={!noteEditingStop && tab === "budget"} scroll>
+        <BudgetBoard
+          trip={trip}
+          currentUserId={currentUserId}
+          defaultCurrency={preferredCurrency || trip.currency}
+          canEdit={trip.permissions.canEdit}
+          onAddExpense={(input) => actions.expense.mutate(input)}
+          onUpdateExpense={(expenseId, input) =>
+            actions.expenseUpdate.mutate({ expenseId, input })
+          }
+        />
+      </PlannerPane>
+      {noteEditingStop ? (
+        <div className="absolute inset-0 z-10 overflow-hidden bg-background">
+          <NoteEditorPane
+            tripId={trip.id}
+            editorKey={noteEditingStop.id}
+            value={noteEditingStop.note}
+            placeholder={t("detail.notePlaceholder")}
+            onCommit={(note) =>
+              actions.stopUpdate.mutate({
+                stopId: noteEditingStop.id,
+                patch: { note },
+              })
+            }
+            onClose={closeNoteEditor}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const floatingMembers = noteEditingStop ? null : (
+    <FloatingMembers
+      tripId={trip.id}
+      members={trip.members}
+      canInvite={trip.permissions.canInvite}
+      onlineUserIds={realtime.presence.map((member) => member.userId)}
+      onLocateMe={() => {
+        if (tab !== "map") setTab("map");
+        setLocateSignal((n) => n + 1);
+      }}
+    />
+  );
+
+  if (isMobile) {
+    return (
+      <div className="flex h-dvh flex-col bg-background">
+        <MobilePlannerHeader
+          title={trip.title}
+          subtitle={headerSubtitle}
+          onBack={() => navigate("/")}
+          onRename={(title) => rename.mutate(title)}
+          onOpenAgent={agentEnabled ? () => setAgentPanel(false) : undefined}
+        />
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          {panes}
+          {!noteEditingStop && tab === "map" ? (
+            <MobileItinerarySheet {...sidebarProps} />
+          ) : null}
+          {floatingMembers}
+        </main>
+        <MobileTabBar
+          items={tabItems}
+          value={tab}
+          onValueChange={(v) => {
+            setNoteEditingStopId(null);
+            setTab(v as Tab);
+          }}
+        />
+        <MobileStopDetailSheet
+          trip={trip}
+          stop={!noteEditingStop && tab === "map" ? selectedStop : undefined}
+          currentUserId={currentUserId}
+          canEdit={trip.permissions.canEdit}
+          onClose={() => setSelectedStopId(null)}
+          onToggleVote={sidebarProps.onToggleVote}
+          onComment={sidebarProps.onComment}
+          commentPending={actions.comment.isPending}
+          onUpdateStop={sidebarProps.onUpdateStop}
+          onChangeStopDay={sidebarProps.onChangeStopDay}
+          onExpandNote={openNoteEditor}
+        />
+        {agentEnabled ? (
+          <MobileAgentSheet
+            open={!agentCollapsed}
+            tripId={trip.id}
+            trip={trip}
+            canEdit={trip.permissions.canEdit}
+            applyingId={applyingSuggestionId}
+            onApproveSuggestion={handleApproveSuggestion}
+            onDenySuggestion={handleDenySuggestion}
+            onClose={() => setAgentPanel(true)}
+          />
+        ) : null}
+        {agentEnabled ? (
+          <AgentInterventionToasts
+            suggestions={pendingSuggestions}
+            canEdit={trip.permissions.canEdit}
+            applyingId={applyingSuggestionId}
+            onApprove={handleApproveSuggestion}
+            onDiscuss={handleDiscussSuggestion}
+            onDeny={handleDenySuggestion}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-dvh bg-sidebar">
       <Splitter
@@ -541,33 +753,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
             </div>
           }
         >
-          <Sidebar
-            trip={trip}
-            day={day}
-            onDayChange={(d) => {
-              setDay(d);
-              setSelectedStopId(null);
-              setNoteEditingStopId(null);
-            }}
-            selectedStopId={selectedStopId}
-            onSelectStop={selectStop}
-            onCloseDetail={() => setSelectedStopId(null)}
-            currentUserId={currentUserId}
-            canEdit={trip.permissions.canEdit}
-            onToggleVote={(stopId) => actions.vote.mutate(stopId)}
-            onComment={(stopId, text) =>
-              actions.comment.mutate({ stopId, text })
-            }
-            commentPending={actions.comment.isPending}
-            onUpdateStop={(stopId, patch) =>
-              actions.stopUpdate.mutate({ stopId, patch })
-            }
-            onChangeStopDay={(stopId, targetDay) => {
-              const index = trip.stops.filter((s) => s.day === targetDay).length;
-              actions.stopMove.mutate({ stopId, day: targetDay, index });
-            }}
-            onExpandNote={openNoteEditor}
-          />
+          <Sidebar {...sidebarProps} />
         </AppSidebar>
 
         <div className="flex min-h-0 min-w-0 flex-1">
@@ -580,107 +766,9 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           )}
         >
           <main className="relative flex min-w-0 flex-1 flex-col">
-            <div
-              className={cn(
-                "relative min-h-0 flex-1",
-                noteEditingStop ? "overflow-hidden" : "overflow-auto",
-              )}
-            >
-              {noteEditingStop ? (
-                <NoteEditorPane
-                  tripId={trip.id}
-                  editorKey={noteEditingStop.id}
-                  value={noteEditingStop.note}
-                  placeholder={t("detail.notePlaceholder")}
-                  onCommit={(note) =>
-                    actions.stopUpdate.mutate({
-                      stopId: noteEditingStop.id,
-                      patch: { note },
-                    })
-                  }
-                  onClose={closeNoteEditor}
-                />
-              ) : tab === "map" ? (
-              <TripMapView
-                trip={trip}
-                numbers={numbers}
-                day={day}
-                activeStopId={selectedStopId}
-                onSelectStop={selectStop}
-                picking={picking}
-                onPick={handleMapPick}
-                onAddStopHere={addStopAt}
-                locateSignal={locateSignal}
-                onCancelPick={() => {
-                  setPicking(false);
-                  setTab("schedule");
-                }}
-              />
-            ) : tab === "schedule" ? (
-              <ScheduleBoard
-                trip={trip}
-                compose={compose}
-                defaultCurrency={preferredCurrency || trip.currency}
-                biasLat={bias?.lat}
-                biasLng={bias?.lng}
-                onOpen={openCompose}
-                onChange={patchCompose}
-                onConfirm={confirmCompose}
-                onCancel={cancelCompose}
-                onPickOnMap={startPickOnMap}
-                onSelectStop={(id) => {
-                  setTab("map");
-                  setDay(0);
-                  selectStop(id);
-                }}
-                onAddDay={() => actions.day.mutate()}
-                onUpdateDay={(dayNumber, patch) =>
-                  actions.dayUpdate.mutate({ dayNumber, patch })
-                }
-                onDeleteDay={(dayNumber) => actions.dayDelete.mutate(dayNumber)}
-                onReorderDays={(order) => actions.dayReorder.mutate(order)}
-                onMoveStop={(input) => actions.stopMove.mutate(input)}
-                addingDay={actions.day.isPending}
-                deletingDayNumber={
-                  actions.dayDelete.isPending
-                    ? actions.dayDelete.variables
-                    : undefined
-                }
-                updatingDayNumber={
-                  actions.dayUpdate.isPending
-                    ? actions.dayUpdate.variables?.dayNumber
-                    : undefined
-                }
-              />
-            ) : tab === "reservations" ? (
-              <ReservationsBoard trip={trip} canEdit={trip.permissions.canEdit} />
-            ) : (
-              <BudgetBoard
-                trip={trip}
-                currentUserId={currentUserId}
-                defaultCurrency={preferredCurrency || trip.currency}
-                canEdit={trip.permissions.canEdit}
-                onAddExpense={(input) => actions.expense.mutate(input)}
-                onUpdateExpense={(expenseId, input) =>
-                  actions.expenseUpdate.mutate({ expenseId, input })
-                }
-              />
-            )}
-          </div>
-
-          {noteEditingStop ? null : (
-            <FloatingMembers
-              tripId={trip.id}
-              members={trip.members}
-              canInvite={trip.permissions.canInvite}
-              onlineUserIds={realtime.presence.map((member) => member.userId)}
-              onLocateMe={() => {
-                if (tab !== "map") setTab("map");
-                setLocateSignal((n) => n + 1);
-              }}
-            />
-          )}
-      </main>
+            {panes}
+            {floatingMembers}
+          </main>
       </div>
 
           {agentEnabled ? (
@@ -719,90 +807,28 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   );
 }
 
-function BackButton({
-  onBack,
-  title,
-  subtitle,
-  onRename,
+/** Absolutely stacked mode pane; inactive panes keep layout (and scroll
+ * position) but are hidden from view, pointer events, and the a11y tree. */
+function PlannerPane({
+  active,
+  scroll = false,
+  children,
 }: {
-  onBack: () => void;
-  title?: string;
-  subtitle?: string;
-  onRename?: (title: string) => void;
+  active: boolean;
+  /** Boards without their own scroll container scroll within the pane. */
+  scroll?: boolean;
+  children: ReactNode;
 }) {
-  const { t } = useTranslation("common");
-  const { t: tp } = useTranslation("planner");
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(title ?? "");
-
-  useEffect(() => setValue(title ?? ""), [title]);
-
-  const commit = () => {
-    setEditing(false);
-    const next = value.trim();
-    if (next && next !== title) onRename?.(next);
-    else setValue(title ?? "");
-  };
-
   return (
-    <div className="flex min-w-0 items-start gap-2.5">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label={t("actions.back")}
-        title={t("actions.back")}
-        className="relative inline-flex size-8 flex-none items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] after:absolute after:-inset-1 after:content-[''] hover:bg-accent hover:text-foreground active:scale-[var(--press-scale)]"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="size-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-      </button>
-      {title == null ? null : editing ? (
-        <input
-          autoFocus
-          value={value}
-          maxLength={120}
-          aria-label={tp("header.renameAria")}
-          placeholder={tp("header.renamePlaceholder")}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            } else if (e.key === "Escape") {
-              setValue(title);
-              setEditing(false);
-            }
-          }}
-          className="min-h-8 w-full rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-base font-semibold outline-none"
-        />
-      ) : (
-        <div className="flex min-w-0 flex-col gap-0.5 py-0.5">
-          <button
-            type="button"
-            onClick={() => onRename && setEditing(true)}
-            title={onRename ? tp("header.renameAria") : title}
-            className="truncate text-left font-heading text-base font-semibold leading-tight tracking-tight transition-[color,scale] duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:text-corn-600 active:scale-[var(--press-scale)]"
-          >
-            {title}
-          </button>
-          {subtitle ? (
-            <span className="truncate font-mono text-[11px] text-muted-foreground tabular-nums">
-              {subtitle}
-            </span>
-          ) : null}
-        </div>
+    <div
+      aria-hidden={!active}
+      className={cn(
+        "absolute inset-0",
+        scroll && "overflow-auto",
+        !active && "invisible",
       )}
+    >
+      {children}
     </div>
   );
 }

@@ -41,6 +41,14 @@ copied into `dist` so deep links resolve to `index.html`:
 /*  /index.html  200
 ```
 
+## Headers
+
+`apps/web/public/_headers` is copied into `dist` alongside `_redirects`:
+`/sw.js` and `/manifest.webmanifest` are `Cache-Control: no-cache` so new
+service-worker deploys are picked up promptly (the in-app update prompt
+depends on it), and hashed `/assets/*` are `public, max-age=31536000,
+immutable`.
+
 ## CORS / auth
 
 - Worker var `TRUSTED_ORIGINS` includes `https://opentrip.im`,
