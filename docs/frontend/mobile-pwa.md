@@ -127,11 +127,23 @@ with non-string titles are never mirrored.
   output. The apple-touch-icon is rendered opaque from the full-bleed
   maskable SVG.
 
+## Navigations and update safety
+
+The service worker registers a `NavigationRoute` bound to the precached
+`index.html`, so every SPA navigation is served from the precache (API
+routes are denylisted). This keeps the HTML and the hashed assets it
+references from the **same build**: without it, a navigation right after an
+in-app update could pick up a stale HTML response from the browser or CDN
+cache whose hashed assets the new deploy already purged — the page then
+loads unstyled or not at all. It also makes offline navigation to any route
+work from the precached shell.
+
 ## Serving headers
 
-`apps/web/public/_headers` (Cloudflare Pages) marks `/sw.js` and
-`/manifest.webmanifest` as `no-cache` so updates are picked up promptly, and
-hashed `/assets/*` as immutable. See
+`apps/web/public/_headers` (Cloudflare Pages) marks everything unhashed —
+including HTML — as `no-cache` so a deploy is picked up promptly and stale
+`index.html` can never pin purged assets; hashed `/assets/*` stay immutable
+and `/fonts/*` get a medium-lived cache. See
 [../operations/cloudflare.md](../operations/cloudflare.md).
 
 ## Conventions

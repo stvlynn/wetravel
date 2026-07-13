@@ -3,8 +3,12 @@
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { clientsClaim } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
-import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
+import {
+    cleanupOutdatedCaches,
+    createHandlerBoundToURL,
+    precacheAndRoute,
+} from "workbox-precaching";
+import { NavigationRoute, registerRoute } from "workbox-routing";
 import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 
 declare let self: ServiceWorkerGlobalScope;
@@ -12,6 +16,17 @@ declare let self: ServiceWorkerGlobalScope;
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 clientsClaim();
+
+// Serve every SPA navigation from the precached index.html. Without this,
+// navigations hit the network stack, where a stale HTML response (browser or
+// CDN cache) can reference hashed assets that a newer deploy already purged —
+// the page then loads unstyled or not at all right after an in-app update.
+// This also makes offline navigation to any route work from the precache.
+registerRoute(
+    new NavigationRoute(createHandlerBoundToURL("index.html"), {
+        denylist: [/^\/api\//],
+    }),
+);
 
 self.addEventListener("message", (event) => {
     if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();

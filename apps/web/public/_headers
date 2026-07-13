@@ -1,6 +1,13 @@
-# Cloudflare Pages headers. The service worker and manifest must revalidate on
-# every load — the browser HTTP cache can otherwise pin an old worker for up to
-# 24h and delay the in-app update prompt. Hashed build assets are immutable.
+# Cloudflare Pages headers. HTML (and anything unhashed) must revalidate on
+# every load: a cached index.html referencing purged hashed assets is exactly
+# how the app breaks right after a deploy or an in-app update. The service
+# worker and manifest must revalidate too — the browser HTTP cache can
+# otherwise pin an old worker for up to 24h and delay the in-app update
+# prompt. Hashed build assets are immutable; the later, more specific rules
+# override the catch-all.
+/*
+  Cache-Control: no-cache
+
 /sw.js
   Cache-Control: no-cache
 
@@ -10,3 +17,6 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=2592000

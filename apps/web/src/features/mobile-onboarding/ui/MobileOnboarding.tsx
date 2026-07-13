@@ -43,15 +43,20 @@ export function MobileOnboarding() {
     const [index, setIndex] = useState(0);
     const [open, setOpen] = useState(false);
     const [busy, setBusy] = useState(false);
-    const startedRef = useRef(false);
+    // Marks that the sheet opened once this page load. Set when it actually
+    // opens — not when the timer is scheduled — so StrictMode's mount →
+    // unmount → remount cycle (which cancels the first timer) reschedules.
+    const openedRef = useRef(false);
 
     useEffect(() => {
-        if (!isMobile || startedRef.current) return;
-        startedRef.current = true;
+        if (!isMobile || openedRef.current) return;
         let cancelled = false;
         const timer = setTimeout(() => {
             void computePendingSteps().then((pending) => {
-                if (cancelled || pending.length === 0) return;
+                if (cancelled || openedRef.current || pending.length === 0) {
+                    return;
+                }
+                openedRef.current = true;
                 setSteps(pending);
                 setOpen(true);
             });
