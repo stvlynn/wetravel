@@ -2,14 +2,12 @@ import type {
   TripChange,
   TripChangePublisher,
 } from "../../domain/realtime";
+import type { DurableObjectNamespaceLike } from "../cloudflare/durable-object";
 
-export interface DurableObjectStubLike {
-  fetch(request: Request): Promise<Response>;
-}
-
-export interface DurableObjectNamespaceLike {
-  getByName(name: string): DurableObjectStubLike;
-}
+export type {
+  DurableObjectNamespaceLike,
+  DurableObjectStubLike,
+} from "../cloudflare/durable-object";
 
 export type RealtimeDefer = (task: Promise<unknown>) => void;
 
@@ -63,4 +61,3 @@ export class CloudflareTripChangePublisher implements TripChangePublisher {
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

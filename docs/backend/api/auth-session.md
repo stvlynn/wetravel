@@ -49,8 +49,9 @@ The callback code is hashed at rest, valid for three minutes, and consumed on
 first use. Native business requests send the returned session token as a Bearer
 credential.
 
-Captcha (when `CAPTCHA_PROVIDER` is set) intercepts protected auth POSTs via
-header `x-captcha-response`. See [auth.md](../auth.md).
+Cloudflare Turnstile (when `CAPTCHA_PROVIDER=cloudflare-turnstile`) intercepts
+protected auth POSTs via header `x-captcha-response`. Other CAPTCHA providers
+are not supported. See [auth.md](../auth.md).
 
 Avatar image for the signed-in user is **not** only Better Auth: use
 `POST/DELETE /api/users/avatar` so storage and profile stay consistent.

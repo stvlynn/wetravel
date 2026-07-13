@@ -23,7 +23,8 @@ Pushing to `main` triggers
 1. Build and deploy the SPA to Pages (`opentrip-web` → `opentrip.im`), baking
    `CAPTCHA_PROVIDER` + `TURNSTILE_SITE_KEY` when set.
 2. Deploy the API Worker (`opentrip-api` → `api.opentrip.im`), overlaying
-   GitHub Actions **variables** onto `wrangler.api.jsonc` vars.
+   GitHub Actions **variables** onto `wrangler.api.jsonc` vars. The committed
+   config deploys both realtime and authentication rate-limit Durable Objects.
 3. Sync GitHub **secrets** into Worker secrets (`sync-secrets.mjs`).
 
 **Source of truth for production config is GitHub Actions** (Settings →
@@ -175,6 +176,19 @@ observability, custom domain `api.opentrip.im`, and **fallback** non-secret
 vars. Production values come from GitHub Actions variables via
 `deploy-api.mjs`.
 
+The Worker has two independent Durable Object namespaces:
+
+| Binding | Class | Purpose |
+| --- | --- | --- |
+| `TRIP_REALTIME` | `TripRealtimeObject` | Per-trip realtime collaboration |
+| `AUTH_RATE_LIMIT` | `AuthRateLimitObject` | Globally atomic Better Auth limits per hashed IP/path key |
+
+`v2-auth-rate-limit` creates the authentication limiter class after the
+existing realtime migration. No KV, PostgreSQL rate-limit table, or Workers
+Rate Limiting binding participates in authentication enforcement. Cloudflare's
+native Rate Limiting binding is PoP-local; the Durable Object is deliberately
+used for a single global decision per key.
+
 ## 4. Frontend (Pages)
 
 ```bash
@@ -201,7 +215,8 @@ ships `_redirects` (SPA fallback) and `_headers` (service worker + manifest
   [deploy/cloudflare/vars.example.json](../../deploy/cloudflare/vars.example.json).
   Prefer GitHub Actions variables; `deploy-api.mjs` overlays them at deploy.
 
-Captcha: public `TURNSTILE_SITE_KEY` (secret in GitHub only so it is not
+Captcha: `CAPTCHA_PROVIDER` must be `cloudflare-turnstile`; public
+`TURNSTILE_SITE_KEY` (secret in GitHub only so it is not
 committed; still safe to bake into the SPA) + Worker `CAPTCHA_SECRET_KEY`.
 Email OTP: `EMAIL_PROVIDER=resend` + `EMAIL_FROM` + `RESEND_API_KEY`.
 

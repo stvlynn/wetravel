@@ -20,12 +20,17 @@ import {
   localeFromRequest,
 } from "../email/email-locale";
 import type { AppConfig } from "../config";
+import type { AuthRateLimitStorage } from "./auth-rate-limit";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
 
 export interface CreateAuthOptions {
   /** When set, each new user receives a personal copy of the sample trip. */
   tripRepository?: TripRepository;
   loadSampleTripTemplate?: () => Promise<Trip>;
+  /** Globally consistent storage supplied by the Cloudflare Worker runtime. */
+  rateLimitStorage?: AuthRateLimitStorage;
+  /** Trusted client-IP headers for the active runtime. */
+  ipAddressHeaders?: string[];
 }
 
 /** OTP lifetime in seconds (Better Auth emailOTP default is 300). */
@@ -76,6 +81,12 @@ export function createAuth(
         baseURL: config.betterAuthUrl,
         basePath: "/api/auth",
         trustedOrigins: config.trustedOrigins,
+        rateLimit: options.rateLimitStorage
+            ? { customStorage: options.rateLimitStorage }
+            : undefined,
+        advanced: options.ipAddressHeaders
+            ? { ipAddress: { ipAddressHeaders: options.ipAddressHeaders } }
+            : undefined,
         emailAndPassword: {
             enabled: true,
             requireEmailVerification: true,

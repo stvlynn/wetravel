@@ -21,6 +21,10 @@
       {
         "name": "TRIP_REALTIME",
         "class_name": "TripRealtimeObject"
+      },
+      {
+        "name": "AUTH_RATE_LIMIT",
+        "class_name": "AuthRateLimitObject"
       }
     ]
   },
@@ -28,6 +32,10 @@
     {
       "tag": "v1-trip-realtime",
       "new_sqlite_classes": ["TripRealtimeObject"]
+    },
+    {
+      "tag": "v2-auth-rate-limit",
+      "new_sqlite_classes": ["AuthRateLimitObject"]
     }
   ],
   // Custom domain for the API (zone opentrip.im is on this account).

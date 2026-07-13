@@ -18,7 +18,11 @@ import { SqlTripInviteRepository } from "../persistence/invite-repository.db";
 import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.db";
 import { SqlAgentSessionRepository } from "../persistence/agent-repository.db";
 import { SqlReservationRepository } from "../persistence/reservation-repository.db";
-import { createAuth, type Auth } from "../auth/auth";
+import {
+  createAuth,
+  type Auth,
+  type AuthRateLimitStorage,
+} from "../auth";
 import { createSampleTripTemplateLoader } from "../persistence/sample-trip-template";
 import { CachedWeatherClient } from "../weather/cached-weather-client";
 import { OpenWeatherMapClient } from "../weather/openweather-client";
@@ -51,6 +55,10 @@ export interface CreateContainerOptions {
   freshDatabaseUrl?: string;
   /** Cloudflare Durable Object publisher. Omitted outside the Worker runtime. */
   tripChangePublisher?: TripChangePublisher;
+  /** Cloudflare-global Better Auth limiter. Omitted outside Workers. */
+  authRateLimitStorage?: AuthRateLimitStorage;
+  /** Trusted client-IP headers used to partition authentication limits. */
+  authIpAddressHeaders?: string[];
 }
 
 export interface Container {
@@ -132,6 +140,8 @@ export function createContainer(
   const auth = createAuth(config, authDriver, {
     tripRepository,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
+    rateLimitStorage: options?.authRateLimitStorage,
+    ipAddressHeaders: options?.authIpAddressHeaders,
   });
   const coverImages = new UnsplashCoverProvider(config.unsplashAccessKey);
   const geoService = new GeoService(createGeoProvider(config.geo));

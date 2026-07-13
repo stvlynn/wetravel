@@ -282,12 +282,30 @@ code is required.
 
 ### Environment
 
-- `CAPTCHA_PROVIDER` — one of `cloudflare-turnstile`, `google-recaptcha`,
-  `hcaptcha`, `captchafox`.
+- `CAPTCHA_PROVIDER` — `cloudflare-turnstile`. The SPA has one CAPTCHA
+  implementation; other provider values fail configuration instead of shipping
+  a server/client mismatch.
 - `CAPTCHA_SECRET_KEY` — provider secret key (server-side only).
 
 The public site key (`TURNSTILE_SITE_KEY`) is consumed by the Vite build and
 exposed to the browser through `shared/config`; it never reaches the backend.
+
+## Rate limiting
+
+Better Auth's endpoint rules remain the source of truth for request windows and
+limits. In particular, email OTP send and verification endpoints use the
+emailOTP plugin's limit (three requests per 60 seconds).
+
+On Cloudflare Workers, `rateLimit.customStorage` is backed by the dedicated
+`AUTH_RATE_LIMIT` Durable Object namespace. Better Auth's IP-and-path key is
+SHA-256 hashed before it becomes an object name. One globally unique object
+atomically consumes each key in a fixed window and deletes expired state via a
+Durable Object alarm. Workers trust only Cloudflare's edge-derived
+`cf-connecting-ip` header for the client partition. A missing binding fails the
+Worker request with `503`; Workers never fall back to isolate memory.
+
+Node and Docker use Better Auth's built-in in-memory limiter because they are a
+single local process and have no Cloudflare runtime binding.
 
 ## Environment
 

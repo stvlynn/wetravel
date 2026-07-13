@@ -160,6 +160,11 @@ node deploy/cloudflare/scripts/sync-secrets.mjs
 
 `wrangler.api.jsonc` `vars` remain as **local defaults** only.
 
+The committed Worker config owns the `TRIP_REALTIME` and `AUTH_RATE_LIMIT`
+Durable Object bindings. Authentication limits use the latter for globally
+atomic enforcement; do not add KV, database, or PoP-local rate-limit bindings
+as alternate auth paths.
+
 ## R2
 
 Configure the R2 bucket **only** via GitHub Actions variables/secrets (not in

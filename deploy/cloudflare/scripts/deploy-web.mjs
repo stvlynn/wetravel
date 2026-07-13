@@ -38,6 +38,12 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 const captchaProvider = process.env.CAPTCHA_PROVIDER?.trim() || "";
 const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY?.trim() || "";
+if (captchaProvider && captchaProvider !== "cloudflare-turnstile") {
+  console.error(
+    "CAPTCHA_PROVIDER must be cloudflare-turnstile when captcha is enabled.",
+  );
+  process.exit(1);
+}
 if (captchaProvider && !turnstileSiteKey) {
   console.error(
     "TURNSTILE_SITE_KEY is required when CAPTCHA_PROVIDER is set (public site key for the SPA build).",

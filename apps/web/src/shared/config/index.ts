@@ -19,10 +19,7 @@ function requireBaseUrl(value: string): string {
 
 export type CaptchaProvider =
   | ""
-  | "cloudflare-turnstile"
-  | "google-recaptcha"
-  | "hcaptcha"
-  | "captchafox";
+  | "cloudflare-turnstile";
 
 /** Runtime configuration injected from the root `.env` by Vite. */
 export const config = {

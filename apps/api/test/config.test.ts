@@ -165,3 +165,32 @@ describe("loadConfig email", () => {
     ).toThrow("EMAIL_FROM is required when EMAIL_PROVIDER=resend");
   });
 });
+
+describe("loadConfig captcha", () => {
+  it("supports Cloudflare Turnstile with a server secret", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+      CAPTCHA_PROVIDER: "cloudflare-turnstile",
+      CAPTCHA_SECRET_KEY: "turnstile-secret",
+    });
+
+    expect(config.captcha).toEqual({
+      provider: "cloudflare-turnstile",
+      secretKey: "turnstile-secret",
+    });
+  });
+
+  it("rejects captcha providers without a browser implementation", () => {
+    expect(() =>
+      loadConfig({
+        ...BASE_ENV,
+        STORAGE_BACKEND: "fs",
+        STORAGE_ROOT: "/data",
+        CAPTCHA_PROVIDER: "hcaptcha",
+        CAPTCHA_SECRET_KEY: "secret",
+      }),
+    ).toThrow("CAPTCHA_PROVIDER must be one of cloudflare-turnstile");
+  });
+});

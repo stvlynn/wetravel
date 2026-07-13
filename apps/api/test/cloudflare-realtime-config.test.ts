@@ -16,8 +16,8 @@ function loadWranglerConfig() {
   };
 }
 
-describe("Cloudflare realtime deployment config", () => {
-  it("ships the Durable Object binding and SQLite migration", () => {
+describe("Cloudflare Durable Object deployment config", () => {
+  it("ships realtime and auth rate-limit bindings with ordered migrations", () => {
     const config = loadWranglerConfig();
     expect(config.compatibility_date).toBe("2026-04-07");
     expect(config.durable_objects?.bindings).toContainEqual({
@@ -27,6 +27,14 @@ describe("Cloudflare realtime deployment config", () => {
     expect(config.migrations).toContainEqual({
       tag: "v1-trip-realtime",
       new_sqlite_classes: ["TripRealtimeObject"],
+    });
+    expect(config.durable_objects?.bindings).toContainEqual({
+      name: "AUTH_RATE_LIMIT",
+      class_name: "AuthRateLimitObject",
+    });
+    expect(config.migrations).toContainEqual({
+      tag: "v2-auth-rate-limit",
+      new_sqlite_classes: ["AuthRateLimitObject"],
     });
   });
 });

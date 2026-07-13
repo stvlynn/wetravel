@@ -3,6 +3,10 @@ import { loadConfig, type RawEnv } from "./infrastructure/config";
 import { createWorkerStorage } from "./infrastructure/storage/create-worker-storage";
 import { createApp } from "./interfaces/http/app";
 import {
+  AuthRateLimitObject,
+  createCloudflareAuthRateLimitStorage,
+} from "./infrastructure/auth";
+import {
   CloudflareTripChangePublisher,
   signRealtimeGrant,
   TripRealtimeObject,
@@ -23,6 +27,7 @@ interface WorkerEnv extends RawEnv {
   TRUSTED_ORIGINS?: string;
   BASE_URL?: string;
   TRIP_REALTIME: DurableObjectNamespaceLike;
+  AUTH_RATE_LIMIT: DurableObjectNamespaceLike;
   REALTIME_GRANT_SECRET: string;
 }
 
@@ -67,6 +72,12 @@ function buildApp(env: WorkerEnv, ctx: WorkerExecutionContext) {
         env.REALTIME_GRANT_SECRET,
         (task) => ctx.waitUntil(task),
       ),
+      authRateLimitStorage: createCloudflareAuthRateLimitStorage(
+        env.AUTH_RATE_LIMIT,
+      ),
+      // Cloudflare sets and protects this edge-derived header. Do not trust
+      // browser-controlled forwarding chains when partitioning auth limits.
+      authIpAddressHeaders: ["cf-connecting-ip"],
     },
   );
   return { app: createApp(container), container };
@@ -175,6 +186,15 @@ export default {
         "Database consistency binding is not configured",
       );
     }
+    if (!env.AUTH_RATE_LIMIT) {
+      console.error("AUTH_RATE_LIMIT Durable Object binding is required");
+      return emergencyCorsResponse(
+        request,
+        env,
+        503,
+        "Authentication rate limiter is not configured",
+      );
+    }
     // Always build a fresh client pool per request on Workers.
     // Hyperdrive still pools TCP to the origin at the edge; caching a
     // node-postgres Pool across isolate freezes left connections "pending"
@@ -205,4 +225,4 @@ export default {
   },
 };
 
-export { TripRealtimeObject };
+export { AuthRateLimitObject, TripRealtimeObject };

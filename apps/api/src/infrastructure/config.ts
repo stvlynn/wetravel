@@ -3,11 +3,7 @@ export interface GoogleOAuthConfig {
     clientSecret: string;
 }
 
-export type CaptchaProvider =
-    | "cloudflare-turnstile"
-    | "google-recaptcha"
-    | "hcaptcha"
-    | "captchafox";
+export type CaptchaProvider = "cloudflare-turnstile";
 
 export interface CaptchaConfig {
     provider: CaptchaProvider;
@@ -176,9 +172,6 @@ export interface RawEnv {
 
 const CAPTCHA_PROVIDERS: CaptchaProvider[] = [
     "cloudflare-turnstile",
-    "google-recaptcha",
-    "hcaptcha",
-    "captchafox",
 ];
 
 function parseCaptchaConfig(env: RawEnv): CaptchaConfig | null {
