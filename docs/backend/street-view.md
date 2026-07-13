@@ -61,13 +61,20 @@ access tokens, response bodies, or provider image URLs.
 `streetViewSearch` returns compact platform-neutral JSON with explicit
 `found`/`empty` and `complete`/`partial` semantics. A successful static-only or
 empty result is never a tool failure and does not establish a global provider
-coverage gap.
+coverage gap. Persisted tool output stays JSON-only. Its AI SDK `toModelOutput`
+adds trusted English captions from DTO fields and, when a ranked
+`supports360=false` image exists, at most one bounded static preview for the
+current model step. Panorama-only hits and preview failures stay text-only.
+`street_view.search_model_output` logs the attach outcome
+(`attached` / `skipped_empty` / `skipped_panorama_only` / `preview_unavailable`).
 
 The agent omits `radiusMeters` on its first attempt to use the 100 m default. It
 may retry once at the same center with a larger radius only after a successful
 `empty` or `partial` result. A thrown provider error removes both street-view
 tools for the rest of that generation and must not trigger guessed-coordinate
-retries or be presented as proof of missing coverage.
+retries or be presented as proof of missing coverage. After a `found` search the
+model must emit `StreetViewCard` with a returned id in the same reply rather than
+replacing the card with a prose metadata caption.
 
 `StreetViewCard` and `openStreetView` are grounded capabilities: their image id
 must appear in a successful street-view tool output in the same assistant
@@ -75,11 +82,11 @@ UIMessage. The shared catalog sanitizer applies this rule during streaming,
 history rendering, and persistence, so text or an older message cannot smuggle
 an opaque id into generated UI.
 
-`streetViewInspect` reads one trusted ordinary static preview through async AI
-SDK `toModelOutput`. The application rejects `supports360=true` images before
-reading bytes, so panorama content is available only to the member through the
-card preview and isolated interactive viewer. No provider URL, token, or base64
-is stored in tool output.
+`streetViewInspect` remains available for another static id from this turn's
+search. It also uses async `toModelOutput` for one ordinary static preview. The
+application rejects `supports360=true` images before reading bytes, so panorama
+content is available only to the member through the card preview and isolated
+interactive viewer. No provider URL, token, or base64 is stored in tool output.
 
 `appendStopNote` is a generic approval-gated write op. It appends inside the
 Trip aggregate so the agent cannot overwrite note content omitted by the

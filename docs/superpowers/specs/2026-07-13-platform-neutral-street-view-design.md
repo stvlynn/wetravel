@@ -250,16 +250,19 @@ automatic read tools and do not require approval. Search returns an explicit
 the model cannot confuse an empty result or a static-only result with a tool
 failure.
 
-`streetViewSearch` returns JSON metadata only. `streetViewInspect.execute`
-returns the same compact, platform-neutral JSON used by persistence and the UI.
+`streetViewSearch.execute` returns JSON metadata only for persistence and the
+UI. Its asynchronous `toModelOutput` adds trusted captions from those fields
+and, when a ranked ordinary static image exists, at most one JPEG/PNG/WebP
+preview for the current model step so the model can emit `StreetViewCard`
+without inventing metadata. Panorama-only results stay text-only.
+`streetViewInspect.execute` returns the same compact, platform-neutral JSON.
 Before its asynchronous `toModelOutput` reads bytes, the application verifies
-that the image is not a panorama. For an ordinary static image it adds metadata
-text plus one JPEG, PNG, or WebP file fetched through the trusted provider
-adapter. For a panorama it throws
-`street_view_panorama_inspection_forbidden`; panorama bytes are never supplied
-to the model. Static images are limited to 2 MiB, requested at approximately
-1024 pixels, and guarded by the provider timeout. Provider URLs, tokens, and
-base64 are never included in the execute result.
+that the image is not a panorama. For an ordinary static image it adds caption
+text plus one preview file fetched through the trusted provider adapter. For a
+panorama it throws `street_view_panorama_inspection_forbidden`; panorama bytes
+are never supplied to the model. Static images are limited to 2 MiB, requested
+at approximately 1024 pixels, and guarded by the provider timeout. Provider
+URLs, tokens, and base64 are never included in the execute result.
 
 The Mapillary adapter performs separate bounded panorama and general candidate
 queries, merges them by opaque image id, and tolerates one successful lane when

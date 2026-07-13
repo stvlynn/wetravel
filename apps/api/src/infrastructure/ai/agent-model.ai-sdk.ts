@@ -45,7 +45,12 @@ import type { TripSnapshot } from "../../domain/trip";
 import type { WeatherService } from "../../application/weather/weather-service";
 import type { GeoService } from "../../application/geo/geo-service";
 import type { LodgingService } from "../../application/lodging/lodging-service";
-import { StreetViewError, type StreetViewService } from "../../application/street-view";
+import {
+  StreetViewError,
+  type StreetViewImageDto,
+  type StreetViewSearchResultDto,
+  type StreetViewService,
+} from "../../application/street-view";
 import type { FileStorage } from "../../application/storage";
 import {
   isTripMediaStoragePath,
@@ -691,10 +696,12 @@ export class AiSdkAgentModel implements AgentModel {
     if (!this.streetViewService) return "Street-view imagery is not configured.";
     return [
       "Street-view tools are provider-neutral. Resolve a place to real coordinates with placeSearch/placeDetail before streetViewSearch.",
-      "Use StreetViewCard with an imageId returned by a street-view tool; never invent an image id, preview URL, capture time, or attribution.",
+      "Use StreetViewCard with an imageId returned by a street-view tool in this same reply; never invent an image id, preview URL, capture time, heading, distance, or attribution.",
+      "A successful streetViewSearch already supplies trusted captions and at most one static preview to you. When outcome is found, emit StreetViewCard with one returned imageId in the same reply. Do not replace the card with a prose metadata caption.",
+      "Never claim street-view imagery was found unless this turn contains a successful street-view tool result. Do not reuse image ids from earlier messages.",
       "A streetViewSearch outcome of found is a successful call, even when panoramaAvailable is false. An empty outcome only means this search area had no returned images. Never describe either outcome as a tool failure, provider outage, or global coverage gap.",
       "Start streetViewSearch without radiusMeters so it uses the 100 metre default. Retry at most once, and only after an empty or partial successful result, with a larger radius no greater than 1000 metres. Do not retry a thrown error with guessed coordinates or claim that the error proves a coverage gap. If completeness is partial, state only that the search result may be incomplete.",
-      "Use streetViewInspect only for a result with supports360=false when visual examination is useful. Panorama content is for the member's interactive viewer and must never be inspected by the model.",
+      "Use streetViewInspect only for another supports360=false id from this turn's search when a second visual look is useful. Panorama content is for the member's interactive viewer and must never be inspected by the model.",
       "When a member explicitly asks to save a reference, call appendStopNote with the stop id and trusted same-origin preview/metadata from the tool result.",
     ].join("\n");
   }
@@ -1111,7 +1118,7 @@ export function buildGeoReadTools(geoService: GeoService): ToolSet {
   };
 }
 
-/** Provider-neutral street-view tools. Inspect adds one trusted binary image. */
+/** Provider-neutral street-view tools. Search/inspect may add one trusted preview. */
 export function buildStreetViewReadTools(
   streetViewService: StreetViewService,
   tripId: string,
@@ -1121,7 +1128,7 @@ export function buildStreetViewReadTools(
   return {
     streetViewSearch: tool({
       description:
-        "Find street-level imagery near real coordinates. Omit radiusMeters first to use 100 metres; retry once with a larger radius only after an empty or partial result. A found or empty outcome is a successful call; only a thrown error is a failure. Prefer supports360=true only for the member's interactive viewer.",
+        "Find street-level imagery near real coordinates. Omit radiusMeters first to use 100 metres; retry once with a larger radius only after an empty or partial result. A found or empty outcome is a successful call; only a thrown error is a failure. On found, you receive trusted captions and at most one static preview — emit StreetViewCard with a returned imageId in the same reply. Prefer supports360=true only for the member's interactive viewer.",
       inputSchema: z.object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
@@ -1165,6 +1172,8 @@ export function buildStreetViewReadTools(
           throw error;
         }
       },
+      toModelOutput: async ({ output }) =>
+        streetViewSearchToModelOutput(streetViewService, tripId, output, observability),
     }),
     streetViewInspect: tool({
       description:
@@ -1179,36 +1188,160 @@ export function buildStreetViewReadTools(
         );
       },
       toModelOutput: async ({ output }) => {
-        const metadata = JSON.stringify(output);
         if (output.supports360) {
           throw new StreetViewError(
             "street_view_panorama_inspection_forbidden",
             "Panorama content cannot be supplied to the model",
           );
         }
-        try {
-          const preview = await providerCall("street_view", "read_preview", () =>
-            streetViewService.readPreview(output.id, observability),
-          );
-          return {
-            type: "content" as const,
-            value: [
-              { type: "text" as const, text: metadata },
-              {
-                type: "file" as const,
-                mediaType: preview.mediaType,
-                data: { type: "data" as const, data: preview.bytes },
-                filename: `street-view-${output.id}`,
-              },
-            ],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Preview unavailable";
-          return { type: "text" as const, value: `${metadata}\nPreview unavailable: ${message}` };
-        }
+        return streetViewStaticPreviewToModelOutput(
+          streetViewService,
+          output,
+          formatStreetViewImageCaption(output),
+          observability,
+        );
       },
     }),
   };
+}
+
+type StreetViewModelContent = {
+  type: "content";
+  value: Array<
+    | { type: "text"; text: string }
+    | {
+        type: "file";
+        mediaType: string;
+        data: { type: "data"; data: Uint8Array };
+        filename: string;
+      }
+  >;
+};
+
+type StreetViewModelText = { type: "text"; value: string };
+
+type StreetViewPreviewAttachOutcome =
+  | "attached"
+  | "skipped_empty"
+  | "skipped_panorama_only"
+  | "preview_unavailable";
+
+export function formatStreetViewImageCaption(image: StreetViewImageDto): string {
+  const parts = [
+    `id=${image.id}`,
+    image.distanceMeters === undefined
+      ? null
+      : `distanceMeters=${image.distanceMeters}`,
+    image.headingDegrees === undefined
+      ? null
+      : `headingDegrees=${Math.round(image.headingDegrees)}`,
+    image.capturedAt ? `capturedAt=${image.capturedAt}` : null,
+    `supports360=${image.supports360}`,
+    `attribution=${image.attribution.label}`,
+  ].filter((part): part is string => part !== null);
+  return parts.join(" ");
+}
+
+export function formatStreetViewSearchModelText(
+  result: StreetViewSearchResultDto,
+): string {
+  const header = [
+    `Street-view search outcome=${result.outcome}`,
+    `completeness=${result.completeness}`,
+    `resultCount=${result.images.length}`,
+    `candidateCount=${result.candidateCount}`,
+    `panoramaAvailable=${result.panoramaAvailable}`,
+    `panoramaCount=${result.panoramaCount}`,
+  ].join(" ");
+  if (result.outcome === "empty" || result.images.length === 0) {
+    return [
+      header,
+      "No images returned for this search area.",
+      "Do not invent image ids or claim coverage elsewhere.",
+    ].join("\n");
+  }
+  const lines = result.images.map(
+    (image, index) => `${index + 1}. ${formatStreetViewImageCaption(image)}`,
+  );
+  return [
+    header,
+    "Trusted candidates (use only these image ids for StreetViewCard):",
+    ...lines,
+    "Emit StreetViewCard with one of these imageIds in this same reply. Do not invent image ids, capture times, headings, distances, or attribution. Keep prose brief; the card hydrates preview metadata.",
+  ].join("\n");
+}
+
+export async function streetViewSearchToModelOutput(
+  streetViewService: StreetViewService,
+  tripId: string,
+  output: StreetViewSearchResultDto,
+  observability?: AgentObservabilityContext,
+): Promise<StreetViewModelContent | StreetViewModelText> {
+  const text = formatStreetViewSearchModelText(output);
+  if (output.outcome === "empty" || output.images.length === 0) {
+    logSearchPreviewAttach(tripId, "skipped_empty");
+    return { type: "text", value: text };
+  }
+  const staticImage = output.images.find((image) => !image.supports360);
+  if (!staticImage) {
+    logSearchPreviewAttach(tripId, "skipped_panorama_only");
+    return {
+      type: "text",
+      value: `${text}\nNo ordinary static preview is available for the model; panoramas are for the member viewer only.`,
+    };
+  }
+  const withPreview = await streetViewStaticPreviewToModelOutput(
+    streetViewService,
+    staticImage,
+    text,
+    observability,
+  );
+  if (withPreview.type === "content") {
+    logSearchPreviewAttach(tripId, "attached", staticImage.id);
+    return withPreview;
+  }
+  logSearchPreviewAttach(tripId, "preview_unavailable", staticImage.id);
+  return withPreview;
+}
+
+async function streetViewStaticPreviewToModelOutput(
+  streetViewService: StreetViewService,
+  image: Pick<StreetViewImageDto, "id">,
+  text: string,
+  observability?: AgentObservabilityContext,
+): Promise<StreetViewModelContent | StreetViewModelText> {
+  try {
+    const preview = await providerCall("street_view", "read_preview", () =>
+      streetViewService.readPreview(image.id, observability),
+    );
+    return {
+      type: "content",
+      value: [
+        { type: "text", text },
+        {
+          type: "file",
+          mediaType: preview.mediaType,
+          data: { type: "data", data: preview.bytes },
+          filename: `street-view-${image.id}`,
+        },
+      ],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Preview unavailable";
+    return { type: "text", value: `${text}\nPreview unavailable: ${message}` };
+  }
+}
+
+function logSearchPreviewAttach(
+  tripId: string,
+  outcome: StreetViewPreviewAttachOutcome,
+  imageId?: string,
+): void {
+  logger.info("street_view.search_model_output", {
+    tripId,
+    previewAttach: outcome,
+    ...(imageId ? { imageId } : {}),
+  });
 }
 
 const lodgingPropertyTypeSchema = z.enum([

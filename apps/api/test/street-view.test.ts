@@ -368,9 +368,32 @@ describe("street-view AI tools", () => {
     expect(Object.keys(tools)).toEqual(["streetViewSearch", "streetViewInspect"]);
 
     const search = tools.streetViewSearch as unknown as {
-      execute: (input: { lat: number; lng: number }) => Promise<unknown>;
+      execute: (input: { lat: number; lng: number }) => Promise<{
+        outcome: string;
+        images: Array<{ id: string; supports360: boolean }>;
+      }>;
+      toModelOutput: (input: {
+        output: {
+          outcome: string;
+          completeness: string;
+          panoramaAvailable: boolean;
+          panoramaCount: number;
+          candidateCount: number;
+          images: Array<{
+            id: string;
+            coordinate: { lat: number; lng: number };
+            supports360: boolean;
+            previewUrl: string;
+            attribution: { label: string };
+            distanceMeters?: number;
+            headingDegrees?: number;
+            capturedAt?: string;
+          }>;
+        };
+      }) => Promise<unknown>;
     };
-    await expect(search.execute({ lat: 10, lng: 20 })).resolves.toMatchObject({
+    const searchResult = await search.execute({ lat: 10, lng: 20 });
+    expect(searchResult).toMatchObject({
       outcome: "found",
       panoramaAvailable: false,
     });
@@ -384,24 +407,160 @@ describe("street-view AI tools", () => {
       panoramaCount: 0,
     });
 
+    await expect(search.toModelOutput({ output: searchResult })).resolves.toMatchObject({
+      type: "content",
+      value: [
+        { type: "text", text: expect.stringContaining("id=static") },
+        { type: "file", mediaType: "image/jpeg", data: { type: "data" } },
+      ],
+    });
+    expect(
+      info.mock.calls
+        .map((call) => JSON.parse(String(call[0])))
+        .some(
+          (entry) =>
+            entry.event === "street_view.search_model_output" &&
+            entry.previewAttach === "attached",
+        ),
+    ).toBe(true);
+
     const inspect = tools.streetViewInspect as unknown as {
       execute: (input: { imageId: string }) => Promise<{ id: string; supports360: boolean }>;
       toModelOutput: (input: {
-        output: { id: string; supports360: boolean };
+        output: { id: string; supports360: boolean; attribution: { label: string } };
       }) => Promise<unknown>;
     };
     const output = await inspect.execute({ imageId: "static" });
-    expect(await inspect.toModelOutput({ output })).toMatchObject({
+    expect(await inspect.toModelOutput({ output: output as never })).toMatchObject({
       type: "content",
       value: [
-        { type: "text" },
+        { type: "text", text: expect.stringContaining("id=static") },
         { type: "file", mediaType: "image/jpeg", data: { type: "data" } },
       ],
     });
     await expect(inspect.execute({ imageId: "pano" })).rejects.toMatchObject({
       code: "street_view_invalid_query",
     });
-    expect(readPreview).toHaveBeenCalledTimes(1);
+    expect(readPreview).toHaveBeenCalledTimes(2);
+    info.mockRestore();
+  });
+
+  it("keeps search toModelOutput text-only for empty and panorama-only hits", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const readPreview = vi.fn(async () => ({
+      bytes: new Uint8Array([1, 2, 3]),
+      mediaType: "image/jpeg" as const,
+    }));
+    const emptyService = new StreetViewService(
+      provider({
+        searchNearby: async () => ({ completeness: "complete", images: [] }),
+        readPreview,
+      }),
+    );
+    const emptyTools = buildStreetViewReadTools(emptyService, "trip-empty");
+    const emptySearch = emptyTools.streetViewSearch as unknown as {
+      execute: (input: { lat: number; lng: number }) => Promise<{
+        outcome: string;
+        completeness: string;
+        panoramaAvailable: boolean;
+        panoramaCount: number;
+        candidateCount: number;
+        images: unknown[];
+      }>;
+      toModelOutput: (input: { output: unknown }) => Promise<unknown>;
+    };
+    const emptyResult = await emptySearch.execute({ lat: 10, lng: 20 });
+    await expect(
+      emptySearch.toModelOutput({ output: emptyResult }),
+    ).resolves.toMatchObject({
+      type: "text",
+      value: expect.stringContaining("No images returned"),
+    });
+
+    const panoService = new StreetViewService(
+      provider({
+        searchNearby: async () => ({
+          completeness: "complete",
+          images: [image("pano", 10, { supports360: true })],
+        }),
+        readPreview,
+      }),
+    );
+    const panoTools = buildStreetViewReadTools(panoService, "trip-pano");
+    const panoSearch = panoTools.streetViewSearch as unknown as {
+      execute: (input: { lat: number; lng: number }) => Promise<{
+        outcome: string;
+        completeness: string;
+        panoramaAvailable: boolean;
+        panoramaCount: number;
+        candidateCount: number;
+        images: Array<{
+          id: string;
+          supports360: boolean;
+          coordinate: { lat: number; lng: number };
+          previewUrl: string;
+          attribution: { label: string };
+        }>;
+      }>;
+      toModelOutput: (input: { output: unknown }) => Promise<unknown>;
+    };
+    const panoResult = await panoSearch.execute({ lat: 10, lng: 20 });
+    await expect(panoSearch.toModelOutput({ output: panoResult })).resolves.toMatchObject({
+      type: "text",
+      value: expect.stringContaining("panoramas are for the member viewer only"),
+    });
+    expect(readPreview).not.toHaveBeenCalled();
+    info.mockRestore();
+  });
+
+  it("keeps search successful when preview bytes are unavailable", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const service = new StreetViewService(
+      provider({
+        searchNearby: async () => ({
+          completeness: "complete",
+          images: [image("static", 10)],
+        }),
+        readPreview: async () => {
+          throw new StreetViewError(
+            "street_view_upstream_error",
+            "Preview upstream failed",
+          );
+        },
+      }),
+    );
+    const tools = buildStreetViewReadTools(service, "trip-preview-fail");
+    const search = tools.streetViewSearch as unknown as {
+      execute: (input: { lat: number; lng: number }) => Promise<{
+        outcome: string;
+        completeness: string;
+        panoramaAvailable: boolean;
+        panoramaCount: number;
+        candidateCount: number;
+        images: Array<{
+          id: string;
+          supports360: boolean;
+          coordinate: { lat: number; lng: number };
+          previewUrl: string;
+          attribution: { label: string };
+        }>;
+      }>;
+      toModelOutput: (input: { output: unknown }) => Promise<unknown>;
+    };
+    const result = await search.execute({ lat: 10, lng: 20 });
+    await expect(search.toModelOutput({ output: result })).resolves.toMatchObject({
+      type: "text",
+      value: expect.stringContaining("Preview unavailable"),
+    });
+    expect(
+      info.mock.calls
+        .map((call) => JSON.parse(String(call[0])))
+        .some(
+          (entry) =>
+            entry.event === "street_view.search_model_output" &&
+            entry.previewAttach === "preview_unavailable",
+        ),
+    ).toBe(true);
     info.mockRestore();
   });
 

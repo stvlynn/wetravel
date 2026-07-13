@@ -145,7 +145,7 @@ export const agentUiPrompt = agentUiCatalog.prompt({
     "Use day numbers and stop ids only when they occur in the current trip snapshot or trusted tool results.",
     "Keep generated interfaces compact enough for a narrow chat panel and avoid duplicating the same information in prose and UI.",
     "When presenting estimated costs, label them as estimates and do not imply that they are recorded expenses.",
-    "Use StreetViewCard only with image ids from streetViewSearch or streetViewInspect. Add an openStreetView button only when the trusted result has supports360=true. Put place names in placeLabel; the application hydrates preview, capture time, and attribution.",
+    "Use StreetViewCard only with image ids from streetViewSearch or streetViewInspect in the same reply. After a found streetViewSearch (which already supplies trusted captions and at most one static preview), emit StreetViewCard instead of a prose metadata caption. Add an openStreetView button only when the trusted result has supports360=true. Put place names in placeLabel; the application hydrates preview, capture time, and attribution.",
     "For this compact catalog, do not use state, dynamic props, repeat, watch, or built-in state actions. Create explicit elements and bind only ActionButton on.press to sendAgentFollowUp, focusDay, focusStop, or openStreetView.",
   ],
 });

@@ -225,10 +225,13 @@ these events in order:
    `street_view.provider.retry_scheduled`: distinguish 401/403 configuration,
    429, timeout, and provider 5xx; attempts never exceed two.
 4. `street_view.search_completed`: only `outcome=found` ids may ground a card.
-5. `street_view.cache.hit`/`miss`: a card immediately following a successful
+5. `street_view.search_model_output`: confirm whether search `toModelOutput`
+   attached a static preview (`previewAttach=attached`) or skipped
+   (`skipped_empty` / `skipped_panorama_only` / `preview_unavailable`).
+6. `street_view.cache.hit`/`miss`: a card immediately following a successful
    search should use the 15-minute metadata cache; preview bytes are cached
    after their first successful read.
-6. `agent.persist_message`: confirm the sanitized assistant message and its
+7. `agent.persist_message`: confirm the sanitized assistant message and its
    fingerprint were written.
 
 If the provider call failed, the generation policy removes both street-view

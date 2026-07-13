@@ -69,8 +69,8 @@ proactive `pendingPatch` stay in sync.
 | `airbnbSearch` | none (auto) | Airbnb vacation-rental search via `LodgingService` |
 | `airbnbListingDetails` | none (auto) | Airbnb listing amenities/rules/description |
 | `readTripMedia` | none (auto) | Read a trip-owned upload (image/PDF/text) via AI SDK `toModelOutput`; URL must be this trip’s `/api/uploads/trips/…` path |
-| `streetViewSearch` | none (auto) | Find normalized street-level imagery near resolved coordinates |
-| `streetViewInspect` | none (auto) | Supply one bounded ordinary static preview; panorama inspection is rejected |
+| `streetViewSearch` | none (auto) | Find normalized street-level imagery; `toModelOutput` adds trusted captions + at most one static preview |
+| `streetViewInspect` | none (auto) | Supply one bounded ordinary static preview for another search id; panorama inspection is rejected |
 | *(from registry)* | `user-approval` | All trip-scoped editor mutations (`renameTrip`, `insertStop`, …) |
 
 Geo and lodging tools are read-only and do not mutate trips. Adding a discovered

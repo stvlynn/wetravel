@@ -5,8 +5,9 @@
 2. Add authenticated trip-scoped search, detail, preview, and viewer-config HTTP
    endpoints without exposing provider data through agent-facing contracts.
 3. Register `streetViewSearch` and `streetViewInspect` AI SDK tools. Return
-   explicit search outcomes, use async `toModelOutput` for one bounded ordinary
-   static image, and reject panorama bytes before preview reads.
+   explicit search outcomes; use async `toModelOutput` on search for trusted
+   captions plus at most one bounded ordinary static preview, and on inspect for
+   an optional second static look. Reject panorama bytes before preview reads.
 4. Add the approval-gated `appendStopNote` trip operation and aggregate method,
    preserving the complete existing note.
 5. Extend the json-render catalog, sanitizer, and renderer with a trusted
