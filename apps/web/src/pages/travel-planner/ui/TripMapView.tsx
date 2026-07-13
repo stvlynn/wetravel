@@ -105,12 +105,12 @@ export function TripMapView({
     streetViewAbort.current = controller;
     setStreetViewLoading(true);
     try {
-      const images = await searchStreetViews(
+      const result = await searchStreetViews(
         trip.id,
         { ...coordinate, radiusMeters: 100, limit: 5 },
         controller.signal,
       );
-      const image = images.find((candidate) => candidate.supports360) ?? images[0];
+      const image = result.images.find((candidate) => candidate.supports360);
       if (!image) {
         toastManager.add({ title: t("streetView.empty"), type: "info" });
         return;

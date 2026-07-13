@@ -41,7 +41,7 @@ import type { TripSnapshot } from "../../domain/trip";
 import type { WeatherService } from "../../application/weather/weather-service";
 import type { GeoService } from "../../application/geo/geo-service";
 import type { LodgingService } from "../../application/lodging/lodging-service";
-import type { StreetViewService } from "../../application/street-view";
+import { StreetViewError, type StreetViewService } from "../../application/street-view";
 import type { FileStorage } from "../../application/storage";
 import {
   isTripMediaStoragePath,
@@ -487,11 +487,7 @@ export class AiSdkAgentModel implements AgentModel {
       ...buildLodgingReadTools(this.lodgingService),
       ...buildTripMediaReadTools(this.fileStorage, tripId),
       ...(this.streetViewService
-        ? buildStreetViewReadTools(
-            this.streetViewService,
-            tripId,
-            this.config.imageInputEnabled,
-          )
+        ? buildStreetViewReadTools(this.streetViewService, tripId)
         : {}),
     };
   }
@@ -517,9 +513,9 @@ export class AiSdkAgentModel implements AgentModel {
     return [
       "Street-view tools are provider-neutral. Resolve a place to real coordinates with placeSearch/placeDetail before streetViewSearch.",
       "Use StreetViewCard with an imageId returned by a street-view tool; never invent an image id, preview URL, capture time, or attribution.",
-      this.config.imageInputEnabled
-        ? "Use streetViewInspect when you need to visually examine one search result. It supplies one trusted image to vision."
-        : "Visual image inspection is disabled; use streetViewSearch metadata only.",
+      "A streetViewSearch outcome of found is a successful call, even when panoramaAvailable is false. An empty outcome only means this search area had no returned images. Never describe either outcome as a tool failure, provider outage, or global coverage gap.",
+      "Retry streetViewSearch at most once for the same member request, with a larger radius no greater than 1000 metres. If completeness is partial, state only that the search result may be incomplete.",
+      "Use streetViewInspect only for a result with supports360=false when visual examination is useful. Panorama content is for the member's interactive viewer and must never be inspected by the model.",
       "When a member explicitly asks to save a reference, call appendStopNote with the stop id and trusted same-origin preview/metadata from the tool result.",
     ].join("\n");
   }
@@ -808,34 +804,63 @@ export function buildGeoReadTools(geoService: GeoService): ToolSet {
 export function buildStreetViewReadTools(
   streetViewService: StreetViewService,
   tripId: string,
-  imageInputEnabled: boolean,
 ): ToolSet {
-  const search = {
+  return {
     streetViewSearch: tool({
       description:
-        "Find street-level imagery near real coordinates. Resolve place names with placeSearch/placeDetail first. Prefer a nearby result with supports360=true when opening an interactive view.",
+        "Find street-level imagery near real coordinates. A found or empty outcome is a successful tool call; only a thrown error is a failure. Prefer supports360=true only for the member's interactive viewer.",
       inputSchema: z.object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
         radiusMeters: z.number().int().min(1).max(1_000).optional(),
         limit: z.number().int().min(1).max(10).optional(),
       }),
-      execute: async (input) => streetViewService.searchNearby({ tripId, ...input }),
+      execute: async (input) => {
+        const startedAt = Date.now();
+        try {
+          const result = await streetViewService.searchNearby({ tripId, ...input });
+          console.info("Street-view search completed", {
+            event: "street_view.search_completed",
+            tripId,
+            radiusMeters: input.radiusMeters ?? 100,
+            requestedLimit: input.limit ?? 5,
+            candidateCount: result.candidateCount,
+            resultCount: result.images.length,
+            panoramaCount: result.panoramaCount,
+            outcome: result.outcome,
+            completeness: result.completeness,
+            durationMs: Date.now() - startedAt,
+          });
+          return result;
+        } catch (error) {
+          console.error("Street-view search failed", {
+            event: "street_view.search_failed",
+            tripId,
+            radiusMeters: input.radiusMeters ?? 100,
+            requestedLimit: input.limit ?? 5,
+            errorCode:
+              error instanceof StreetViewError ? error.code : "street_view_unexpected_error",
+            durationMs: Date.now() - startedAt,
+          });
+          throw error;
+        }
+      },
     }),
-  };
-  if (!imageInputEnabled) return search;
-
-  return {
-    ...search,
     streetViewInspect: tool({
       description:
-        "Visually inspect exactly one street-view result by opaque imageId. Use only ids returned by streetViewSearch.",
+        "Visually inspect exactly one ordinary static street-view result. Use only an imageId returned by streetViewSearch with supports360=false. Panorama inspection is forbidden.",
       inputSchema: z.object({
         imageId: z.string().regex(/^[A-Za-z0-9_-]{1,160}$/),
       }),
-      execute: async ({ imageId }) => streetViewService.getImage(tripId, imageId),
+      execute: async ({ imageId }) => streetViewService.getInspectableImage(tripId, imageId),
       toModelOutput: async ({ output }) => {
         const metadata = JSON.stringify(output);
+        if (output.supports360) {
+          throw new StreetViewError(
+            "street_view_panorama_inspection_forbidden",
+            "Panorama content cannot be supplied to the model",
+          );
+        }
         try {
           const preview = await streetViewService.readPreview(output.id);
           return {

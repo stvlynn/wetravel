@@ -31,10 +31,19 @@ export interface StreetViewSearchInput {
   limit?: number;
 }
 
+export interface StreetViewSearchResultDto {
+  outcome: "found" | "empty";
+  completeness: "complete" | "partial";
+  panoramaAvailable: boolean;
+  panoramaCount: number;
+  candidateCount: number;
+  images: StreetViewImageDto[];
+}
+
 export class StreetViewService {
   constructor(private readonly provider: StreetViewProvider) {}
 
-  async searchNearby(input: StreetViewSearchInput): Promise<StreetViewImageDto[]> {
+  async searchNearby(input: StreetViewSearchInput): Promise<StreetViewSearchResultDto> {
     validateCoordinate(input.lat, input.lng);
     const radiusMeters = clampInteger(
       input.radiusMeters ?? DEFAULT_RADIUS_METERS,
@@ -43,17 +52,28 @@ export class StreetViewService {
       "radiusMeters",
     );
     const limit = clampInteger(input.limit ?? DEFAULT_LIMIT, 1, MAX_LIMIT, "limit");
-    const images = await this.provider.searchNearby({
+    const result = await this.provider.searchNearby({
       lat: input.lat,
       lng: input.lng,
       radiusMeters,
       limit,
     });
-    return images
+    const candidates = result.images
       .map((image) => ({ image, distance: distanceMeters(input, image.coordinate) }))
-      .sort((a, b) => a.distance - b.distance)
+      .filter(({ distance }) => distance <= radiusMeters)
+      .sort(compareCandidates);
+    const images = candidates
       .slice(0, limit)
       .map(({ image, distance }) => this.toDto(input.tripId, image, distance));
+    const panoramaCount = images.filter((image) => image.supports360).length;
+    return {
+      outcome: images.length > 0 ? "found" : "empty",
+      completeness: result.completeness,
+      panoramaAvailable: panoramaCount > 0,
+      panoramaCount,
+      candidateCount: candidates.length,
+      images,
+    };
   }
 
   async getImage(tripId: string, imageId: string): Promise<StreetViewImageDto> {
@@ -63,6 +83,17 @@ export class StreetViewService {
       throw new StreetViewError("street_view_image_not_found", "Street-view image not found");
     }
     return this.toDto(tripId, image);
+  }
+
+  async getInspectableImage(tripId: string, imageId: string): Promise<StreetViewImageDto> {
+    const image = await this.getImage(tripId, imageId);
+    if (image.supports360) {
+      throw new StreetViewError(
+        "street_view_panorama_inspection_forbidden",
+        "Panorama content cannot be supplied to the model",
+      );
+    }
+    return image;
   }
 
   async readPreview(imageId: string): Promise<StreetViewPreview> {
@@ -123,4 +154,23 @@ function distanceMeters(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function compareCandidates(
+  a: { image: StreetViewImage; distance: number },
+  b: { image: StreetViewImage; distance: number },
+): number {
+  if (a.image.supports360 !== b.image.supports360) {
+    return a.image.supports360 ? -1 : 1;
+  }
+  if (a.distance !== b.distance) return a.distance - b.distance;
+  const capturedAt = timestamp(b.image.capturedAt) - timestamp(a.image.capturedAt);
+  if (capturedAt !== 0) return capturedAt;
+  return a.image.id.localeCompare(b.image.id);
+}
+
+function timestamp(value: string | undefined): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }

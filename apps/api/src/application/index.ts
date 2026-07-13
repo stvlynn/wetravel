@@ -33,7 +33,11 @@ export {
 } from "./lodging/lodging-data";
 export { LodgingError } from "./lodging/lodging-error";
 export { StreetViewService, StreetViewError } from "./street-view";
-export type { StreetViewImageDto, StreetViewSearchInput } from "./street-view";
+export type {
+  StreetViewImageDto,
+  StreetViewSearchInput,
+  StreetViewSearchResultDto,
+} from "./street-view";
 export { ReservationService, ReservationConflictError } from "./reservation";
 export {
   AgentService,

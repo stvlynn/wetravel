@@ -17,11 +17,20 @@ export interface StreetViewViewerConfig {
   accessToken: string;
 }
 
+export interface StreetViewSearchResult {
+  outcome: "found" | "empty";
+  completeness: "complete" | "partial";
+  panoramaAvailable: boolean;
+  panoramaCount: number;
+  candidateCount: number;
+  images: StreetViewImage[];
+}
+
 export function searchStreetViews(
   tripId: string,
   input: { lat: number; lng: number; radiusMeters?: number; limit?: number },
   signal?: AbortSignal,
-): Promise<StreetViewImage[]> {
+): Promise<StreetViewSearchResult> {
   const query = new URLSearchParams({ lat: String(input.lat), lng: String(input.lng) });
   if (input.radiusMeters !== undefined) query.set("radiusMeters", String(input.radiusMeters));
   if (input.limit !== undefined) query.set("limit", String(input.limit));
@@ -41,4 +50,3 @@ export function fetchStreetViewViewerConfig(tripId: string): Promise<StreetViewV
 export function streetViewPreviewSrc(previewUrl: string): string {
   return `${config.baseUrl}${previewUrl}`;
 }
-

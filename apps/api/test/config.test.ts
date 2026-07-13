@@ -205,7 +205,7 @@ describe("loadConfig street view", () => {
     expect(config.streetView).toBeNull();
   });
 
-  it("requires a Mapillary token and reads the explicit image capability", () => {
+  it("requires a Mapillary token", () => {
     const config = loadConfig({
       ...BASE_ENV,
       STORAGE_BACKEND: "fs",
@@ -214,15 +214,12 @@ describe("loadConfig street view", () => {
       MAPILLARY_ACCESS_TOKEN: "test-token",
       AI_MODEL: "vision-model",
       AI_API_KEY: "ai-key",
-      AI_IMAGE_INPUT_ENABLED: "true",
     });
     expect(config.streetView).toEqual({
       provider: "mapillary",
       mapillaryAccessToken: "test-token",
       timeoutMs: 12_000,
     });
-    expect(config.ai?.imageInputEnabled).toBe(true);
-
     expect(() =>
       loadConfig({
         ...BASE_ENV,

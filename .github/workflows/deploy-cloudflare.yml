@@ -172,7 +172,6 @@ jobs:
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
           AI_PROACTIVE_THRESHOLD: ${{ vars.AI_PROACTIVE_THRESHOLD }}
           AI_MAX_TOOL_STEPS: ${{ vars.AI_MAX_TOOL_STEPS }}
-          AI_IMAGE_INPUT_ENABLED: ${{ vars.AI_IMAGE_INPUT_ENABLED }}
           STREET_VIEW_PROVIDER: ${{ vars.STREET_VIEW_PROVIDER }}
           STREET_VIEW_TIMEOUT_MS: ${{ vars.STREET_VIEW_TIMEOUT_MS }}
           GEO_PROVIDER: ${{ vars.GEO_PROVIDER }}

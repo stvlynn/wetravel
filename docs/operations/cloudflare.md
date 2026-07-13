@@ -227,9 +227,9 @@ threshold vars as Actions variables. Without `AI_MODEL` + `AI_API_KEY` the
 agent routes respond 404 and the frontend hides the entry point.
 
 To enable street view, set `MAPILLARY_ACCESS_TOKEN` as a secret and
-`STREET_VIEW_PROVIDER=mapillary` as an Actions variable. Keep
-`AI_IMAGE_INPUT_ENABLED=false` unless the configured model/provider has been
-verified with AI SDK multimodal tool output. See
+`STREET_VIEW_PROVIDER=mapillary` as an Actions variable. The agent may inspect
+bounded ordinary static previews; panorama bytes are rejected by the
+application and remain browser-only. See
 [../backend/street-view.md](../backend/street-view.md).
 
 Geo agent tools default to OSM (`GEO_PROVIDER=osm`). To use Google Places +

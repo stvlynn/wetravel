@@ -91,6 +91,7 @@ export function handleError(err: Error, c: Context) {
               ? 413
               : err.code === "street_view_invalid_image" ||
                   err.code === "street_view_invalid_query" ||
+                  err.code === "street_view_panorama_inspection_forbidden" ||
                   err.code === "street_view_unsupported_preview"
                 ? 400
                 : 502;

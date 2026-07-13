@@ -214,6 +214,15 @@ interface StreetViewImageDto {
   previewUrl: string;
   attribution: { label: string; url?: string };
 }
+
+interface StreetViewSearchResultDto {
+  outcome: "found" | "empty";
+  completeness: "complete" | "partial";
+  panoramaAvailable: boolean;
+  panoramaCount: number;
+  candidateCount: number;
+  images: StreetViewImageDto[];
+}
 ```
 
 ## Agent tools

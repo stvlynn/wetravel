@@ -70,7 +70,7 @@ proactive `pendingPatch` stay in sync.
 | `airbnbListingDetails` | none (auto) | Airbnb listing amenities/rules/description |
 | `readTripMedia` | none (auto) | Read a trip-owned upload (image/PDF/text) via AI SDK `toModelOutput`; URL must be this trip’s `/api/uploads/trips/…` path |
 | `streetViewSearch` | none (auto) | Find normalized street-level imagery near resolved coordinates |
-| `streetViewInspect` | none (auto) | Supply one bounded preview through async `toModelOutput`; requires `AI_IMAGE_INPUT_ENABLED=true` |
+| `streetViewInspect` | none (auto) | Supply one bounded ordinary static preview; panorama inspection is rejected |
 | *(from registry)* | `user-approval` | All trip-scoped editor mutations (`renameTrip`, `insertStop`, …) |
 
 Geo and lodging tools are read-only and do not mutate trips. Adding a discovered
@@ -227,7 +227,6 @@ disabled unless both `AI_MODEL` and `AI_API_KEY` are present.
 | `AI_API_KEY` | API key (required) | — |
 | `AI_PROACTIVE_THRESHOLD` | Minimum confidence for a proactive suggestion | `0.7` |
 | `AI_MAX_TOOL_STEPS` | Tool-step cap per chat generation | `16` |
-| `AI_IMAGE_INPUT_ENABLED` | Register verified multimodal street-view inspection | `false` |
 
 ### MiniMax
 

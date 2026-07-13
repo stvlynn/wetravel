@@ -123,16 +123,18 @@ function GeneratedStreetViewCard({ imageId, placeLabel }: { imageId: string; pla
             {query.data ? ` · ${query.data.attribution.label}` : ""}
           </p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={!enabled}
-          onClick={() => openStreetView(imageId)}
-        >
-          <ScanLine aria-hidden="true" className="size-3.5" />
-          {t("generated.streetView.open")}
-        </Button>
+        {query.data?.supports360 ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!enabled}
+            onClick={() => openStreetView(imageId)}
+          >
+            <ScanLine aria-hidden="true" className="size-3.5" />
+            {t("generated.streetView.open")}
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -146,7 +148,7 @@ export function AgentGeneratedUi({
   onFocusStop,
 }: AgentGeneratedUiProps) {
   const { t, i18n } = useTranslation("agent");
-  const { openStreetView } = useStreetViewViewer();
+  const { tripId, openStreetView } = useStreetViewViewer();
   const { spec, hasSpec } = useJsonRenderMessage(parts as unknown as DataPart[]);
   const safeSpec = useMemo(() => (spec ? safeAgentUiSpec(spec) : null), [spec]);
 
@@ -390,7 +392,9 @@ export function AgentGeneratedUi({
           if (params) onFocusStop(params.stopId);
         },
         openStreetView: async (params) => {
-          if (params) openStreetView(params.imageId);
+          if (!params) return;
+          const image = await fetchStreetViewImage(tripId, params.imageId);
+          if (image.supports360) openStreetView(params.imageId);
         },
       },
     });
@@ -406,7 +410,7 @@ export function AgentGeneratedUi({
         () => localState,
       ),
     };
-  }, [i18n.language, onFocusDay, onFocusStop, onSendFollowUp, openStreetView, t]);
+  }, [i18n.language, onFocusDay, onFocusStop, onSendFollowUp, openStreetView, t, tripId]);
 
   if (!hasSpec) return null;
   if (!safeSpec) {

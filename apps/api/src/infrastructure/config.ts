@@ -30,8 +30,6 @@ export interface AiConfig {
     proactiveThreshold: number;
     /** Upper bound on tool-call steps per chat generation. */
     maxToolSteps: number;
-    /** Explicit capability gate for multimodal tool output. */
-    imageInputEnabled: boolean;
 }
 
 export interface StreetViewConfig {
@@ -173,7 +171,6 @@ export interface RawEnv {
     AI_API_KEY?: string;
     AI_PROACTIVE_THRESHOLD?: string;
     AI_MAX_TOOL_STEPS?: string;
-    AI_IMAGE_INPUT_ENABLED?: string;
     STREET_VIEW_PROVIDER?: string;
     MAPILLARY_ACCESS_TOKEN?: string;
     STREET_VIEW_TIMEOUT_MS?: string;
@@ -394,10 +391,6 @@ function parseAiConfig(env: RawEnv): AiConfig | null {
             0.7,
         ),
         maxToolSteps: parseNumber(env.AI_MAX_TOOL_STEPS, "AI_MAX_TOOL_STEPS", 16),
-        imageInputEnabled: parseBoolean(
-            env.AI_IMAGE_INPUT_ENABLED,
-            "AI_IMAGE_INPUT_ENABLED",
-        ),
     };
 }
 

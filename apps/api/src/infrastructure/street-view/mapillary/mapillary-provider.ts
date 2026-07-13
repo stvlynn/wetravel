@@ -2,6 +2,7 @@ import type {
   StreetViewImage,
   StreetViewPreview,
   StreetViewProvider,
+  StreetViewProviderSearchResult,
   StreetViewSearchQuery,
   StreetViewViewerConfig,
 } from "../../../domain/street-view";
@@ -17,6 +18,7 @@ const IMAGE_FIELDS = [
   "thumb_1024_url",
 ].join(",");
 const MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
+const CANDIDATE_LIMIT = 20;
 const SUPPORTED_MEDIA = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 interface MapillaryImageJson {
@@ -35,15 +37,46 @@ export class MapillaryStreetViewProvider implements StreetViewProvider {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
-  async searchNearby(query: StreetViewSearchQuery): Promise<StreetViewImage[]> {
+  async searchNearby(query: StreetViewSearchQuery): Promise<StreetViewProviderSearchResult> {
     const bbox = boundingBox(query.lat, query.lng, query.radiusMeters);
+    const [panoramas, general] = await Promise.allSettled([
+      this.searchLane(bbox, "pano"),
+      this.searchLane(bbox),
+    ]);
+    const successful = [panoramas, general].filter(
+      (result): result is PromiseFulfilledResult<StreetViewImage[]> =>
+        result.status === "fulfilled",
+    );
+    if (successful.length === 0) {
+      throw panoramas.status === "rejected"
+        ? panoramas.reason
+        : new StreetViewError("street_view_upstream_error", "Street-view provider request failed");
+    }
+    const merged = new Map<string, StreetViewImage>();
+    for (const result of successful) {
+      for (const image of result.value) merged.set(image.id, image);
+    }
+    return {
+      images: [...merged.values()],
+      completeness: successful.length === 2 ? "complete" : "partial",
+    };
+  }
+
+  private async searchLane(
+    bbox: [number, number, number, number],
+    imageType?: "pano",
+  ): Promise<StreetViewImage[]> {
     const url = new URL(`${GRAPH_URL}/images`);
     url.searchParams.set("access_token", this.accessToken);
     url.searchParams.set("fields", IMAGE_FIELDS);
     url.searchParams.set("bbox", bbox.join(","));
-    url.searchParams.set("limit", String(query.limit));
+    url.searchParams.set("limit", String(CANDIDATE_LIMIT));
+    if (imageType) url.searchParams.set("image_type", imageType);
     const payload = await this.readJson<{ data?: MapillaryImageJson[] }>(url);
-    return (payload.data ?? []).map(toImage).filter((image): image is StreetViewImage => image !== null);
+    const images = (payload.data ?? [])
+      .map(toImage)
+      .filter((image): image is StreetViewImage => image !== null);
+    return imageType === "pano" ? images.filter((image) => image.supports360) : images;
   }
 
   async getImage(imageId: string): Promise<StreetViewImage | null> {
@@ -133,4 +166,3 @@ function upstreamError(status: number): StreetViewError {
   if (status === 429) return new StreetViewError("street_view_rate_limited", "Street-view provider rate limit reached");
   return new StreetViewError("street_view_upstream_error", "Street-view provider request failed");
 }
-
