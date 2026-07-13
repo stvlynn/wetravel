@@ -14,6 +14,7 @@ import {
   ProfileForm,
   type SecurityView,
 } from "@/features/edit-user-profile";
+import { PermissionSettings } from "@/features/mobile-onboarding";
 import { CurrencySelect } from "@/features/set-default-currency";
 import { useSettings, type SettingsPane } from "@/features/settings";
 import { ThemeModeSelect } from "@/features/toggle-theme";
@@ -204,6 +205,7 @@ function PreferencesPane(): React.ReactElement {
       <SettingRow label={t("settings.currency.label")}>
         <CurrencySelect />
       </SettingRow>
+      <PermissionSettings />
     </div>
   );
 }

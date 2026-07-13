@@ -27,6 +27,7 @@ export {
 export { pressable, interactive, field } from "./motion";
 export {
   MOBILE_MEDIA_QUERY,
+  matchesMediaQuery,
   useMediaQuery,
   useIsMobile,
 } from "./media-query";

@@ -68,6 +68,50 @@ a screen edge on mobile: top bars use
 footers use the matching `safe-area-inset-bottom` form. The Drawer primitive
 and the sheet dialog footers already do this.
 
+## Mobile permission onboarding
+
+`features/mobile-onboarding` (`MobileOnboarding`, mounted from the app
+providers) opens a bottom Drawer on first mobile visit (`useIsMobile()`),
+walking through up to three steps — each asked at most once, with the
+outcome persisted under the `opentrip.mobile-onboarding.v1` localStorage
+key:
+
+1. **Install** — offers to add OpenTrip to the home screen. On Chromium the
+   `beforeinstallprompt` event is captured at module scope
+   (`model/install-prompt.ts`) and replayed from the button; on iOS (no
+   install API) the step shows share-menu instructions instead. Skipped in
+   standalone display mode or when neither path applies.
+2. **Notifications** — requests `Notification` permission so toasts can
+   reach the user as system push while the app is backgrounded (see the
+   bridge below). Skipped when permission is already decided.
+3. **Location** — triggers a high-accuracy `getCurrentPosition` call so the
+   browser asks for precise location up front; the map's
+   `GeolocateControl` then starts without an extra permission prompt.
+   Skipped when the Permissions API reports the choice as already made.
+
+The sheet opens after a short delay (`ONBOARDING_OPEN_DELAY_MS`) to give
+`beforeinstallprompt` time to fire. Dismissing the sheet marks the
+remaining steps as dismissed — the flow never re-nags.
+
+A declined prompt is not a dead end: the same slice exports
+`PermissionSettings`, a mobile-only "Device permissions" section rendered
+in the settings preferences pane. It shows the live state of all three
+asks (via the Permissions API `change` events and the deferred install
+prompt) and re-offers the action where the browser still allows it; a
+`denied` permission surfaces a pointer to the browser settings instead,
+since the page cannot re-prompt.
+
+## Toast → system notification bridge
+
+`installSystemNotificationBridge()` (`@/shared/ui/toast`, called once from
+the app providers) decorates `toastManager.add` so that on mobile
+(`MOBILE_MEDIA_QUERY`), with Notification permission granted and the page
+**hidden**, toasts are mirrored as system notifications via the service
+worker registration's `showNotification` (Android requires SW delivery;
+`new Notification` is the fallback). A visible page keeps in-app toasts
+only — a system banner would duplicate them. `loading` toasts and toasts
+with non-string titles are never mirrored.
+
 ## Install metadata and icons
 
 - `index.html` carries the `theme-color` metas (light `#fafbfd`, dark

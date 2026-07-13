@@ -5,6 +5,26 @@
     "updateDescription": "准备好后刷新，即可使用最新版本。",
     "updateAction": "更新"
   },
+  "mobileOnboarding": {
+    "later": "暂不",
+    "install": {
+      "title": "将 OpenTrip 添加到主屏幕",
+      "description": "安装应用，获得全屏体验和离线访问。",
+      "action": "安装",
+      "iosHint": "打开浏览器的分享菜单，选择“添加到主屏幕”。",
+      "iosAction": "知道了"
+    },
+    "notifications": {
+      "title": "允许消息通知",
+      "description": "OpenTrip 在后台时，行程提醒会以系统通知推送。",
+      "action": "允许"
+    },
+    "location": {
+      "title": "允许精确定位",
+      "description": "用于在行程地图上显示你的位置。",
+      "action": "允许"
+    }
+  },
     "appName": "OpenTrip",
     "tagline": "一起规划旅行，费用一键分摊。",
     "language": "语言",
@@ -164,6 +184,25 @@
             "errorTitle": "货币更新失败",
             "errors": {
                 "saveFailed": "保存默认货币失败。"
+            }
+        },
+        "permissions": {
+            "label": "设备权限",
+            "allow": "允许",
+            "granted": "已允许",
+            "denied": "已拒绝 — 请在浏览器设置中开启",
+            "unsupported": "当前浏览器不支持",
+            "install": {
+                "label": "安装应用",
+                "installed": "已安装",
+                "action": "安装",
+                "iosHint": "通过浏览器分享菜单添加"
+            },
+            "notifications": {
+                "label": "消息通知"
+            },
+            "location": {
+                "label": "精确定位"
             }
         },
         "about": {

@@ -4,7 +4,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/shared/i18n";
 import { Spinner } from "@/shared/ui/spinner";
 import { TooltipProvider } from "@/shared/ui/tooltip";
-import { AnchoredToastProvider, ToastProvider } from "@/shared/ui/toast";
+import {
+    AnchoredToastProvider,
+    installSystemNotificationBridge,
+    ToastProvider,
+} from "@/shared/ui/toast";
+import { MobileOnboarding } from "@/features/mobile-onboarding";
 import { SettingsProvider } from "@/features/settings";
 import { subscribeToThemeChanges } from "@/features/toggle-theme";
 import { PwaLifecycle } from "./PwaLifecycle";
@@ -17,6 +22,7 @@ const queryClient = new QueryClient({
 
 export function AppProviders({ children }: { children: ReactNode }) {
     useEffect(() => {
+        installSystemNotificationBridge();
         return subscribeToThemeChanges();
     }, []);
 
@@ -26,6 +32,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 <TooltipProvider delay={400}>
                     <ToastProvider>
                         <PwaLifecycle />
+                        <MobileOnboarding />
                         <AnchoredToastProvider>
                             <SettingsProvider>
                                 <Suspense

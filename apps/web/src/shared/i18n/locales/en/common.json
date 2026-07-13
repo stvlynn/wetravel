@@ -5,6 +5,26 @@
     "updateDescription": "Refresh when you are ready to use the latest version.",
     "updateAction": "Update"
   },
+  "mobileOnboarding": {
+    "later": "Not now",
+    "install": {
+      "title": "Add OpenTrip to your home screen",
+      "description": "Install the app for a full-screen experience and offline access.",
+      "action": "Install",
+      "iosHint": "Open your browser's share menu and choose \"Add to Home Screen\".",
+      "iosAction": "Got it"
+    },
+    "notifications": {
+      "title": "Allow notifications",
+      "description": "Trip updates arrive as system notifications while OpenTrip is in the background.",
+      "action": "Allow"
+    },
+    "location": {
+      "title": "Allow precise location",
+      "description": "Shows your position on the trip map.",
+      "action": "Allow"
+    }
+  },
     "appName": "OpenTrip",
     "tagline": "Plan trips together, split everything.",
     "language": "Language",
@@ -164,6 +184,25 @@
             "errorTitle": "Currency update failed",
             "errors": {
                 "saveFailed": "Failed to save default currency."
+            }
+        },
+        "permissions": {
+            "label": "Device permissions",
+            "allow": "Allow",
+            "granted": "Allowed",
+            "denied": "Blocked — enable in browser settings",
+            "unsupported": "Not supported by this browser",
+            "install": {
+                "label": "Install app",
+                "installed": "Installed",
+                "action": "Install",
+                "iosHint": "Add via the browser share menu"
+            },
+            "notifications": {
+                "label": "Notifications"
+            },
+            "location": {
+                "label": "Precise location"
             }
         },
         "about": {
