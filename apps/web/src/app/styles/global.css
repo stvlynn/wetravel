@@ -66,6 +66,13 @@
   --font-heading: var(--font-heading);
   --font-mono: var(--font-mono);
 
+  /* Expose the 16px step of the coss type scale as a `text-md` utility.
+   * Text controls need it below `md`: iOS Safari auto-zooms the page when a
+   * focused text control is smaller than 16px, and the overridden `text-sm`
+   * (13px) / `text-base` (14px) steps are both under that threshold. */
+  --text-md: var(--text-md);
+  --text-md--line-height: var(--leading-normal);
+
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);

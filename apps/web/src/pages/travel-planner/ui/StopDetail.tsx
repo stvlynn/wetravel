@@ -771,7 +771,7 @@ export function StopDetail({
               placeholder={t("detail.areaPlaceholder")}
               onCommit={(area) => onUpdateStop(stop.id, { area })}
               displayClassName="w-fit text-sm text-muted-foreground"
-              inputClassName="w-full rounded-md border border-ring bg-background px-1.5 py-1 text-sm outline-none"
+              inputClassName="w-full rounded-md border border-ring bg-background px-1.5 py-1 text-md outline-none md:text-sm"
             />
             <div className="flex items-center gap-2">
               <Avatar

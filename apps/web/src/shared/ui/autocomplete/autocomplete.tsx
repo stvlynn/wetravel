@@ -8,8 +8,10 @@ import { cn, interactive } from "@/shared/lib";
 export const Autocomplete: typeof AutocompletePrimitive.Root =
   AutocompletePrimitive.Root;
 
+// 16px below md: iOS Safari auto-zooms the page when focusing a text
+// control whose font-size is smaller than 16px.
 const inputBase =
-  "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground " +
+  "h-10 w-full rounded-lg border border-input bg-card px-3 text-md text-foreground md:text-sm " +
   "placeholder:text-muted-foreground/70 transition-[background-color,border-color] duration-[var(--dur-base)] " +
   "ease-[var(--ease-out)] outline-none hover:border-ring/50 hover:bg-accent/40 " +
   "focus:border-ring focus:bg-background focus-visible:outline-none " +

@@ -78,9 +78,12 @@ key:
 
 1. **Install** — offers to add OpenTrip to the home screen. On Chromium the
    `beforeinstallprompt` event is captured at module scope
-   (`model/install-prompt.ts`) and replayed from the button; on iOS (no
-   install API) the step shows share-menu instructions instead. Skipped in
-   standalone display mode or when neither path applies.
+   (`model/install-prompt.ts`) and replayed from the button via
+   `promptInstall()`, which awaits the browser dialog's `userChoice`: the
+   step is stored as accepted only when the user accepts **that** dialog
+   (dismissing it stores a dismissal, keeping the settings re-offer alive).
+   On iOS (no install API) the step shows share-menu instructions instead.
+   Skipped in standalone display mode or when neither path applies.
 2. **Notifications** — requests `Notification` permission so toasts can
    reach the user as system push while the app is backgrounded (see the
    bridge below). Skipped when permission is already decided.

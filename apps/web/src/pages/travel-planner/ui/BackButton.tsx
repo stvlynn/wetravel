@@ -67,7 +67,7 @@ export function BackButton({
               setEditing(false);
             }
           }}
-          className="min-h-8 w-full rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-base font-semibold outline-none"
+          className="min-h-8 w-full rounded-md border border-ring bg-background px-1.5 py-1 font-heading text-md font-semibold outline-none md:text-base"
         />
       ) : (
         <div className="flex min-w-0 flex-col gap-0.5 py-0.5">

@@ -40,6 +40,27 @@ export function clearInstallPrompt(): void {
     notifyListeners();
 }
 
+export type InstallPromptOutcome = "accepted" | "dismissed" | "unavailable";
+
+/**
+ * Shows the browser install dialog and reports what the user chose there.
+ * "accepted" is the only outcome where the app was actually installed:
+ * dismissing the browser dialog or a `prompt()` rejection (e.g. the event
+ * was already used or the gesture expired) must not be treated as success.
+ */
+export async function promptInstall(): Promise<InstallPromptOutcome> {
+    const prompt = deferredPrompt;
+    if (!prompt) return "unavailable";
+    clearInstallPrompt();
+    try {
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        return choice.outcome;
+    } catch {
+        return "unavailable";
+    }
+}
+
 /** Notifies when the deferred prompt appears, is consumed, or installs. */
 export function subscribeInstallPrompt(listener: () => void): () => void {
     listeners.add(listener);

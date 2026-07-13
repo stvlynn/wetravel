@@ -10,12 +10,26 @@ export const ContextMenu: typeof ContextMenuPrimitive.Root =
 export function ContextMenuTrigger({
   className,
   children,
+  onTouchStart,
   ...props
 }: ContextMenuPrimitive.Trigger.Props): React.ReactElement {
   return (
     <ContextMenuPrimitive.Trigger
       className={className}
       data-slot="context-menu-trigger"
+      onTouchStart={(event) => {
+        onTouchStart?.(event);
+        // Base UI arms a 500ms long-press timer on the first touch and only
+        // disarms it on a single-touch move past 10px — a second finger
+        // (pinch-zooming the map) leaves it armed, popping the menu
+        // mid-gesture. Browsers signal such gesture takeovers with
+        // `touchcancel`, so synthesize one to disarm the pending long-press.
+        if (event.touches.length > 1) {
+          event.currentTarget.dispatchEvent(
+            new Event("touchcancel", { bubbles: true }),
+          );
+        }
+      }}
       {...props}
     >
       {children}

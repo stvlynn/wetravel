@@ -15,7 +15,7 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from "@/shared/ui/drawer";
-import { clearInstallPrompt, getInstallPrompt } from "../model/install-prompt";
+import { getInstallPrompt, promptInstall } from "../model/install-prompt";
 import {
     computePendingSteps,
     markStep,
@@ -91,17 +91,18 @@ export function MobileOnboarding() {
         setBusy(true);
         try {
             if (step === "install") {
-                const prompt = getInstallPrompt();
-                if (prompt) {
-                    clearInstallPrompt();
-                    await prompt.prompt();
-                }
+                // Installed only when the user also accepts the browser's own
+                // dialog; recording a dismissal there as "accepted" would hide
+                // the settings re-offer while nothing was installed.
+                const outcome = await promptInstall();
+                markStep(step, outcome === "accepted" ? "accepted" : "dismissed");
             } else if (step === "notifications") {
                 await requestNotificationPermission();
+                markStep(step, "accepted");
             } else {
                 await requestPreciseLocation();
+                markStep(step, "accepted");
             }
-            markStep(step, "accepted");
         } finally {
             setBusy(false);
         }

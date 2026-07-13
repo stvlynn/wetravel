@@ -90,8 +90,20 @@ Base UI (`@base-ui/react`). `autocomplete` powers the stop-name place search
 `value`/`items` for server-driven results, and read the selected item on the
 `item-press` change reason). `select` provides the schedule time and date
 pickers (predefined options via the `items`-first pattern). `context-menu`
-powers the map's right-click actions (add a stop at the clicked point, copy
-coordinates).
+powers the map's right-click / long-press actions (add a stop at the clicked
+point, copy coordinates). The shared `ContextMenuTrigger` disarms Base UI's
+long-press timer as soon as a second finger touches down (via a synthetic
+`touchcancel`), so pinch-zooming a wrapped surface (the map) never pops the
+menu mid-gesture.
+
+Text controls must render at >= 16px below the `md` breakpoint — iOS Safari
+auto-zooms the page when a focused text control is smaller. On the coss type
+scale that means `text-md` (1rem; `text-sm` is 13px and `text-base` is 14px,
+both under the threshold — `--text-md` is mapped into the Tailwind theme in
+`global.css` for exactly this). The shared `input`, `textarea`,
+`autocomplete`, and `otp-field` components encode this as
+`text-md md:text-sm`; any one-off `<input>`/`<textarea>` must follow the same
+pattern instead of a bare `text-sm`/`text-base`.
 
 ## Interaction polish
 

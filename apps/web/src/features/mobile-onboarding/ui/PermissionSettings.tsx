@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/shared/lib";
 import { Button } from "@/shared/ui/button";
 import {
-    clearInstallPrompt,
     getInstallPrompt,
+    promptInstall,
     subscribeInstallPrompt,
 } from "../model/install-prompt";
 import {
@@ -95,14 +95,10 @@ export function PermissionSettings(): React.ReactElement | null {
     if (!isMobile) return null;
 
     const install = async () => {
-        const prompt = getInstallPrompt();
-        if (!prompt) return;
         setBusy("install");
         try {
-            clearInstallPrompt();
-            await prompt.prompt();
-            const choice = await prompt.userChoice;
-            if (choice.outcome === "accepted") {
+            const outcome = await promptInstall();
+            if (outcome === "accepted") {
                 markStep("install", "accepted");
             }
         } finally {

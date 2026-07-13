@@ -226,7 +226,7 @@ export function AgentComposer({
           onKeyDown={handleKeyDown}
           onBlur={mention.dismiss}
           {...mention.aria}
-          className="max-h-28 min-h-9 w-full flex-1 resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70 hover:border-ring/50 focus:border-ring"
+          className="max-h-28 min-h-9 w-full flex-1 resize-none rounded-lg border border-input bg-card px-3 py-2 text-md outline-none placeholder:text-muted-foreground/70 hover:border-ring/50 focus:border-ring md:text-sm"
         />
         <button
           type="button"
