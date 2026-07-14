@@ -22,6 +22,8 @@
         "db:generate": "pnpm --filter @opentrip/api db:generate",
         "db:pull": "pnpm --filter @opentrip/api db:pull",
         "db:studio": "pnpm --filter @opentrip/api db:studio",
+        "dev:miniapp": "pnpm --filter @opentrip/miniapp dev",
+        "build:miniapp": "pnpm --filter @opentrip/miniapp build",
         "deploy:web": "node deploy/cloudflare/scripts/deploy-web.mjs",
         "deploy:api": "node deploy/cloudflare/scripts/deploy-api.mjs",
         "deploy:secrets": "node deploy/cloudflare/scripts/sync-secrets.mjs",

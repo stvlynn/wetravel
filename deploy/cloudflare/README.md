@@ -60,6 +60,8 @@ Production config lives in **GitHub Actions secrets/variables**, not in git.
 | `CAPTCHA_SECRET_KEY` | Turnstile secret (Worker) |
 | `RESEND_API_KEY` | OTP mail when `EMAIL_PROVIDER=resend` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
+| `WECHAT_WEB_APP_ID` / `WECHAT_WEB_APP_SECRET` | WeChat Open Platform web QR login |
+| `WECHAT_MINI_PROGRAM_APP_ID` / `WECHAT_MINI_PROGRAM_APP_SECRET` | WeChat Mini Program code exchange |
 
 ### Optional secrets
 

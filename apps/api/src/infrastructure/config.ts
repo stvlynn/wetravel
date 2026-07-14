@@ -3,6 +3,16 @@ export interface GoogleOAuthConfig {
     clientSecret: string;
 }
 
+export interface WechatOAuthConfig {
+    clientId: string;
+    clientSecret: string;
+}
+
+export interface WechatMiniProgramConfig {
+    appId: string;
+    appSecret: string;
+}
+
 export type CaptchaProvider = "cloudflare-turnstile";
 
 export interface CaptchaConfig {
@@ -98,6 +108,10 @@ export interface AppConfig {
     trustedOrigins: string[];
     storage: StorageConfig;
     googleOAuth: GoogleOAuthConfig | null;
+    /** WeChat Open Platform Website Application credentials. */
+    wechatOAuth: WechatOAuthConfig | null;
+    /** WeChat Mini Program credentials, used only for server-side code exchange. */
+    wechatMiniProgram: WechatMiniProgramConfig | null;
     captcha: CaptchaConfig | null;
     email: EmailConfig;
     openWeatherMapApiKey: string | undefined;
@@ -148,6 +162,10 @@ export interface RawEnv {
     TRUSTED_ORIGINS?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
+    WECHAT_WEB_APP_ID?: string;
+    WECHAT_WEB_APP_SECRET?: string;
+    WECHAT_MINI_PROGRAM_APP_ID?: string;
+    WECHAT_MINI_PROGRAM_APP_SECRET?: string;
     CAPTCHA_PROVIDER?: string;
     CAPTCHA_SECRET_KEY?: string;
     /** Transactional email: `console` (default) | `resend`. */
@@ -246,6 +264,20 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
 
     const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
     const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+    const wechatOAuth = parseOptionalCredentialPair(
+        env.WECHAT_WEB_APP_ID,
+        env.WECHAT_WEB_APP_SECRET,
+        "WECHAT_WEB_APP_ID",
+        "WECHAT_WEB_APP_SECRET",
+        (clientId, clientSecret) => ({ clientId, clientSecret }),
+    );
+    const wechatMiniProgram = parseOptionalCredentialPair(
+        env.WECHAT_MINI_PROGRAM_APP_ID,
+        env.WECHAT_MINI_PROGRAM_APP_SECRET,
+        "WECHAT_MINI_PROGRAM_APP_ID",
+        "WECHAT_MINI_PROGRAM_APP_SECRET",
+        (appId, appSecret) => ({ appId, appSecret }),
+    );
 
     return {
         databaseProvider,
@@ -262,6 +294,8 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
             googleClientId && googleClientSecret
                 ? { clientId: googleClientId, clientSecret: googleClientSecret }
                 : null,
+        wechatOAuth,
+        wechatMiniProgram,
         captcha: parseCaptchaConfig(env),
         email: parseEmailConfig(env),
         openWeatherMapApiKey:
@@ -278,6 +312,22 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
         streetView: parseStreetViewConfig(env),
         unsplashAccessKey: env.UNSPLASH_ACCESS_KEY?.trim() || undefined,
     };
+}
+
+function parseOptionalCredentialPair<T>(
+    rawId: string | undefined,
+    rawSecret: string | undefined,
+    idName: string,
+    secretName: string,
+    build: (id: string, secret: string) => T,
+): T | null {
+    const id = rawId?.trim();
+    const secret = rawSecret?.trim();
+    if (!id && !secret) return null;
+    if (!id || !secret) {
+        throw new Error(`${idName} and ${secretName} must be set together`);
+    }
+    return build(id, secret);
 }
 
 const DEFAULT_NOMINATIM_URL = "https://nominatim.openstreetmap.org";

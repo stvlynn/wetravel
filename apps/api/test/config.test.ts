@@ -38,6 +38,53 @@ describe("loadConfig database provider", () => {
   });
 });
 
+describe("loadConfig WeChat authentication", () => {
+  it("loads independent web and Mini Program credential pairs", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+      WECHAT_WEB_APP_ID: "web-id",
+      WECHAT_WEB_APP_SECRET: "web-secret",
+      WECHAT_MINI_PROGRAM_APP_ID: "mini-id",
+      WECHAT_MINI_PROGRAM_APP_SECRET: "mini-secret",
+    });
+
+    expect(config.wechatOAuth).toEqual({
+      clientId: "web-id",
+      clientSecret: "web-secret",
+    });
+    expect(config.wechatMiniProgram).toEqual({
+      appId: "mini-id",
+      appSecret: "mini-secret",
+    });
+  });
+
+  it("rejects partial WeChat credential pairs", () => {
+    expect(() =>
+      loadConfig({
+        ...BASE_ENV,
+        STORAGE_BACKEND: "fs",
+        STORAGE_ROOT: "/data",
+        WECHAT_WEB_APP_ID: "web-id",
+      }),
+    ).toThrow(
+      "WECHAT_WEB_APP_ID and WECHAT_WEB_APP_SECRET must be set together",
+    );
+
+    expect(() =>
+      loadConfig({
+        ...BASE_ENV,
+        STORAGE_BACKEND: "fs",
+        STORAGE_ROOT: "/data",
+        WECHAT_MINI_PROGRAM_APP_SECRET: "mini-secret",
+      }),
+    ).toThrow(
+      "WECHAT_MINI_PROGRAM_APP_ID and WECHAT_MINI_PROGRAM_APP_SECRET must be set together",
+    );
+  });
+});
+
 describe("loadConfig storage", () => {
   it("trusts the native callback origin by default", () => {
     const config = loadConfig({

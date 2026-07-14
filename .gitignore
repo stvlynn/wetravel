@@ -3,6 +3,7 @@ dist/
 build/
 .wrangler/
 .turbo/
+.swc/
 coverage/
 
 # env & secrets
@@ -31,5 +32,6 @@ apps/api/src/infrastructure/cloudflare/worker-configuration.d.ts
 .workspace/
 .pnpm-store/
 apps/api/uploads
+
 # agent runtime state
 .agents/scheduled_tasks.lock

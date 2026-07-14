@@ -23,3 +23,6 @@ Each ADR uses: **Context**, **Decision**, **Consequences**, **Status**
 - [0006-mutation-echo-over-refetch.md](0006-mutation-echo-over-refetch.md) —
   echo mutation DTOs into React Query instead of immediate list refetch under
   Hyperdrive.
+- [0007-separate-taro-miniapp-client.md](0007-separate-taro-miniapp-client.md) —
+  keep the Taro WeChat client separate from the DOM-oriented web application
+  while sharing the DDD backend HTTP contract.

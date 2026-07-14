@@ -22,6 +22,10 @@ import {
 import type { AppConfig } from "../config";
 import type { AuthRateLimitStorage } from "./auth-rate-limit";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
+import {
+  WechatCode2SessionClient,
+  wechatMiniProgram,
+} from "./wechat-mini-program";
 
 export interface CreateAuthOptions {
   /** When set, each new user receives a personal copy of the sample trip. */
@@ -113,21 +117,37 @@ export function createAuth(
             sendOnSignIn: true,
             autoSignInAfterVerification: true,
         },
-        socialProviders: config.googleOAuth
+        socialProviders:
+            config.googleOAuth || config.wechatOAuth
             ? {
-                  google: {
-                      clientId: config.googleOAuth.clientId,
-                      clientSecret: config.googleOAuth.clientSecret,
-                      mapProfileToUser: (profile) => {
-                          const dto = mapGoogleProfileToDto(profile);
-                          const seed = dto.email ?? dto.name ?? crypto.randomUUID();
-                          return {
-                              name: dto.name ?? undefined,
-                              email: dto.email ?? undefined,
-                              image: resolveInitialAvatar(dto, seed),
-                          };
-                      },
-                  },
+                  ...(config.googleOAuth
+                      ? {
+                            google: {
+                                clientId: config.googleOAuth.clientId,
+                                clientSecret: config.googleOAuth.clientSecret,
+                                mapProfileToUser: (profile) => {
+                                    const dto = mapGoogleProfileToDto(profile);
+                                    const seed =
+                                        dto.email ??
+                                        dto.name ??
+                                        crypto.randomUUID();
+                                    return {
+                                        name: dto.name ?? undefined,
+                                        email: dto.email ?? undefined,
+                                        image: resolveInitialAvatar(dto, seed),
+                                    };
+                                },
+                            },
+                        }
+                      : {}),
+                  ...(config.wechatOAuth
+                      ? {
+                            wechat: {
+                                clientId: config.wechatOAuth.clientId,
+                                clientSecret: config.wechatOAuth.clientSecret,
+                            },
+                        }
+                      : {}),
               }
             : undefined,
         user: {
@@ -226,6 +246,16 @@ export function createAuth(
                 // without one when they have no credential account yet.
                 allowPasswordless: true,
             }),
+            ...(config.wechatMiniProgram
+                ? [
+                      wechatMiniProgram({
+                          identityPort: new WechatCode2SessionClient({
+                              appId: config.wechatMiniProgram.appId,
+                              appSecret: config.wechatMiniProgram.appSecret,
+                          }),
+                      }),
+                  ]
+                : []),
             ...(config.captcha
                 ? [
                       captcha({

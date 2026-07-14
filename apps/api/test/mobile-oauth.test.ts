@@ -20,6 +20,8 @@ function baseConfig(googleOAuth: AppConfig["googleOAuth"]): AppConfig {
       publicUrl: "https://api.example.test/api/uploads",
     },
     googleOAuth,
+    wechatOAuth: null,
+    wechatMiniProgram: null,
     captcha: null,
     email: {
       provider: "console",
