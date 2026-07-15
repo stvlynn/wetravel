@@ -171,10 +171,18 @@ approval, `applyTripOp`, aggregate, and repository path. Automatic watchers,
 action chaining, unknown components/actions, dynamic repeats, oversized specs,
 and invalid props are rejected by the shared runtime sanitizer.
 
-All UI parts are stored with the normal message parts. Valid prior specs are
-serialized into a bounded assistant-history context so later requests can
-refer to the generated options. A UI-only assistant reply counts as content and
-is persisted; invalid UI falls back to accompanying text.
+All UI parts are stored with the normal message parts. They are never flattened
+into assistant prose for later turns: mixing a persisted flat spec with inline
+SpecStream instructions can make providers echo internal UI context as text.
+Fresh requests therefore receive only prior assistant prose. When the latest
+member message explicitly asks to edit a recent generated card, the adapter
+uses json-render's `buildUserPrompt({ currentSpec, editModes: ["patch"] })`
+refinement format and seeds the new UI message with the validated base spec
+before streaming patches. Specs are size-bounded, limited to the recent thread,
+and street-view cards are excluded because their image ids must be grounded by
+a successful tool output in the same new assistant message. An unchanged seed
+is not persisted as a duplicate card. A UI-only assistant reply counts as
+content and is persisted; invalid UI falls back to accompanying text.
 
 ## Approving a suggestion
 

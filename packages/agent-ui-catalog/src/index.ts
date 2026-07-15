@@ -11,10 +11,11 @@ export {
   type AgentUiCatalog,
 } from "./catalog";
 export {
-  agentUiModelContext,
   allowedStreetViewImageIds,
+  buildAgentUiRefinementPrompt,
   isAgentUiPart,
   isSpecDataPartPayload,
+  refinableAgentUiSpec,
   sanitizeAgentUiParts,
   safeAgentUiSpec,
   specFromAgentUiParts,

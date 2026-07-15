@@ -57,9 +57,14 @@ read-only responses and do not pay the catalog token cost.
 
 Assistant persistence recognizes json-render data parts as content. Persisted
 parts remain opaque JSON in `agent_messages`, so polling and refresh preserve
-the generated interface. Before a later model turn, json-render data parts are
-converted into a bounded textual representation of the prior generated spec so
-follow-ups such as “change the second option” retain context.
+the generated interface. Persisted specs are not flattened into assistant text.
+For an explicit refinement such as “change the second option”, the latest
+validated, bounded spec is supplied through json-render's
+`buildUserPrompt({ currentSpec, editModes: ["patch"] })` format. The response
+message is seeded with that base `data-spec` before streamed patches so live and
+rehydrated compilation start from the same spec; an unchanged seed is removed
+before persistence. Fresh requests do not receive old spec JSON. Street-view
+specs are not reused because image ids require same-message tool grounding.
 
 ### Frontend renderer
 
@@ -112,4 +117,3 @@ the agent locale resources.
 - MiniMax reasoning and non-json-render messages remain renderable.
 - Full typecheck, lint, tests, production builds, documentation checks, and
   Cloudflare Worker build validation.
-

@@ -367,30 +367,26 @@ describe("street-view AI tools", () => {
     const tools = buildStreetViewReadTools(service, "trip");
     expect(Object.keys(tools)).toEqual(["streetViewSearch", "streetViewInspect"]);
 
-    const search = tools.streetViewSearch as unknown as {
-      execute: (input: { lat: number; lng: number }) => Promise<{
-        outcome: string;
-        images: Array<{ id: string; supports360: boolean }>;
+    type SearchOutput = {
+      outcome: string;
+      completeness: string;
+      panoramaAvailable: boolean;
+      panoramaCount: number;
+      candidateCount: number;
+      images: Array<{
+        id: string;
+        coordinate: { lat: number; lng: number };
+        supports360: boolean;
+        previewUrl: string;
+        attribution: { label: string };
+        distanceMeters?: number;
+        headingDegrees?: number;
+        capturedAt?: string;
       }>;
-      toModelOutput: (input: {
-        output: {
-          outcome: string;
-          completeness: string;
-          panoramaAvailable: boolean;
-          panoramaCount: number;
-          candidateCount: number;
-          images: Array<{
-            id: string;
-            coordinate: { lat: number; lng: number };
-            supports360: boolean;
-            previewUrl: string;
-            attribution: { label: string };
-            distanceMeters?: number;
-            headingDegrees?: number;
-            capturedAt?: string;
-          }>;
-        };
-      }) => Promise<unknown>;
+    };
+    const search = tools.streetViewSearch as unknown as {
+      execute: (input: { lat: number; lng: number }) => Promise<SearchOutput>;
+      toModelOutput: (input: { output: SearchOutput }) => Promise<unknown>;
     };
     const searchResult = await search.execute({ lat: 10, lng: 20 });
     expect(searchResult).toMatchObject({

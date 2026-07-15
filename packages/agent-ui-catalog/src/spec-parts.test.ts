@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  agentUiModelContext,
   allowedStreetViewImageIds,
-  sanitizeAgentUiParts,
+  buildAgentUiRefinementPrompt,
   isAgentUiPart,
+  refinableAgentUiSpec,
+  sanitizeAgentUiParts,
   specFromAgentUiParts,
   safeAgentUiSpec,
   validatedAgentUiSpec,
@@ -50,10 +51,41 @@ describe("agent UI spec parts", () => {
     expect(validatedAgentUiSpec(parts)).toBeNull();
   });
 
-  it("produces bounded model context", () => {
-    const context = agentUiModelContext(validParts, 40);
-    expect(context).toHaveLength(41);
-    expect(context?.endsWith("…")).toBe(true);
+  it("builds bounded official refinement prompts without truncating specs", () => {
+    const spec = refinableAgentUiSpec(validParts);
+    expect(spec?.root).toBe("text-1");
+    const prompt = buildAgentUiRefinementPrompt("Make it shorter", spec!);
+    expect(prompt).toContain("CURRENT UI STATE");
+    expect(prompt).toContain("USER REQUEST: Make it shorter");
+    expect(prompt).not.toContain("Previously generated interface");
+    expect(refinableAgentUiSpec(validParts, 40)).toBeNull();
+  });
+
+  it("does not carry turn-grounded street-view cards into refinement", () => {
+    const parts = [
+      {
+        type: "tool-streetViewSearch",
+        state: "output-available",
+        output: { outcome: "found", images: [{ id: "image-1" }] },
+      },
+      {
+        type: "data-spec",
+        data: {
+          type: "flat",
+          spec: {
+            root: "view",
+            elements: {
+              view: {
+                type: "StreetViewCard",
+                props: { imageId: "image-1" },
+                children: [],
+              },
+            },
+          },
+        },
+      },
+    ] as const;
+    expect(refinableAgentUiSpec(parts)).toBeNull();
   });
 
   it("allows only validated, user-triggered catalog actions", () => {

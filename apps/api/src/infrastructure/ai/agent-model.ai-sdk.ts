@@ -20,9 +20,14 @@ import {
   type UIMessage,
 } from "ai";
 import {
-  agentUiModelContext,
   agentUiPrompt,
+  buildAgentUiRefinementPrompt,
+  isAgentUiPart,
   pipeJsonRender,
+  refinableAgentUiSpec,
+  SPEC_DATA_PART_TYPE,
+  specFromAgentUiParts,
+  type Spec,
 } from "@opentrip/agent-ui-catalog";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -534,27 +539,75 @@ export function createTripMediaDownload(
 /** Convert the shared session history into model messages. Assistant entries
  * keep their role; human and operation entries become labeled user messages
  * so the model can attribute statements to members. File parts stay multimodal. */
-async function toModelMessages(
+export interface AgentUiRefinement {
+  userMessageId: string;
+  spec: Spec;
+}
+
+const UI_EDIT_INTENT_PATTERN =
+  /\b(?:add\s+.+\s+to|change|edit|make|modify|refine|remove|reorder|replace|update)\b|(?:修改|改|调整|更新|替换|删除|精简|重排|把.+加到)/iu;
+const UI_EDIT_TARGET_PATTERN =
+  /\b(?:card|comparison|interface|option|ui)\b|(?:界面|卡片|选项|比较|第[一二三四五六七八九十\d]+个)/iu;
+
+/** Refinement is opt-in. A new request after a generated card must not
+ * silently become an edit of that card merely because it is adjacent. */
+export function isAgentUiRefinementRequest(text: string): boolean {
+  const normalized = text.normalize("NFKC").trim();
+  return (
+    normalized.length > 0 &&
+    UI_EDIT_INTENT_PATTERN.test(normalized) &&
+    UI_EDIT_TARGET_PATTERN.test(normalized)
+  );
+}
+
+export function agentUiRefinementFromHistory(
+  history: readonly AgentMessage[],
+): AgentUiRefinement | null {
+  let userIndex = -1;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const message = history[index]!;
+    if (
+      message.role === "user" &&
+      (message.source === "chat" || message.source === "mention")
+    ) {
+      userIndex = index;
+      break;
+    }
+  }
+  if (userIndex < 0) return null;
+  const userMessage = history[userIndex]!;
+  const userText = textOf(userMessage.parts);
+  if (!isAgentUiRefinementRequest(userText)) return null;
+
+  // Keep refinement local to the recent thread instead of resurrecting an
+  // unrelated interface from much earlier in the shared trip conversation.
+  const lowerBound = Math.max(0, userIndex - 8);
+  for (let index = userIndex - 1; index >= lowerBound; index -= 1) {
+    const message = history[index]!;
+    if (message.role !== "assistant") continue;
+    const spec = refinableAgentUiSpec(message.parts);
+    if (spec) return { userMessageId: userMessage.id, spec };
+  }
+  return null;
+}
+
+export async function toModelMessages(
   history: AgentMessage[],
   actorName: (userId: string | null) => string,
   fileStorage: FileStorage,
   tripId: string,
+  refinement: AgentUiRefinement | null = null,
 ): Promise<ModelMessage[]> {
   const messages: ModelMessage[] = [];
   for (const message of history) {
     const text = textOf(message.parts);
-    const generatedUi = agentUiModelContext(message.parts);
     const files = await fileContentParts(message.parts, fileStorage, tripId);
 
     if (message.role === "assistant") {
-      const content = [
-        text.trim(),
-        generatedUi
-          ? `[Previously generated interface]\n${generatedUi}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+      // Generated UI remains in persisted data parts for the renderer. Never
+      // flatten it into assistant prose: that mixes flat-spec and JSONL patch
+      // formats and encourages models to echo internal context verbatim.
+      const content = text.trim();
       if (!content) continue;
       messages.push({ role: "assistant", content });
       continue;
@@ -566,9 +619,12 @@ async function toModelMessages(
       message.source === "operation"
         ? "[operation]"
         : `[${actorName(message.actorUserId)}]`;
-    const labeledText = text.trim()
+    let labeledText = text.trim()
       ? `${label} ${text}`
       : `${label} (attachment)`;
+    if (refinement?.userMessageId === message.id) {
+      labeledText = buildAgentUiRefinementPrompt(labeledText, refinement.spec);
+    }
 
     if (files.length === 0) {
       messages.push({ role: "user", content: labeledText });
@@ -581,6 +637,20 @@ async function toModelMessages(
     });
   }
   return messages;
+}
+
+/** A refinement seed is transport context, not a new assistant result. If the
+ * model produced no effective UI change, remove all spec parts before
+ * persistence so the previous card is not duplicated in shared history. */
+export function removeUnchangedRefinementUi(
+  parts: AgentMessagePart[],
+  refinementSpec: Spec,
+): AgentMessagePart[] {
+  const compiled = specFromAgentUiParts(parts);
+  if (!compiled || JSON.stringify(compiled) !== JSON.stringify(refinementSpec)) {
+    return parts;
+  }
+  return parts.filter((part) => !isAgentUiPart(part));
 }
 
 function contextSnippetFromMessages(messages: ModelMessage[]): string {
@@ -855,22 +925,31 @@ export class AiSdkAgentModel implements AgentModel {
   private async resolveModelMessages(
     request: AgentChatRequest,
     tools: ToolSet,
-  ): Promise<ModelMessage[]> {
+  ): Promise<{ messages: ModelMessage[]; refinementSpec: Spec | null }> {
     const clientMessages = request.clientMessages;
     if (clientMessages?.length && clientHasToolApprovalResponse(clientMessages)) {
       // Approval continuation must use the live UI message tree so AI SDK can
       // map approval-responded parts → tool-approval-response and run execute.
-      return convertToModelMessages(clientMessages as unknown as UIMessage[], {
-        tools,
-      });
+      return {
+        messages: await convertToModelMessages(
+          clientMessages as unknown as UIMessage[],
+          { tools },
+        ),
+        refinementSpec: null,
+      };
     }
 
-    return toModelMessages(
-      request.history,
-      this.actorNameResolver(request.trip),
-      this.fileStorage,
-      request.trip.id,
-    );
+    const refinement = agentUiRefinementFromHistory(request.history);
+    return {
+      messages: await toModelMessages(
+        request.history,
+        this.actorNameResolver(request.trip),
+        this.fileStorage,
+        request.trip.id,
+        refinement,
+      ),
+      refinementSpec: refinement?.spec ?? null,
+    };
   }
 
   async streamChat(request: AgentChatRequest): Promise<Response> {
@@ -881,7 +960,10 @@ export class AiSdkAgentModel implements AgentModel {
       streetViewPolicy,
       request.observability,
     );
-    const messages = await this.resolveModelMessages(request, tools);
+    const { messages, refinementSpec } = await this.resolveModelMessages(
+      request,
+      tools,
+    );
 
     // When the last message is an assistant with tool parts, the UI stream
     // must continue that same message — pass originalMessages for approval
@@ -933,6 +1015,14 @@ export class AiSdkAgentModel implements AgentModel {
       originalMessages,
       generateId,
       execute: ({ writer }) => {
+        if (refinementSpec) {
+          // Patch-only refinement needs the validated base spec in the new UI
+          // message so useJsonRenderMessage can apply streamed patches to it.
+          writer.write({
+            type: SPEC_DATA_PART_TYPE,
+            data: { type: "flat", spec: refinementSpec },
+          });
+        }
         writer.merge(
           pipeJsonRender(
             toUIMessageStream({
@@ -948,8 +1038,14 @@ export class AiSdkAgentModel implements AgentModel {
       // Persist after json-render transforms SpecStream text into data-spec
       // parts; an inner stream callback would only see the raw fenced JSONL.
       onEnd: async ({ responseMessage }) => {
+        const parts = refinementSpec
+          ? removeUnchangedRefinementUi(
+              responseMessage.parts as AgentMessagePart[],
+              refinementSpec,
+            )
+          : (responseMessage.parts as AgentMessagePart[]);
         await request.onFinish(
-          responseMessage.parts as AgentMessagePart[],
+          parts,
           responseMessage.id,
         );
       },

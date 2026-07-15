@@ -1,5 +1,6 @@
 import {
   applySpecPatch,
+  buildUserPrompt,
   nestedToFlat,
   SPEC_DATA_PART_TYPE,
   validateSpec,
@@ -19,6 +20,8 @@ export interface MessagePartLike {
 export interface AgentUiSafetyContext {
   allowedStreetViewImageIds?: ReadonlySet<string>;
 }
+
+const MAX_REFINEMENT_SPEC_CHARS = 8_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -214,14 +217,35 @@ export function sanitizeAgentUiParts<T extends MessagePartLike>(
   ];
 }
 
-export function agentUiModelContext(
+/** Return a complete, bounded spec suitable for json-render's official
+ * `buildUserPrompt({ currentSpec })` refinement flow. Street-view specs are
+ * deliberately turn-local because their image ids must be grounded again by
+ * a successful tool output in the new assistant message. */
+export function refinableAgentUiSpec(
   parts: readonly MessagePartLike[],
-  maxChars = 8_000,
-): string | null {
+  maxChars = MAX_REFINEMENT_SPEC_CHARS,
+): Spec | null {
   const spec = validatedAgentUiSpec(parts);
   if (!spec) return null;
-  const serialized = JSON.stringify(spec);
-  return serialized.length <= maxChars
-    ? serialized
-    : `${serialized.slice(0, maxChars)}…`;
+  if (
+    Object.values(spec.elements).some(
+      (element) => element.type === "StreetViewCard",
+    )
+  ) {
+    return null;
+  }
+  return JSON.stringify(spec).length <= maxChars ? spec : null;
+}
+
+/** Build the structured edit prompt recommended by json-render. The existing
+ * spec is never placed in a prior assistant text message. */
+export function buildAgentUiRefinementPrompt(
+  prompt: string,
+  currentSpec: Spec,
+): string {
+  return buildUserPrompt({
+    prompt,
+    currentSpec,
+    editModes: ["patch"],
+  });
 }
