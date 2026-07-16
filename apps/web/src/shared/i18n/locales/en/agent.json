@@ -55,6 +55,15 @@
     "invalid": "This generated view could not be displayed safely.",
     "staleDay": "That day is no longer in this trip.",
     "staleStop": "That stop is no longer in this trip.",
+    "fallback": {
+      "title": "Street view could not be displayed",
+      "protocol_invalid": "The generated response did not match the safe display format.",
+      "grounding_failed": "The response could not be verified against a street-view search result.",
+      "service_unavailable": "The street-view service is temporarily unavailable.",
+      "retry": "Retry",
+      "retrying": "Retrying…",
+      "retryMessage": "Please retry the previous street-view request and return a grounded result."
+    },
     "streetView": {
       "previewAlt": "Street-view preview",
       "previewUnavailable": "Preview unavailable",

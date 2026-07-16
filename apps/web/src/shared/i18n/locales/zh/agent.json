@@ -54,6 +54,15 @@
     "invalid": "无法安全显示这段生成内容。",
     "staleDay": "该日期已不在当前行程中。",
     "staleStop": "该地点已不在当前行程中。",
+    "fallback": {
+      "title": "暂时无法显示街景",
+      "protocol_invalid": "生成结果不符合安全展示格式。",
+      "grounding_failed": "无法根据街景搜索结果验证这次回答。",
+      "service_unavailable": "街景服务暂时不可用。",
+      "retry": "重试",
+      "retrying": "正在重试…",
+      "retryMessage": "请重试刚才的街景请求，并只返回有工具结果依据的内容。"
+    },
     "streetView": {
       "previewAlt": "街景预览",
       "previewUnavailable": "静态预览暂不可用",

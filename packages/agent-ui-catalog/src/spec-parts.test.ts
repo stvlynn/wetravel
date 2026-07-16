@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   allowedStreetViewImageIds,
   buildAgentUiRefinementPrompt,
+  createAgentUiFallbackPart,
   isAgentUiPart,
+  isAgentStatusPart,
   refinableAgentUiSpec,
   sanitizeAgentUiParts,
   specFromAgentUiParts,
   safeAgentUiSpec,
+  validateAgentUiProtocol,
   validatedAgentUiSpec,
 } from "./spec-parts";
 
@@ -240,5 +243,65 @@ describe("agent UI spec parts", () => {
     ];
     const sanitized = sanitizeAgentUiParts(parts);
     expect(sanitized).toEqual([{ type: "text", text: "The prose remains" }]);
+  });
+
+  it("rejects leaked flat specs and patches in the wrong fence", () => {
+    expect(
+      validateAgentUiProtocol([
+        {
+          type: "text",
+          text: '```json\n{"root":"sv","elements":{"sv":{"type":"StreetViewCard","props":{"imageId":"invented"},"children":[]}}}\n```',
+        },
+      ]),
+    ).toEqual({ valid: false, reason: "flat_spec_leak" });
+
+    expect(
+      validateAgentUiProtocol([
+        {
+          type: "text",
+          text: '```json\n{"op":"add","path":"/root","value":"main"}\n```',
+        },
+      ]),
+    ).toEqual({ valid: false, reason: "wrong_fence" });
+  });
+
+  it("rejects malformed residual spec fences but preserves ordinary JSON", () => {
+    expect(
+      validateAgentUiProtocol([
+        { type: "text", text: "```spec\nnot-json\n```" },
+      ]),
+    ).toEqual({ valid: false, reason: "invalid_patch" });
+    expect(
+      validateAgentUiProtocol([
+        { type: "text", text: '```json\n{"temperature":21}\n```' },
+      ]),
+    ).toEqual({ valid: true });
+  });
+
+  it("requires a real street-view result for grounded turns", () => {
+    expect(
+      validateAgentUiProtocol([{ type: "text", text: "I found it" }], {
+        requireStreetViewToolResult: true,
+      }),
+    ).toEqual({ valid: false, reason: "missing_required_tool" });
+    expect(
+      validateAgentUiProtocol(
+        [
+          {
+            type: "tool-streetViewSearch",
+            state: "output-available",
+            output: { outcome: "empty", images: [] },
+          },
+          { type: "text", text: "No nearby imagery was returned." },
+        ],
+        { requireStreetViewToolResult: true },
+      ),
+    ).toEqual({ valid: true });
+  });
+
+  it("creates a typed localized fallback signal", () => {
+    const part = createAgentUiFallbackPart("grounding_failed");
+    expect(isAgentStatusPart(part)).toBe(true);
+    expect(part.data.retryable).toBe(true);
   });
 });

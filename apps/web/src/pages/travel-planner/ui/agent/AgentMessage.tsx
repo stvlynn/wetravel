@@ -22,7 +22,9 @@ import { AgentToolPreview } from "./AgentToolPreview";
 import { AgentReasoning } from "./AgentReasoning";
 import { AgentAvatar } from "./AgentAvatar";
 import { AgentGeneratedUi } from "./AgentGeneratedUi";
+import { AgentGeneratedFallback } from "./AgentGeneratedFallback";
 import { toolDisplayName } from "./toolDisplayName";
+import { isAgentStatusPart } from "@opentrip/agent-ui-catalog";
 import {
   fingerprintMessageText,
   textFromMessageParts,
@@ -258,6 +260,7 @@ export function AgentMessageItem({
 
   const isAgent = message.role === "assistant";
   const toolParts = (message.parts ?? []).filter(isToolUIPart);
+  const generatedFallback = (message.parts ?? []).find(isAgentStatusPart);
   // Prefer live AI SDK parts so text deltas re-render while streaming; fall
   // back to the flattened `text` field for persisted history rows.
   const displayText =
@@ -446,7 +449,12 @@ export function AgentMessageItem({
             </div>
           ) : null}
 
-          {isAgent && message.parts?.length ? (
+          {isAgent && generatedFallback ? (
+            <AgentGeneratedFallback
+              reason={generatedFallback.data.reason}
+              onRetry={onGeneratedFollowUp}
+            />
+          ) : isAgent && message.parts?.length ? (
             <AgentGeneratedUi
               parts={message.parts}
               streaming={message.streaming === true}

@@ -3,8 +3,11 @@ import { StreetViewError, StreetViewService } from "../src/application/street-vi
 import type { StreetViewProvider } from "../src/domain/street-view";
 import {
   buildStreetViewReadTools,
+  groundedStreetViewTurn,
+  prepareGroundedStreetViewStep,
   StreetViewToolPolicy,
 } from "../src/infrastructure/ai/agent-model.ai-sdk";
+import type { AgentMessage } from "../src/domain/agent";
 import { MapillaryStreetViewProvider } from "../src/infrastructure/street-view/mapillary/mapillary-provider";
 import { MemoryStreetViewCache } from "../src/infrastructure/street-view/memory-street-view-cache";
 
@@ -159,6 +162,86 @@ describe("StreetViewService", () => {
     expect(await cache.getImage("expires")).not.toBeNull();
     now = 15 * 60 * 1_000;
     expect(await cache.getImage("expires")).toBeNull();
+  });
+});
+
+function agentMessage(
+  role: "user" | "assistant",
+  text: string,
+  parts: AgentMessage["parts"] = [{ type: "text", text }],
+): AgentMessage {
+  return {
+    id: `${role}-${text}`,
+    seq: 1,
+    tripId: "trip-1",
+    role,
+    parts,
+    actorUserId: role === "user" ? "user-1" : null,
+    source: "chat",
+    tripVersion: 1,
+    createdAt: "2026-07-16T00:00:00.000Z",
+  };
+}
+
+describe("grounded street-view turn routing", () => {
+  it("detects supported-language intent and coordinates", () => {
+    expect(
+      groundedStreetViewTurn([
+        agentMessage("user", "@agent 看看东京塔附近街景"),
+      ]),
+    ).toEqual({ required: true, hasCoordinates: false });
+    expect(
+      groundedStreetViewTurn([
+        agentMessage("user", "Show street view at 35.6586, 139.7454"),
+      ]),
+    ).toEqual({ required: true, hasCoordinates: true });
+  });
+
+  it("keeps a short continuation in the grounded thread", () => {
+    expect(
+      groundedStreetViewTurn([
+        agentMessage("assistant", "I can search street view nearby."),
+        agentMessage("user", "看看第二个"),
+      ]),
+    ).toEqual({ required: true, hasCoordinates: false });
+  });
+
+  it("forces place resolution before street-view search", () => {
+    const tools = ["placeSearch", "streetViewSearch", "streetViewInspect"];
+    const first = prepareGroundedStreetViewStep(
+      new StreetViewToolPolicy(),
+      tools,
+      { required: true, hasCoordinates: false },
+      { steps: [], instructions: "Base" },
+    );
+    expect(first).toMatchObject({
+      toolChoice: { type: "tool", toolName: "placeSearch" },
+    });
+
+    const second = prepareGroundedStreetViewStep(
+      new StreetViewToolPolicy(),
+      tools,
+      { required: true, hasCoordinates: false },
+      {
+        steps: [{ toolCalls: [{ toolName: "placeSearch" }] }],
+        instructions: "Base",
+      },
+    );
+    expect(second).toMatchObject({
+      toolChoice: { type: "tool", toolName: "streetViewSearch" },
+    });
+  });
+
+  it("forces street-view search first when coordinates are supplied", () => {
+    const prepared = prepareGroundedStreetViewStep(
+      new StreetViewToolPolicy(),
+      ["placeSearch", "streetViewSearch"],
+      { required: true, hasCoordinates: true },
+      { steps: [], instructions: "Base" },
+    );
+    expect(prepared).toMatchObject({
+      toolChoice: { type: "tool", toolName: "streetViewSearch" },
+    });
   });
 });
 

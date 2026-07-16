@@ -12,6 +12,7 @@ import { agentUiCatalog } from "./catalog";
 
 export interface MessagePartLike {
   type: string;
+  text?: unknown;
   data?: unknown;
   state?: unknown;
   output?: unknown;
@@ -21,10 +22,172 @@ export interface AgentUiSafetyContext {
   allowedStreetViewImageIds?: ReadonlySet<string>;
 }
 
+export const AGENT_STATUS_DATA_PART_TYPE = "data-agent-status" as const;
+
+export type AgentUiProtocolViolationReason =
+  | "wrong_fence"
+  | "flat_spec_leak"
+  | "invalid_patch"
+  | "invalid_catalog_spec"
+  | "ungrounded_media"
+  | "missing_required_tool";
+
+export type AgentUiFallbackReason =
+  | "protocol_invalid"
+  | "grounding_failed"
+  | "service_unavailable";
+
+export interface AgentStatusPart extends MessagePartLike {
+  type: typeof AGENT_STATUS_DATA_PART_TYPE;
+  data: {
+    kind: "generated-ui-fallback";
+    reason: AgentUiFallbackReason;
+    retryable: true;
+  };
+}
+
+export interface AgentUiProtocolValidation {
+  valid: boolean;
+  reason?: AgentUiProtocolViolationReason;
+}
+
 const MAX_REFINEMENT_SPEC_CHARS = 8_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function textOf(part: MessagePartLike): string {
+  const value = part as MessagePartLike & { text?: unknown };
+  return part.type === "text" && typeof value.text === "string" ? value.text : "";
+}
+
+function isFlatSpec(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.root === "string" &&
+    isRecord(value.elements)
+  );
+}
+
+function isJsonPatchLine(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.op === "string" &&
+    typeof value.path === "string"
+  );
+}
+
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function protocolViolationInText(
+  text: string,
+): AgentUiProtocolViolationReason | null {
+  const trimmed = text.trim();
+  if (isFlatSpec(parseJson(trimmed))) return "flat_spec_leak";
+
+  const fencePattern = /```([^\n`]*)\n([\s\S]*?)```/g;
+  for (const match of text.matchAll(fencePattern)) {
+    const language = (match[1] ?? "").trim().toLowerCase();
+    const body = (match[2] ?? "").trim();
+    if (!body) continue;
+    if (isFlatSpec(parseJson(body))) return "flat_spec_leak";
+
+    const lines = body.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const patchLines = lines.map(parseJson);
+    const containsPatch = patchLines.some(isJsonPatchLine);
+    if (containsPatch && language !== "spec") return "wrong_fence";
+    if (language === "spec") return "invalid_patch";
+  }
+
+  return null;
+}
+
+function hasSuccessfulStreetViewSearch(parts: readonly MessagePartLike[]): boolean {
+  return parts.some(
+    (part) =>
+      part.type === "tool-streetViewSearch" &&
+      part.state === "output-available" &&
+      isRecord(part.output) &&
+      (part.output.outcome === "found" || part.output.outcome === "empty"),
+  );
+}
+
+function hasUngroundedStreetViewElement(
+  spec: Spec,
+  allowedIds: ReadonlySet<string>,
+): boolean {
+  return Object.values(spec.elements).some((element) => {
+    if (element.type !== "StreetViewCard") return false;
+    return (
+      !isRecord(element.props) ||
+      typeof element.props.imageId !== "string" ||
+      !allowedIds.has(element.props.imageId)
+    );
+  });
+}
+
+export function createAgentUiFallbackPart(
+  reason: AgentUiFallbackReason,
+): AgentStatusPart {
+  return {
+    type: AGENT_STATUS_DATA_PART_TYPE,
+    data: {
+      kind: "generated-ui-fallback",
+      reason,
+      retryable: true,
+    },
+  };
+}
+
+export function isAgentStatusPart(part: MessagePartLike): part is AgentStatusPart {
+  return (
+    part.type === AGENT_STATUS_DATA_PART_TYPE &&
+    isRecord(part.data) &&
+    part.data.kind === "generated-ui-fallback" &&
+    (part.data.reason === "protocol_invalid" ||
+      part.data.reason === "grounding_failed" ||
+      part.data.reason === "service_unavailable") &&
+    part.data.retryable === true
+  );
+}
+
+/** Validate the complete transformed assistant message before it is exposed or
+ * persisted. Prompt instructions improve conformance; this is the deterministic
+ * protocol and grounding boundary. */
+export function validateAgentUiProtocol(
+  parts: readonly MessagePartLike[],
+  options: { requireStreetViewToolResult?: boolean } = {},
+): AgentUiProtocolValidation {
+  for (const part of parts) {
+    const violation = protocolViolationInText(textOf(part));
+    if (violation) return { valid: false, reason: violation };
+  }
+
+  if (
+    options.requireStreetViewToolResult &&
+    !hasSuccessfulStreetViewSearch(parts)
+  ) {
+    return { valid: false, reason: "missing_required_tool" };
+  }
+
+  const spec = specFromAgentUiParts(parts);
+  if (!spec) return { valid: true };
+
+  const allowedIds = allowedStreetViewImageIds(parts);
+  if (hasUngroundedStreetViewElement(spec, allowedIds)) {
+    return { valid: false, reason: "ungrounded_media" };
+  }
+  if (!safeAgentUiSpec(spec, { allowedStreetViewImageIds: allowedIds })) {
+    return { valid: false, reason: "invalid_catalog_spec" };
+  }
+  return { valid: true };
 }
 
 export function isSpecDataPartPayload(value: unknown): value is SpecDataPart {

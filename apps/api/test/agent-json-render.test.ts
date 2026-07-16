@@ -23,4 +23,19 @@ describe("agent json-render persistence", () => {
       ]),
     ).toBe(false);
   });
+
+  it("persists a typed generated UI fallback", () => {
+    expect(
+      assistantPartsHaveContent([
+        {
+          type: "data-agent-status",
+          data: {
+            kind: "generated-ui-fallback",
+            reason: "grounding_failed",
+            retryable: true,
+          },
+        },
+      ]),
+    ).toBe(true);
+  });
 });

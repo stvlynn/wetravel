@@ -79,6 +79,14 @@ proof of missing coverage. After a `found` search the model must emit
 `StreetViewCard` with a returned id in the same reply rather than replacing the
 card with a prose metadata caption.
 
+An explicit Chinese or English street-view request is treated as a high-risk
+grounded turn. AI SDK step preparation forces `placeSearch` first unless the
+member supplied coordinates, then forces `streetViewSearch`; prompt compliance
+alone is not sufficient. The finished response remains server-buffered until
+the generated-UI protocol gate confirms a successful `found` or `empty` result
+and validates any card against that same result. At most one repair attempt is
+allowed, and repair never enables trip write tools.
+
 `StreetViewCard` and `openStreetView` are grounded capabilities: their image id
 must appear in a successful street-view tool output in the same assistant
 UIMessage. The shared catalog sanitizer applies this rule during streaming,

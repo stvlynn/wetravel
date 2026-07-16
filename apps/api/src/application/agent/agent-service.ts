@@ -9,6 +9,7 @@ import type {
   PendingPatch,
 } from "../../domain/agent";
 import {
+  isAgentStatusPart,
   isAgentUiPart,
   sanitizeAgentUiParts,
 } from "@opentrip/agent-ui-catalog";
@@ -129,6 +130,7 @@ export function assistantPartsHaveContent(parts: AgentMessage["parts"]): boolean
     }
     if (typeof type === "string" && type.startsWith("tool-")) return true;
     if (type === "file") return true;
+    if (isAgentStatusPart(p as { type: string; data?: unknown })) return true;
     if (isAgentUiPart(p as { type: string; data?: unknown })) return true;
     return false;
   });

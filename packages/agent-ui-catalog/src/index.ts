@@ -11,15 +11,23 @@ export {
   type AgentUiCatalog,
 } from "./catalog";
 export {
+  AGENT_STATUS_DATA_PART_TYPE,
   allowedStreetViewImageIds,
   buildAgentUiRefinementPrompt,
+  createAgentUiFallbackPart,
   isAgentUiPart,
+  isAgentStatusPart,
   isSpecDataPartPayload,
   refinableAgentUiSpec,
   sanitizeAgentUiParts,
   safeAgentUiSpec,
   specFromAgentUiParts,
+  validateAgentUiProtocol,
   validatedAgentUiSpec,
+  type AgentStatusPart,
+  type AgentUiFallbackReason,
+  type AgentUiProtocolValidation,
+  type AgentUiProtocolViolationReason,
   type MessagePartLike,
   type AgentUiSafetyContext,
 } from "./spec-parts";

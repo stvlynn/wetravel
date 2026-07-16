@@ -187,6 +187,11 @@ function sanitizeAttributes(fields: TraceFields): Attributes {
     tripVersionBefore: "opentrip.trip.version_before",
     trigger: "opentrip.agent.trigger",
     runtime: "opentrip.runtime",
+    uiContractVersion: "opentrip.agent.ui.contract_version",
+    uiAttempt: "opentrip.agent.ui.attempt",
+    uiHighRisk: "opentrip.agent.ui.high_risk",
+    uiOutcome: "opentrip.agent.ui.outcome",
+    uiReason: "opentrip.agent.ui.reason",
   };
   return Object.fromEntries(
     Object.entries(safe).filter(

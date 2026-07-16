@@ -182,7 +182,17 @@ before streaming patches. Specs are size-bounded, limited to the recent thread,
 and street-view cards are excluded because their image ids must be grounded by
 a successful tool output in the same new assistant message. An unchanged seed
 is not persisted as a duplicate card. A UI-only assistant reply counts as
-content and is persisted; invalid UI falls back to accompanying text.
+content and is persisted.
+
+Explicit street-view turns use a server-side generated-UI gate. The adapter
+buffers the complete transformed UIMessage before exposing or persisting it,
+then verifies the versioned contract, catalog schema, tool result, and every
+`StreetViewCard` image id. A rejected first attempt gets one bounded repair:
+trusted successful tool output is reused without another provider call, while
+a missing result reruns only the read-tool workflow. The rejected draft is
+never included in the repair prompt or sent to the browser. A second rejection
+persists only a typed `data-agent-status` fallback part; it never persists or
+renders the invalid model text.
 
 ## Approving a suggestion
 

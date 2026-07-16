@@ -26,8 +26,10 @@ Production uses 100% Sentry sampling for trip-agent routes, 10% for other API
 routes, and 0% for health checks. Cloudflare persists all logs and samples
 platform request traces at 10%.
 
-`AI_TELEMETRY_RECORD_CONTENT=true` sends trip conversation text, prompts,
-model replies, and tool arguments/results to Sentry. Authorization headers,
+Production must keep `AI_TELEMETRY_RECORD_CONTENT=false` unless an explicitly
+approved, time-bounded investigation requires content capture. Setting it to
+`true` sends trip conversation text, prompts, model replies, and tool
+arguments/results to Sentry. Authorization headers,
 cookies, credentials, database URLs, signed URL queries, data URLs, base64,
 and attachment bytes are always removed. Limit Sentry project access and set a
 retention policy appropriate for travel, reservation, and expense data. Set
@@ -84,6 +86,9 @@ while the independent SSE drain finishes successfully, the chat span records
    opentrip.agent.suggestion_id:<suggestion-id>
    opentrip.trip.id:<trip-id>
    gen_ai.tool.call.id:<tool-call-id>
+   opentrip.agent.ui.contract_version:2026-07-16.1
+   opentrip.agent.ui.outcome:rejected
+   opentrip.agent.ui.reason:<reason>
    ```
 
 3. Open the trace waterfall. Inspect authorization/context loading, AI steps,
@@ -240,8 +245,17 @@ these events in order:
 8. `agent.persist_message`: confirm the sanitized assistant message and its
    fingerprint were written.
 
+Before persistence, inspect `agent.generated_ui.accepted` or
+`agent.generated_ui.rejected` and its
+`opentrip.agent.generated_ui.validate` span. The span records contract version,
+attempt, high-risk status, outcome, and rejection reason. A rejection should be
+followed by `agent.generated_ui.repair_started` and either
+`agent.generated_ui.repair_completed` or `agent.generated_ui.fallback`; there
+is never a third generation attempt.
+
 If the provider call failed, the generation policy removes both street-view
-tools for the remainder of that reply. Any prose claiming additional
+tools for the remainder of that attempt. Any prose claiming additional
 coordinates were tried is therefore a model-grounding defect and should be
-reported with the turnId and toolCallId; an ungrounded `StreetViewCard` is
-discarded both during rendering and before persistence.
+reported with the turnId and toolCallId. The response gate prevents both raw
+protocol text and ungrounded `StreetViewCard` content from reaching persistence
+or the browser; after one failed repair, only the typed fallback is stored.

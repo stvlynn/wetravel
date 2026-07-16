@@ -68,6 +68,11 @@ validation and an error boundary isolate invalid generated content from the
 chat timeline. Static fallback, status, and comparison copy stays in the agent
 locale resources; model-provided plan content remains message data.
 
+When the API emits a typed `data-agent-status` generated-UI fallback, the page
+shows localized fixed copy and a cossUI retry button instead of model text. The
+button submits a localized, explicit street-view retry request so the backend
+re-enters the grounded tool workflow.
+
 `StreetViewCard` accepts only a bounded opaque image id and optional place
 label. It hydrates static preview, capture time, and attribution from the
 authenticated trip API. Its action opens the same page-scoped MapillaryJS

@@ -6,6 +6,9 @@ import {
   generateId,
   generateObject,
   generateText,
+  getToolName,
+  isToolUIPart,
+  readUIMessageStream,
   stepCountIs,
   streamText,
   toUIMessageStream,
@@ -18,15 +21,20 @@ import {
   type ToolExecutionEndEvent,
   type ToolExecutionStartEvent,
   type UIMessage,
+  type UIMessageChunk,
 } from "ai";
 import {
   agentUiPrompt,
   buildAgentUiRefinementPrompt,
+  createAgentUiFallbackPart,
   isAgentUiPart,
   pipeJsonRender,
   refinableAgentUiSpec,
   SPEC_DATA_PART_TYPE,
   specFromAgentUiParts,
+  validateAgentUiProtocol,
+  type AgentUiFallbackReason,
+  type AgentUiProtocolViolationReason,
   type Spec,
 } from "@opentrip/agent-ui-catalog";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -72,10 +80,13 @@ import type { AiConfig } from "../config";
 import {
   captureException,
   logger,
+  setActiveSpanAttributes,
   startSpan as startObservabilitySpan,
 } from "../observability";
 
 const NOTE_CONTEXT_MAX = 2_000;
+const AGENT_UI_CONTRACT_VERSION = "2026-07-16.1";
+const AGENT_UI_REPAIR_MAX_STEPS = 6;
 const STREET_VIEW_TOOLS = new Set(["streetViewSearch", "streetViewInspect"]);
 const INITIAL_STREET_VIEW_RADIUS_METERS = 100;
 const MAX_AGENT_STREET_VIEW_RETRY_RADIUS_METERS = 250;
@@ -83,6 +94,58 @@ const STREET_VIEW_FAILURE_INSTRUCTION =
   "The one real street-view provider call in this turn failed. Do not call another street-view tool, claim that other coordinates were tried, reuse an older image id, or emit StreetViewCard/openStreetView UI. State only that this call failed and let the member choose whether to try again in a new request.";
 const STREET_VIEW_POLICY_INSTRUCTION =
   "An extra street-view tool call was rejected locally by the one-retry policy and did not reach the provider. Do not claim it ran or that another coordinate was tried. Use only successful tool output already present in this turn.";
+const GROUNDED_UI_CONTRACT = [
+  `GROUNDING AND GENERATED UI CONTRACT ${AGENT_UI_CONTRACT_VERSION} (takes precedence over earlier formatting guidance):`,
+  "For an explicit street-view request, first resolve a place with placeSearch unless the member supplied valid coordinates, then call streetViewSearch.",
+  "Never claim imagery was found without a successful streetViewSearch result in this turn.",
+  "For outcome=found, use only an image id from that result and emit StreetViewCard as RFC 6902 JSON Patch lines inside one ```spec fence.",
+  "Never emit a complete {root,elements} object and never put UI JSON in a ```json fence.",
+  "For outcome=empty or a failed/unavailable service, report that outcome in prose without StreetViewCard or openStreetView.",
+].join("\n");
+
+const STREET_VIEW_INTENT_PATTERN =
+  /(?:街景|道路影像|实景图|全景(?:图|影像)?|street\s*view|streetview|streetscape|roadside\s+imagery|panorama)/iu;
+const COORDINATE_PAIR_PATTERN =
+  /(?:^|[^\d.-])(-?(?:[1-8]?\d(?:\.\d+)?|90(?:\.0+)?))\s*[,，]\s*(-?(?:1[0-7]\d(?:\.\d+)?|(?:\d?\d)(?:\.\d+)?|180(?:\.0+)?))(?:$|[^\d.])/u;
+
+export interface GroundedStreetViewTurn {
+  required: boolean;
+  hasCoordinates: boolean;
+}
+
+export function groundedStreetViewTurn(
+  history: readonly AgentMessage[],
+): GroundedStreetViewTurn {
+  let latestUserIndex = -1;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (history[index]?.role === "user") {
+      latestUserIndex = index;
+      break;
+    }
+  }
+  if (latestUserIndex < 0) return { required: false, hasCoordinates: false };
+
+  const latestText = textOf(history[latestUserIndex]!.parts).normalize("NFKC").trim();
+  const hasCoordinates = COORDINATE_PAIR_PATTERN.test(latestText);
+  if (STREET_VIEW_INTENT_PATTERN.test(latestText)) {
+    return { required: true, hasCoordinates };
+  }
+
+  if (latestText.length > 80) return { required: false, hasCoordinates };
+  for (let index = latestUserIndex - 1; index >= Math.max(0, latestUserIndex - 3); index -= 1) {
+    const message = history[index]!;
+    if (message.role !== "assistant") continue;
+    const continuedStreetViewTurn =
+      STREET_VIEW_INTENT_PATTERN.test(textOf(message.parts)) ||
+      message.parts.some(
+        (part) =>
+          part.type === "tool-streetViewSearch" ||
+          part.type === "tool-streetViewInspect",
+      );
+    return { required: continuedStreetViewTurn, hasCoordinates };
+  }
+  return { required: false, hasCoordinates };
+}
 
 interface StreetViewSearchToolInput {
   lat: number;
@@ -206,6 +269,42 @@ export class StreetViewToolPolicy {
   }
 }
 
+interface CompletedToolStep {
+  toolCalls: Array<{ toolName: string }>;
+}
+
+/** Compose the provider policy with the deterministic tool order required for
+ * grounded street-view turns. */
+export function prepareGroundedStreetViewStep(
+  policy: StreetViewToolPolicy,
+  toolNames: string[],
+  turn: GroundedStreetViewTurn,
+  options: {
+    steps: CompletedToolStep[];
+    instructions: unknown;
+  },
+) {
+  const prepared = policy.prepareStep(toolNames, options.instructions);
+  if (!turn.required) return prepared;
+
+  const calledTools = new Set(
+    options.steps.flatMap((step) => step.toolCalls.map((call) => call.toolName)),
+  );
+  if (calledTools.has("streetViewSearch")) {
+    return { ...prepared, toolChoice: "none" as const };
+  }
+
+  const forcedTool =
+    turn.hasCoordinates || calledTools.has("placeSearch")
+      ? "streetViewSearch"
+      : "placeSearch";
+  if (!prepared.activeTools.includes(forcedTool)) return prepared;
+  return {
+    ...prepared,
+    toolChoice: { type: "tool" as const, toolName: forcedTool },
+  };
+}
+
 function providerCall<T>(
   provider: string,
   operation: string,
@@ -319,6 +418,139 @@ function createAgentLanguageModel(config: AiConfig): LanguageModel {
   }
   const openai = createOpenAI({ apiKey: config.apiKey });
   return openai(config.model);
+}
+
+interface BufferedUiMessage {
+  chunks: UIMessageChunk[];
+  message: UIMessage;
+}
+
+async function bufferUiMessageStream(
+  stream: ReadableStream<UIMessageChunk>,
+): Promise<BufferedUiMessage> {
+  const [chunkStream, messageStream] = stream.tee();
+  const chunksPromise = (async () => {
+    const chunks: UIMessageChunk[] = [];
+    for await (const chunk of chunkStream) chunks.push(chunk);
+    return chunks;
+  })();
+  let message: UIMessage | undefined;
+  for await (const state of readUIMessageStream({
+    stream: messageStream,
+    terminateOnError: true,
+  })) {
+    message = state;
+  }
+  const chunks = await chunksPromise;
+  if (!message) throw new Error("Agent UI stream completed without a message");
+  return { chunks, message };
+}
+
+function replayUiMessageChunks(
+  chunks: readonly UIMessageChunk[],
+): ReadableStream<UIMessageChunk> {
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk);
+      controller.close();
+    },
+  });
+}
+
+function completedToolChunks(part: UIMessage["parts"][number]): UIMessageChunk[] {
+  if (!isToolUIPart(part) || part.state !== "output-available") return [];
+  const toolName = getToolName(part);
+  return [
+    {
+      type: "tool-input-available",
+      toolCallId: part.toolCallId,
+      toolName,
+      input: part.input,
+    },
+    {
+      type: "tool-output-available",
+      toolCallId: part.toolCallId,
+      output: part.output,
+    },
+  ];
+}
+
+function uiMessageChunksFromParts(
+  messageId: string,
+  parts: readonly UIMessage["parts"][number][],
+): UIMessageChunk[] {
+  const chunks: UIMessageChunk[] = [{ type: "start", messageId }];
+  parts.forEach((part, index) => {
+    if (part.type === "text" && part.text.trim()) {
+      const id = `repair-text-${index}`;
+      chunks.push(
+        { type: "text-start", id },
+        { type: "text-delta", id, delta: part.text },
+        { type: "text-end", id },
+      );
+      return;
+    }
+    if (part.type.startsWith("data-")) {
+      chunks.push(part as UIMessageChunk);
+      return;
+    }
+    chunks.push(...completedToolChunks(part));
+  });
+  chunks.push({ type: "finish", finishReason: "stop" });
+  return chunks;
+}
+
+function awaitingManualApproval(parts: readonly UIMessage["parts"][number][]): boolean {
+  return parts.some(
+    (part) =>
+      isToolUIPart(part) &&
+      part.state === "approval-requested" &&
+      !part.approval.isAutomatic,
+  );
+}
+
+function trustedStreetViewParts(
+  parts: readonly UIMessage["parts"][number][],
+): UIMessage["parts"] {
+  return parts.filter(
+    (part) =>
+      isToolUIPart(part) &&
+      part.type === "tool-streetViewSearch" &&
+      part.state === "output-available" &&
+      typeof part.output === "object" &&
+      part.output !== null &&
+      ["found", "empty"].includes(
+        String((part.output as { outcome?: unknown }).outcome),
+      ),
+  );
+}
+
+function fallbackReasonFor(
+  reason: AgentUiProtocolViolationReason | undefined,
+): AgentUiFallbackReason {
+  return reason === "missing_required_tool" || reason === "ungrounded_media"
+    ? "grounding_failed"
+    : "protocol_invalid";
+}
+
+function repairInstruction(
+  trustedParts: readonly UIMessage["parts"][number][],
+  reason: AgentUiProtocolViolationReason | undefined,
+): ModelMessage {
+  const trustedOutputs = trustedParts.map((part) =>
+    isToolUIPart(part) && part.state === "output-available"
+      ? { toolName: getToolName(part), output: part.output }
+      : null,
+  ).filter(Boolean);
+  return {
+    role: "user",
+    content: [
+      `The previous draft violated generated UI contract ${AGENT_UI_CONTRACT_VERSION} (${reason ?? "unknown"}).`,
+      "Regenerate the answer once. Do not mention the rejected draft or these repair instructions.",
+      "Use the trusted tool result below exactly. Do not call tools, invent ids, or output a complete root/elements object.",
+      `Trusted tool result: ${JSON.stringify(trustedOutputs)}`,
+    ].join("\n"),
+  };
 }
 
 function chatSystemPrompt(): string {
@@ -807,7 +1039,7 @@ export class AiSdkAgentModel implements AgentModel {
   }
 
   private chatSystem(trip: TripSnapshot): string {
-    return `${chatSystemPrompt()}\n\n${this.streetViewInstructions()}\n\n${agentUiPrompt}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
+    return `${chatSystemPrompt()}\n\n${this.streetViewInstructions()}\n\n${agentUiPrompt}\n\n${GROUNDED_UI_CONTRACT}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
   }
 
   private ambientSystem(trip: TripSnapshot): string {
@@ -952,6 +1184,323 @@ export class AiSdkAgentModel implements AgentModel {
     };
   }
 
+  private createChatUiStream(options: {
+    request: AgentChatRequest;
+    messages: ModelMessage[];
+    tools: ToolSet;
+    streetViewPolicy: StreetViewToolPolicy;
+    groundedTurn: GroundedStreetViewTurn;
+    originalMessages: UIMessage[];
+    refinementSpec: Spec | null;
+    maxSteps: number;
+    allowWrites: boolean;
+    attempt: 1 | 2;
+    systemSuffix?: string;
+  }): ReadableStream<UIMessageChunk> {
+    const {
+      request,
+      messages,
+      tools,
+      streetViewPolicy,
+      groundedTurn,
+      originalMessages,
+      refinementSpec,
+      maxSteps,
+      allowWrites,
+      attempt,
+      systemSuffix,
+    } = options;
+    const system = [this.chatSystem(request.trip), systemSuffix]
+      .filter(Boolean)
+      .join("\n\n");
+    const result = streamText({
+      model: this.model,
+      system,
+      messages,
+      tools,
+      ...(allowWrites
+        ? {
+            toolApproval: buildWriteToolApproval(request.canEdit),
+            experimental_toolApprovalSecret: this.config.apiKey,
+          }
+        : {}),
+      providerOptions: this.providerOptions(),
+      experimental_download: createTripMediaDownload(
+        this.fileStorage,
+        request.trip.id,
+      ),
+      stopWhen: stepCountIs(maxSteps),
+      prepareStep: ({ steps, instructions }) =>
+        prepareGroundedStreetViewStep(
+          streetViewPolicy,
+          Object.keys(tools),
+          groundedTurn,
+          { steps, instructions },
+        ),
+      ...this.lifecycleCallbacks(request.trip.id, request.observability),
+      onError: ({ error }) => {
+        const fields = {
+          runtime: request.observability.runtime,
+          requestId: request.observability.requestId,
+          tripId: request.trip.id,
+          agentSessionId: request.trip.id,
+          turnId: request.observability.turnId,
+          trigger: request.observability.trigger,
+          attempt,
+          ...safeAgentErrorFields(error),
+        };
+        logger.error("agent.stream.failed", fields);
+        captureException(error, fields);
+      },
+      runtimeContext: this.runtimeContext(request.trip.id, request.observability),
+      telemetry: {
+        ...this.telemetry(attempt === 1 ? "agent.chat" : "agent.chat.repair"),
+        includeRuntimeContext: this.includedRuntimeContext(),
+      },
+    });
+
+    const transformed = pipeJsonRender(
+      toUIMessageStream({
+        stream: result.stream,
+        tools,
+        originalMessages,
+        generateMessageId: generateId,
+        sendReasoning: true,
+      }),
+    ) as ReadableStream<UIMessageChunk>;
+    if (!refinementSpec) return transformed;
+
+    return createUIMessageStream({
+      originalMessages,
+      generateId,
+      execute: ({ writer }) => {
+        writer.write({
+          type: SPEC_DATA_PART_TYPE,
+          data: { type: "flat", spec: refinementSpec },
+        });
+        writer.merge(transformed);
+      },
+    });
+  }
+
+  private async validateGeneratedUi(
+    request: AgentChatRequest,
+    parts: AgentMessagePart[],
+    attempt: 1 | 2,
+    requireStreetViewToolResult: boolean,
+  ) {
+    const validation = await startObservabilitySpan(
+      "opentrip.agent.generated_ui.validate",
+      {
+        requestId: request.observability.requestId,
+        tripId: request.trip.id,
+        agentSessionId: request.trip.id,
+        turnId: request.observability.turnId,
+        runtime: request.observability.runtime,
+        uiContractVersion: AGENT_UI_CONTRACT_VERSION,
+        uiAttempt: attempt,
+        uiHighRisk: requireStreetViewToolResult,
+      },
+      async () => {
+        const result = validateAgentUiProtocol(parts, {
+          requireStreetViewToolResult,
+        });
+        setActiveSpanAttributes({
+          uiOutcome: result.valid ? "accepted" : "rejected",
+          ...(result.reason ? { uiReason: result.reason } : {}),
+        });
+        return result;
+      },
+    );
+    logger[validation.valid ? "info" : "warn"](
+      validation.valid
+        ? "agent.generated_ui.accepted"
+        : "agent.generated_ui.rejected",
+      {
+        runtime: request.observability.runtime,
+        requestId: request.observability.requestId,
+        tripId: request.trip.id,
+        turnId: request.observability.turnId,
+        attempt,
+        highRisk: requireStreetViewToolResult,
+        uiContractVersion: AGENT_UI_CONTRACT_VERSION,
+        outcome: validation.valid ? "accepted" : "rejected",
+        reason: validation.reason,
+      },
+    );
+    return validation;
+  }
+
+  private async fallbackResponse(
+    request: AgentChatRequest,
+    reason: AgentUiFallbackReason,
+  ): Promise<Response> {
+    const messageId = generateId();
+    const part = createAgentUiFallbackPart(reason);
+    logger.warn("agent.generated_ui.fallback", {
+      runtime: request.observability.runtime,
+      requestId: request.observability.requestId,
+      tripId: request.trip.id,
+      turnId: request.observability.turnId,
+      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
+      outcome: "fallback",
+      reason,
+    });
+    await request.onFinish([part as unknown as AgentMessagePart], messageId);
+    return createUIMessageStreamResponse({
+      stream: replayUiMessageChunks(
+        uiMessageChunksFromParts(messageId, [part as UIMessage["parts"][number]]),
+      ),
+    });
+  }
+
+  private async gatedStreetViewResponse(options: {
+    request: AgentChatRequest;
+    messages: ModelMessage[];
+    tools: ToolSet;
+    originalMessages: UIMessage[];
+    refinementSpec: Spec | null;
+    groundedTurn: GroundedStreetViewTurn;
+  }): Promise<Response> {
+    const {
+      request,
+      messages,
+      tools,
+      originalMessages,
+      refinementSpec,
+      groundedTurn,
+    } = options;
+    if (!this.streetViewService) {
+      return this.fallbackResponse(request, "service_unavailable");
+    }
+
+    const first = await bufferUiMessageStream(
+      this.createChatUiStream({
+        request,
+        messages,
+        tools,
+        streetViewPolicy: new StreetViewToolPolicy(),
+        groundedTurn,
+        originalMessages,
+        refinementSpec,
+        maxSteps: this.config.maxToolSteps,
+        allowWrites: true,
+        attempt: 1,
+      }),
+    );
+    if (awaitingManualApproval(first.message.parts)) {
+      await request.onFinish(
+        first.message.parts as AgentMessagePart[],
+        first.message.id,
+      );
+      return createUIMessageStreamResponse({
+        stream: replayUiMessageChunks(first.chunks),
+      });
+    }
+
+    const firstValidation = await this.validateGeneratedUi(
+      request,
+      first.message.parts as AgentMessagePart[],
+      1,
+      true,
+    );
+    if (firstValidation.valid) {
+      await request.onFinish(
+        first.message.parts as AgentMessagePart[],
+        first.message.id,
+      );
+      return createUIMessageStreamResponse({
+        stream: replayUiMessageChunks(first.chunks),
+      });
+    }
+
+    logger.warn("agent.generated_ui.repair_started", {
+      runtime: request.observability.runtime,
+      requestId: request.observability.requestId,
+      tripId: request.trip.id,
+      turnId: request.observability.turnId,
+      attempt: 2,
+      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
+      reason: firstValidation.reason,
+    });
+
+    const trustedParts = trustedStreetViewParts(first.message.parts);
+    const repairPolicy = new StreetViewToolPolicy();
+    const repairTools =
+      trustedParts.length > 0
+        ? {}
+        : this.readTools(
+            request.trip.id,
+            repairPolicy,
+            request.observability,
+          );
+    const repair = await bufferUiMessageStream(
+      this.createChatUiStream({
+        request,
+        messages:
+          trustedParts.length > 0
+            ? [
+                ...messages,
+                repairInstruction(trustedParts, firstValidation.reason),
+              ]
+            : messages,
+        tools: repairTools,
+        streetViewPolicy: repairPolicy,
+        groundedTurn:
+          trustedParts.length > 0
+            ? { required: false, hasCoordinates: false }
+            : groundedTurn,
+        originalMessages: [],
+        refinementSpec: null,
+        maxSteps: AGENT_UI_REPAIR_MAX_STEPS,
+        allowWrites: false,
+        attempt: 2,
+        systemSuffix:
+          "This is the only repair attempt. Follow the grounding and generated UI contract exactly.",
+      }),
+    );
+
+    const repairedParts =
+      trustedParts.length > 0
+        ? ([
+            ...trustedParts,
+            ...repair.message.parts.filter((part) => !isToolUIPart(part)),
+          ] as UIMessage["parts"])
+        : repair.message.parts;
+    const secondValidation = await this.validateGeneratedUi(
+      request,
+      repairedParts as AgentMessagePart[],
+      2,
+      true,
+    );
+    if (!secondValidation.valid) {
+      return this.fallbackResponse(
+        request,
+        fallbackReasonFor(secondValidation.reason ?? firstValidation.reason),
+      );
+    }
+
+    const messageId = repair.message.id || first.message.id;
+    logger.info("agent.generated_ui.repair_completed", {
+      runtime: request.observability.runtime,
+      requestId: request.observability.requestId,
+      tripId: request.trip.id,
+      turnId: request.observability.turnId,
+      attempt: 2,
+      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
+      outcome: "repaired",
+      reusedToolResult: trustedParts.length > 0,
+    });
+    await request.onFinish(repairedParts as AgentMessagePart[], messageId);
+    const chunks =
+      trustedParts.length > 0
+        ? uiMessageChunksFromParts(messageId, repairedParts)
+        : repair.chunks;
+    return createUIMessageStreamResponse({
+      stream: replayUiMessageChunks(chunks),
+    });
+  }
+
   async streamChat(request: AgentChatRequest): Promise<Response> {
     const streetViewPolicy = new StreetViewToolPolicy();
     const tools = this.chatTools(
@@ -973,68 +1522,38 @@ export class AiSdkAgentModel implements AgentModel {
       role: m.role as UIMessage["role"],
       parts: m.parts as UIMessage["parts"],
     })) as UIMessage[];
+    const groundedTurn = groundedStreetViewTurn(request.history);
+    const approvalContinuation = clientHasToolApprovalResponse(
+      request.clientMessages ?? [],
+    );
+    if (groundedTurn.required && !approvalContinuation) {
+      return this.gatedStreetViewResponse({
+        request,
+        messages,
+        tools,
+        originalMessages,
+        refinementSpec,
+        groundedTurn,
+      });
+    }
 
-    const result = streamText({
-      model: this.model,
-      system: this.chatSystem(request.trip),
+    const generatedStream = this.createChatUiStream({
+      request,
       messages,
       tools,
-      toolApproval: buildWriteToolApproval(request.canEdit),
-      experimental_toolApprovalSecret: this.config.apiKey,
-      providerOptions: this.providerOptions(),
-      // Private trip uploads: resolve via FileStorage, never HTTP-fetch localhost.
-      experimental_download: createTripMediaDownload(
-        this.fileStorage,
-        request.trip.id,
-      ),
-      stopWhen: stepCountIs(this.config.maxToolSteps),
-      prepareStep: ({ instructions }) =>
-        streetViewPolicy.prepareStep(Object.keys(tools), instructions),
-      ...this.lifecycleCallbacks(request.trip.id, request.observability),
-      onError: ({ error }) => {
-        const fields = {
-          runtime: request.observability.runtime,
-          requestId: request.observability.requestId,
-          tripId: request.trip.id,
-          agentSessionId: request.trip.id,
-          turnId: request.observability.turnId,
-          trigger: request.observability.trigger,
-          ...safeAgentErrorFields(error),
-        };
-        logger.error("agent.stream.failed", fields);
-        captureException(error, fields);
-      },
-      runtimeContext: this.runtimeContext(request.trip.id, request.observability),
-      telemetry: {
-        ...this.telemetry("agent.chat"),
-        includeRuntimeContext: this.includedRuntimeContext(),
-      },
+      streetViewPolicy,
+      groundedTurn: { required: false, hasCoordinates: false },
+      originalMessages,
+      refinementSpec,
+      maxSteps: this.config.maxToolSteps,
+      allowWrites: true,
+      attempt: 1,
     });
 
     const stream = createUIMessageStream({
       originalMessages,
       generateId,
-      execute: ({ writer }) => {
-        if (refinementSpec) {
-          // Patch-only refinement needs the validated base spec in the new UI
-          // message so useJsonRenderMessage can apply streamed patches to it.
-          writer.write({
-            type: SPEC_DATA_PART_TYPE,
-            data: { type: "flat", spec: refinementSpec },
-          });
-        }
-        writer.merge(
-          pipeJsonRender(
-            toUIMessageStream({
-              stream: result.stream,
-              tools,
-              originalMessages,
-              generateMessageId: generateId,
-              sendReasoning: true,
-            }),
-          ),
-        );
-      },
+      execute: ({ writer }) => writer.merge(generatedStream),
       // Persist after json-render transforms SpecStream text into data-spec
       // parts; an inner stream callback would only see the raw fenced JSONL.
       onEnd: async ({ responseMessage }) => {
