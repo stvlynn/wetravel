@@ -224,7 +224,7 @@ For a missing or invalid deterministic card, query the copied message id and
 inspect these events and spans in order:
 
 1. `opentrip.provider.geo.place_search` exists for a place request and records
-   `requestedLimit=1`, result count, duration, request id, and turn id. It is
+   `requestedLimit=5`, result count, duration, request id, and turn id. It is
    absent for a coordinate request.
 2. `opentrip.provider.street_view.search` records `radiusMeters=100`,
    `requestedLimit=5`, provider outcome, result count, duration, and the same

@@ -4,6 +4,8 @@ import type {
   AgentStreetViewGrounding,
   AgentStreetViewRequest,
 } from "../../domain/agent";
+import type { GeoCoordinate } from "../../domain/geo";
+import type { TripSnapshot } from "../../domain/trip";
 import type { GeoService } from "../geo/geo-service";
 import {
   noopObservability,
@@ -13,7 +15,13 @@ import { StreetViewError, type StreetViewService } from "../street-view";
 
 const STREET_VIEW_RADIUS_METERS = 100;
 const STREET_VIEW_RESULT_LIMIT = 5;
-const PLACE_SEARCH_LIMIT = 1;
+const PLACE_SEARCH_LIMIT = 5;
+/**
+ * Max distance from the trip destination center for a same-named local
+ * candidate to replace Nominatim's global top result. Keeps explicit
+ * far-away lookups (e.g. the Eiffel Tower on a Tokyo trip) intact.
+ */
+const DESTINATION_OVERRIDE_RADIUS_METERS = 50_000;
 const MAX_REQUEST_TEXT_LENGTH = 240;
 const GROUNDING_PART_TYPE = "data-agent-grounding";
 
@@ -238,6 +246,55 @@ function groundingText(
   return "Street view is temporarily unavailable. Try again later.";
 }
 
+/** Destination center geocoded at trip create/read; undefined when unknown. */
+export function destinationCenterFromTrip(
+  snapshot: TripSnapshot,
+): GeoCoordinate | undefined {
+  const lat = snapshot.intake?.destinationLat;
+  const lng = snapshot.intake?.destinationLng;
+  if (typeof lat !== "number" || typeof lng !== "number") return undefined;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return undefined;
+  return { lat, lng };
+}
+
+/** Haversine distance in meters; candidate selection only, not navigation-grade. */
+function distanceMeters(a: GeoCoordinate, b: GeoCoordinate): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Prefer Nominatim's global top result. When the trip destination center is
+ * known and the top result is far from it while another candidate is close,
+ * the query matched a same-named place elsewhere — use the closest candidate.
+ */
+function selectPlace<T extends GeoCoordinate>(
+  places: readonly T[],
+  near: GeoCoordinate | undefined,
+): T | undefined {
+  const top = places[0];
+  if (!top || !near) return top;
+  if (distanceMeters(top, near) <= DESTINATION_OVERRIDE_RADIUS_METERS) {
+    return top;
+  }
+  let closest: T | undefined;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  for (const place of places) {
+    const distance = distanceMeters(place, near);
+    if (distance < closestDistance) {
+      closest = place;
+      closestDistance = distance;
+    }
+  }
+  return closestDistance <= DESTINATION_OVERRIDE_RADIUS_METERS ? closest : top;
+}
+
 /** Deterministic application orchestration for every street-view agent entry. */
 export class StreetViewGroundingService {
   constructor(
@@ -249,6 +306,8 @@ export class StreetViewGroundingService {
   async resolve(input: {
     tripId: string;
     history: readonly AgentMessage[];
+    /** Trip destination center used to disambiguate same-named places. */
+    near?: GeoCoordinate;
     observability?: {
       requestId?: string;
       turnId?: string;
@@ -298,6 +357,7 @@ export class StreetViewGroundingService {
               query: request.query,
               limit: PLACE_SEARCH_LIMIT,
               lang: request.language,
+              near: input.near,
             });
             span.setAttribute("opentrip.provider.result_count", result.length);
             span.setAttribute(
@@ -307,7 +367,7 @@ export class StreetViewGroundingService {
             return result;
           },
         );
-        const place = places[0];
+        const place = selectPlace(places, input.near);
         if (!place) {
           this.logOutcome(input, request, "place_not_found", 0, 0);
           return {

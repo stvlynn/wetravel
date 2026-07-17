@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentMessage } from "../src/domain/agent";
-import { StreetViewGroundingService } from "../src/application/agent/street-view-grounding-service";
+import {
+  destinationCenterFromTrip,
+  StreetViewGroundingService,
+} from "../src/application/agent/street-view-grounding-service";
 import type { GeoService } from "../src/application/geo/geo-service";
 import type { StreetViewService } from "../src/application/street-view";
 import {
@@ -103,7 +106,7 @@ describe("StreetViewGroundingService", () => {
     expect(placeSearch).toHaveBeenCalledTimes(1);
     expect(placeSearch).toHaveBeenCalledWith({
       query: "东京塔",
-      limit: 1,
+      limit: 5,
       lang: "zh",
     });
     expect(searchNearby).toHaveBeenCalledTimes(1);
@@ -170,7 +173,7 @@ describe("StreetViewGroundingService", () => {
     expect(placeSearch).toHaveBeenCalledTimes(1);
     expect(placeSearch).toHaveBeenCalledWith({
       query: "Unknown Place",
-      limit: 1,
+      limit: 5,
       lang: "en",
     });
     expect(searchNearby).not.toHaveBeenCalled();
@@ -300,7 +303,7 @@ describe("StreetViewGroundingService", () => {
     expect(spans[0]?.fields).toMatchObject({
       requestId: "request-1",
       turnId: "turn-1",
-      requestedLimit: 1,
+      requestedLimit: 5,
       "opentrip.provider.result_count": 1,
     });
     expect(spans[1]?.fields).toMatchObject({
@@ -339,6 +342,143 @@ describe("StreetViewGroundingService", () => {
     expect(result).toBeNull();
     expect(placeSearch).not.toHaveBeenCalled();
     expect(searchNearby).not.toHaveBeenCalled();
+  });
+
+  it("prefers the candidate closest to the trip destination when the top result is far away", async () => {
+    const { service, placeSearch, searchNearby } = services({
+      places: [
+        {
+          id: "zhongshan-park-beijing",
+          name: "中山公园",
+          label: "中山公园, 北京",
+          lat: 39.9097,
+          lng: 116.3912,
+          categories: [],
+        },
+        {
+          id: "zhongshan-park-shanghai",
+          name: "中山公园",
+          label: "中山公园, 上海",
+          lat: 31.2243,
+          lng: 121.4246,
+          categories: [],
+        },
+      ],
+    });
+    const result = await service.resolve({
+      tripId: "trip-1",
+      history: [
+        message("user", [{ type: "text", text: "@agent 看看中山公园附近街景" }]),
+      ],
+      near: { lat: 31.2304, lng: 121.4737 },
+    });
+
+    expect(placeSearch).toHaveBeenCalledWith({
+      query: "中山公园",
+      limit: 5,
+      lang: "zh",
+      near: { lat: 31.2304, lng: 121.4737 },
+    });
+    expect(searchNearby).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 31.2243, lng: 121.4246 }),
+    );
+    expect(result).toMatchObject({
+      outcome: "found",
+      placeLabel: "中山公园, 上海",
+    });
+  });
+
+  it("keeps the global top result when it is already near the destination", async () => {
+    const { service, searchNearby } = services({
+      places: [
+        {
+          id: "zhongshan-park-shanghai",
+          name: "中山公园",
+          label: "中山公园, 上海",
+          lat: 31.2243,
+          lng: 121.4246,
+          categories: [],
+        },
+        {
+          id: "zhongshan-park-beijing",
+          name: "中山公园",
+          label: "中山公园, 北京",
+          lat: 39.9097,
+          lng: 116.3912,
+          categories: [],
+        },
+      ],
+    });
+    const result = await service.resolve({
+      tripId: "trip-1",
+      history: [
+        message("user", [{ type: "text", text: "@agent 看看中山公园附近街景" }]),
+      ],
+      near: { lat: 31.2304, lng: 121.4737 },
+    });
+
+    expect(searchNearby).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 31.2243, lng: 121.4246 }),
+    );
+    expect(result).toMatchObject({ placeLabel: "中山公园, 上海" });
+  });
+
+  it("keeps the global top result when every candidate is far from the destination", async () => {
+    const { service, searchNearby } = services({
+      places: [
+        {
+          id: "eiffel-tower",
+          name: "Eiffel Tower",
+          label: "Eiffel Tower, Paris",
+          lat: 48.8584,
+          lng: 2.2945,
+          categories: [],
+        },
+      ],
+    });
+    const result = await service.resolve({
+      tripId: "trip-1",
+      history: [
+        message("user", [{ type: "text", text: "Street view near Eiffel Tower" }]),
+      ],
+      near: { lat: 35.6762, lng: 139.6503 },
+    });
+
+    expect(searchNearby).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 48.8584, lng: 2.2945 }),
+    );
+    expect(result).toMatchObject({ placeLabel: "Eiffel Tower, Paris" });
+  });
+});
+
+describe("destinationCenterFromTrip", () => {
+  it("returns the geocoded destination center and rejects missing or invalid values", () => {
+    expect(
+      destinationCenterFromTrip({
+        intake: {
+          destination: "Tokyo",
+          destinationLat: 35.6762,
+          destinationLng: 139.6503,
+        },
+      } as TripSnapshot),
+    ).toEqual({ lat: 35.6762, lng: 139.6503 });
+    expect(
+      destinationCenterFromTrip({ intake: null } as TripSnapshot),
+    ).toBeUndefined();
+    expect(
+      destinationCenterFromTrip({
+        intake: { destination: "Tokyo" },
+      } as TripSnapshot),
+    ).toBeUndefined();
+    expect(
+      destinationCenterFromTrip({
+        intake: {
+          destination: "Nowhere",
+          destinationLat: 95,
+          destinationLng: 139,
+        },
+      } as TripSnapshot),
+    ).toBeUndefined();
   });
 });
 

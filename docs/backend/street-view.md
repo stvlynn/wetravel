@@ -63,8 +63,13 @@ Street view has one agent path:
 1. `StreetViewGroundingService` recognizes the bounded English/Chinese request
    grammar, including a valid coordinate pair. It never asks a model to extract
    a place.
-2. A place request calls `GeoService.placeSearch` exactly once with `limit=1`.
-   A coordinate request skips geo lookup.
+2. A place request calls `GeoService.placeSearch` exactly once with `limit=5`.
+   A coordinate request skips geo lookup. When the trip intake holds a geocoded
+   destination center, the search passes it as `near` (provider viewbox bias);
+   if the global top result is farther than 50 km from that center while
+   another candidate lies within 50 km, the closest candidate wins, so
+   same-named places elsewhere no longer capture the card. Explicit far-away
+   lookups (no nearby candidate) keep the global top result.
 3. A resolved coordinate calls `StreetViewService.searchNearby` exactly once
    with `radiusMeters=100` and `limit=5`. There is no application-level radius
    expansion or alternate strategy. Mapillary's bounded transport retry and

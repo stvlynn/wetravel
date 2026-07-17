@@ -40,7 +40,10 @@ import {
 import { buildUserMessageParts, containsAgentMention, mentionedUserIdsFromParts } from "./mentions";
 import { looksLikeAgentThreadFollowUp } from "./addressed";
 import { createSequentialTripPatchApplier } from "./sequential-trip-patch-applier";
-import type { StreetViewGroundingService } from "./street-view-grounding-service";
+import {
+  destinationCenterFromTrip,
+  type StreetViewGroundingService,
+} from "./street-view-grounding-service";
 import {
   noopObservability,
   type Observability,
@@ -359,6 +362,7 @@ export class AgentService {
       : (await this.streetViewGroundingService.resolve({
           tripId,
           history,
+          near: destinationCenterFromTrip(trip.toSnapshot()),
           observability,
         })) ?? undefined;
 
@@ -714,6 +718,7 @@ export class AgentService {
         const streetViewGrounding = await this.streetViewGroundingService.resolve({
           tripId,
           history,
+          near: destinationCenterFromTrip(trip.toSnapshot()),
           observability,
         });
         // Deterministic: short confirmations / follow-ups right after an agent
@@ -777,6 +782,7 @@ export class AgentService {
           (await this.streetViewGroundingService.resolve({
             tripId,
             history,
+            near: destinationCenterFromTrip(trip.toSnapshot()),
             observability,
           })) ??
           undefined;
