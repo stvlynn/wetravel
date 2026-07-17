@@ -71,3 +71,8 @@ Log whether search `toModelOutput` attached a preview (`attached` /
 - Unit: empty → text only; preview read failure → text with unavailable note.
 - Existing inspect and grounding sanitizer tests remain green.
 - Docs: `docs/backend/street-view.md`, `docs/backend/agent.md`.
+# Superseded
+
+This historical model-tool design was replaced by the deterministic
+application-layer grounding flow in `docs/backend/street-view.md`. It is not a
+current implementation guide.

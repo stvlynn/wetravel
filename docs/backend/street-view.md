@@ -56,52 +56,41 @@ Ordinary provider 5xx responses are never treated as density signals. Network,
 region, split, attempt, upstream status, completeness, and duration but never
 access tokens, response bodies, or provider image URLs.
 
-## Agent tools and image input
+## Deterministic agent grounding
 
-`streetViewSearch` returns compact platform-neutral JSON with explicit
-`found`/`empty` and `complete`/`partial` semantics. A successful static-only or
-empty result is never a tool failure and does not establish a global provider
-coverage gap. Persisted tool output stays JSON-only. Its AI SDK `toModelOutput`
-adds trusted English captions from DTO fields and, when a ranked
-`supports360=false` image exists, at most one bounded static preview for the
-current model step. Panorama-only hits and preview failures stay text-only.
-`street_view.search_model_output` logs the attach outcome
-(`attached` / `skipped_empty` / `skipped_panorama_only` / `preview_unavailable`).
+Street view has one agent path:
 
-The agent runtime always executes the first search at 100 m, even if the model
-supplies a larger radius. It may retry once at the same center with a radius no
-greater than 250 m, and only after a successful `empty` or `partial` result.
-These runtime bounds keep dense-area fan-out inside the provider's shared
-request/deadline budget; prompt wording alone is not treated as enforcement. A
-thrown provider error removes both street-view tools for the rest of that
-generation and must not trigger guessed-coordinate retries or be presented as
-proof of missing coverage. After a `found` search the model must emit
-`StreetViewCard` with a returned id in the same reply rather than replacing the
-card with a prose metadata caption.
+1. `StreetViewGroundingService` recognizes the bounded English/Chinese request
+   grammar, including a valid coordinate pair. It never asks a model to extract
+   a place.
+2. A place request calls `GeoService.placeSearch` exactly once with `limit=1`.
+   A coordinate request skips geo lookup.
+3. A resolved coordinate calls `StreetViewService.searchNearby` exactly once
+   with `radiusMeters=100` and `limit=5`. There is no application-level radius
+   expansion or alternate strategy. Mapillary's bounded transport retry and
+   dense-region subdivision remain internal to its single provider operation.
+4. The result is one discriminated outcome: `found`, `empty`,
+   `place_not_found`, `invalid_request`, or `service_unavailable`.
+5. The AI SDK adapter creates the UIMessage; it does not call `streamText` for
+   this turn. Ordinary chat continues to use `streamText` and its normal tools.
 
-An explicit Chinese or English street-view request is treated as a high-risk
-grounded turn. AI SDK step preparation forces `placeSearch` first unless the
-member supplied coordinates, then forces `streetViewSearch`; prompt compliance
-alone is not sufficient. The finished response remains server-buffered until
-the generated-UI protocol gate confirms a successful `found` or `empty` result
-and validates any card against that same result. At most one repair attempt is
-allowed, and repair never enables trip write tools.
+“Second” / “第二个” continuation is accepted only when the immediately preceding
+assistant message contains a valid persistent `data-agent-grounding` part. The
+application never infers this state from assistant prose.
 
-`StreetViewCard` and `openStreetView` are grounded capabilities: their image id
-must appear in a successful street-view tool output in the same assistant
-UIMessage. The shared catalog sanitizer applies this rule during streaming,
-history rendering, and persistence, so text or an older message cannot smuggle
-an opaque id into generated UI.
+`found` writes localized text, persistent grounding data, and a server-built
+flat `StreetViewCard` spec. `empty` writes text and grounding without a card.
+Failures write text, grounding, and typed status. A transient
+`service_unavailable` result is retryable and includes a structured normalized
+request; missing configuration and non-retryable provider errors do not show a
+retry action. All agent entry points—streaming chat, ambient replies, and stop
+comments—use the same service and deterministic parts.
 
-`streetViewInspect` remains available for another static id from this turn's
-search. It also uses async `toModelOutput` for one ordinary static preview. The
-application rejects `supports360=true` images before reading bytes, so panorama
-content is available only to the member through the card preview and isolated
-interactive viewer. No provider URL, token, or base64 is stored in tool output.
-
-`appendStopNote` is a generic approval-gated write op. It appends inside the
-Trip aggregate so the agent cannot overwrite note content omitted by the
-2,000-character prompt-context limit.
+Only image ids in an `outcome=found` grounding part in the same assistant
+UIMessage authorize `StreetViewCard`. Tool parts, assistant text, older
+messages, client-submitted control parts, and model-generated specs cannot add
+trusted ids. The catalog prompt explicitly forbids the model from generating
+street-view UI, and the sanitizer removes an unauthorized card.
 
 ## Configuration
 

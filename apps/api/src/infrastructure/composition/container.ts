@@ -7,6 +7,7 @@ import {
   GeoService,
   LodgingService,
   AgentService,
+  StreetViewGroundingService,
   TripMediaService,
   StreetViewService,
   ReservationService,
@@ -203,7 +204,11 @@ export function createContainer(
           geoService,
           lodgingService,
           fileStorage,
+        ),
+        new StreetViewGroundingService(
+          geoService,
           streetViewService,
+          observability,
         ),
         {
           proactiveThreshold: config.ai.proactiveThreshold,

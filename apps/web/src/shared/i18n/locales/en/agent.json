@@ -56,13 +56,14 @@
     "staleDay": "That day is no longer in this trip.",
     "staleStop": "That stop is no longer in this trip.",
     "fallback": {
-      "title": "Street view could not be displayed",
-      "protocol_invalid": "The generated response did not match the safe display format.",
-      "grounding_failed": "The response could not be verified against a street-view search result.",
+      "title": "Street view unavailable",
+      "place_not_found": "That place could not be found. Try a more specific place name.",
+      "invalid_request": "Provide a specific place name or valid coordinates.",
       "service_unavailable": "The street-view service is temporarily unavailable.",
       "retry": "Retry",
       "retrying": "Retrying…",
-      "retryMessage": "Please retry the previous street-view request and return a grounded result."
+      "retryPlaceMessage": "@agent Show street view near {{place}}.",
+      "retryCoordinateMessage": "@agent Show street view at {{lat}}, {{longitude}}."
     },
     "streetView": {
       "previewAlt": "Street-view preview",
@@ -89,8 +90,6 @@
       "routeMatrix": "Route matrix",
       "reviewLookup": "Look up reviews",
       "readTripMedia": "Read trip file",
-      "streetViewSearch": "Search street view",
-      "streetViewInspect": "Inspect street view",
       "appendStopNote": "Append stop note"
     }
   },

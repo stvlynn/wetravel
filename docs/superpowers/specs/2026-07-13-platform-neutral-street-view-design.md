@@ -383,3 +383,8 @@ Implementation updates:
 
 No production endpoint, bucket name, account value, or access token is
 committed.
+# Superseded
+
+This historical design was replaced by the deterministic application-layer
+grounding flow in `docs/backend/street-view.md`. It is retained only as design
+history.

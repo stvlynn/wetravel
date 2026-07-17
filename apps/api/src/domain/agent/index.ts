@@ -1,5 +1,6 @@
 export type {
   AgentApprovalResponse,
+  AgentLanguage,
   AgentMessage,
   AgentMessagePart,
   AgentMessageRole,
@@ -7,6 +8,8 @@ export type {
   AgentSeverity,
   AgentSuggestion,
   AgentSuggestionStatus,
+  AgentStreetViewGrounding,
+  AgentStreetViewRequest,
   AgentTextPart,
   InterventionDecision,
   NewAgentMessage,
@@ -19,6 +22,7 @@ export type {
   AgentChatRequest,
   AgentClientUIMessage,
   AgentEvaluationRequest,
+  AgentReplyRequest,
   AgentModel,
   AgentObservabilityContext,
   AgentSessionRepository,

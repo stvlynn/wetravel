@@ -69,8 +69,6 @@ proactive `pendingPatch` stay in sync.
 | `airbnbSearch` | none (auto) | Airbnb vacation-rental search via `LodgingService` |
 | `airbnbListingDetails` | none (auto) | Airbnb listing amenities/rules/description |
 | `readTripMedia` | none (auto) | Read a trip-owned upload (image/PDF/text) via AI SDK `toModelOutput`; URL must be this trip’s `/api/uploads/trips/…` path |
-| `streetViewSearch` | none (auto) | Find normalized street-level imagery; `toModelOutput` adds trusted captions + at most one static preview |
-| `streetViewInspect` | none (auto) | Supply one bounded ordinary static preview for another search id; panorama inspection is rejected |
 | *(from registry)* | `user-approval` | All trip-scoped editor mutations (`renameTrip`, `insertStop`, …) |
 
 Geo and lodging tools are read-only and do not mutate trips. Adding a discovered
@@ -78,10 +76,10 @@ place or stay still uses `insertStop` (and approval). Provider selection and
 caching for geo are documented in [geo.md](./geo.md); lodging (Airbnb scrape) in
 [lodging.md](./lodging.md).
 
-Street-view tools are provider-neutral; Mapillary is isolated behind the
-`StreetViewProvider` adapter. `appendStopNote` is approval-gated and appends
-inside the aggregate instead of replacing truncated prompt context. See
-[street-view.md](./street-view.md).
+Street view is not a model tool. `StreetViewGroundingService` parses explicit
+requests in the application layer, calls `GeoService` and `StreetViewService`
+with fixed bounds, and gives the AI adapter a completed result. Mapillary stays
+isolated behind `StreetViewProvider`. See [street-view.md](./street-view.md).
 
 ### Itinerary planning workflow
 
@@ -179,20 +177,20 @@ member message explicitly asks to edit a recent generated card, the adapter
 uses json-render's `buildUserPrompt({ currentSpec, editModes: ["patch"] })`
 refinement format and seeds the new UI message with the validated base spec
 before streaming patches. Specs are size-bounded, limited to the recent thread,
-and street-view cards are excluded because their image ids must be grounded by
-a successful tool output in the same new assistant message. An unchanged seed
+and street-view cards are excluded because only the application may create
+them from a successful persistent grounding part. An unchanged seed
 is not persisted as a duplicate card. A UI-only assistant reply counts as
 content and is persisted.
 
-Explicit street-view turns use a server-side generated-UI gate. The adapter
-buffers the complete transformed UIMessage before exposing or persisting it,
-then verifies the versioned contract, catalog schema, tool result, and every
-`StreetViewCard` image id. A rejected first attempt gets one bounded repair:
-trusted successful tool output is reused without another provider call, while
-a missing result reruns only the read-tool workflow. The rejected draft is
-never included in the repair prompt or sent to the browser. A second rejection
-persists only a typed `data-agent-status` fallback part; it never persists or
-renders the invalid model text.
+Explicit street-view turns never invoke the language model. The application
+returns one of `found`, `empty`, `place_not_found`, `invalid_request`, or
+`service_unavailable`; the AI adapter writes a standard typed UIMessage stream
+with persistent `data-agent-grounding`, fixed localized text, and, for
+`found`, one server-built flat `StreetViewCard` `data-spec`. Failure outcomes
+also carry persistent `data-agent-status`. The browser hides the accompanying
+text when status UI is present, while stop-comment replies still persist that
+text. Grounding and status parts are ignored when converting later messages to
+model context. They are server-owned and stripped from client continuations.
 
 ## Approving a suggestion
 

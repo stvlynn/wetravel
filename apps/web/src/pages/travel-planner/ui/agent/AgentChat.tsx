@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import type { UIMessage } from "ai";
 import type { Trip } from "@/entities/trip";
 import { clearAgentSeedPending, type AgentSuggestion } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { Spinner } from "@/shared/ui/spinner";
 import { useAgentChat } from "../../model/useAgentChat";
 import { buildAgentSeedMessage } from "../../lib/buildAgentSeedMessage";
+import type { AgentUIMessage } from "../../model/agent-ui-message";
 import { type QuoteTarget } from "../quote";
 import { AgentComposer } from "./AgentComposer";
 import {
@@ -69,7 +69,7 @@ export function AgentChat({
     actorName: m.actorName,
     source: m.source,
     createdAt: m.createdAt,
-    parts: m.parts as UIMessage["parts"],
+    parts: m.parts as AgentUIMessage["parts"],
   }));
 
   // Live streaming buffer: only messages not yet in shared history. Server

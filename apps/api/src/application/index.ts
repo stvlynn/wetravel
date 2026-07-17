@@ -47,6 +47,10 @@ export {
   type Defer,
 } from "./agent/agent-service";
 export {
+  StreetViewGroundingService,
+  parseStreetViewRequest,
+} from "./agent/street-view-grounding-service";
+export {
   type AgentMessageDto,
   type AgentSuggestionDto,
   type AgentHistoryDto,

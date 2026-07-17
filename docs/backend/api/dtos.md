@@ -264,12 +264,48 @@ an immediate list GET (Hyperdrive may serve a stale cached SELECT).
 | `parts` | `AgentMessagePart[]` | Text and/or richer AI SDK parts |
 | `actorUserId` | string \| null | Human author; null for agent |
 | `actorName` | string \| null | Resolved from trip membership |
-| `source` | `"chat" \| "mention" \| "operation" \| "threshold"` | Origin |
+| `source` | `"chat" \| "mention" \| "operation" \| "threshold" \| "stop_comment"` | Origin |
 | `mentionedUserIds` | string[] | @mentioned Better Auth user ids |
 | `createdAt` | string | ISO time |
 
 Text part: `{ type: "text"; text: string }`. Assistant messages may include
-tool / approval parts with additional fields.
+tool / approval parts with additional fields. Agent UI uses these typed,
+persistent data parts (neither is transient):
+
+```ts
+type AgentGroundingPart = {
+  type: "data-agent-grounding";
+  id: string;
+  data: {
+    kind: "street-view";
+    outcome:
+      | "found"
+      | "empty"
+      | "place_not_found"
+      | "invalid_request"
+      | "service_unavailable";
+    request?:
+      | { kind: "place"; query: string; language: "en" | "zh"; selectionIndex: number }
+      | { kind: "coordinate"; lat: number; lng: number; language: "en" | "zh"; selectionIndex: number };
+    placeLabel?: string;
+    imageIds: string[];
+    selectedImageId?: string;
+  };
+};
+
+type AgentStatusPart = {
+  type: "data-agent-status";
+  id: string;
+  data: {
+    kind: "generated-ui-fallback";
+    reason: "place_not_found" | "invalid_request" | "service_unavailable";
+    retryable: boolean;
+    retryRequest?: { request: AgentGroundingPart["data"]["request"] };
+  };
+};
+```
+
+Only `outcome="found"` grounding image ids authorize a street-view card.
 
 ### `AgentSuggestionDto`
 

@@ -67,9 +67,21 @@ describe("agent UI spec parts", () => {
   it("does not carry turn-grounded street-view cards into refinement", () => {
     const parts = [
       {
-        type: "tool-streetViewSearch",
-        state: "output-available",
-        output: { outcome: "found", images: [{ id: "image-1" }] },
+        type: "data-agent-grounding",
+        id: "grounding-1",
+        data: {
+          kind: "street-view",
+          outcome: "found",
+          request: {
+            kind: "place",
+            query: "Temple gate",
+            language: "en",
+            selectionIndex: 0,
+          },
+          placeLabel: "Temple gate",
+          imageIds: ["image-1"],
+          selectedImageId: "image-1",
+        },
       },
       {
         type: "data-spec",
@@ -155,21 +167,14 @@ describe("agent UI spec parts", () => {
     expect(partial?.elements.card?.children).toEqual([]);
   });
 
-  it("accepts bounded street-view cards and open actions", () => {
+  it("accepts only bounded application-grounded street-view cards", () => {
     const spec = {
-      root: "stack",
+      root: "view",
       elements: {
-        stack: { type: "Stack", props: {}, children: ["view", "open"] },
         view: {
           type: "StreetViewCard",
           props: { imageId: "123456", placeLabel: "Temple gate" },
           children: [],
-        },
-        open: {
-          type: "ActionButton",
-          props: { label: "Open street view" },
-          children: [],
-          on: { press: { action: "openStreetView", params: { imageId: "123456" } } },
         },
       },
     };
@@ -177,46 +182,38 @@ describe("agent UI spec parts", () => {
       safeAgentUiSpec(spec, { allowedStreetViewImageIds: new Set(["123456"]) })
         ?.elements.view?.type,
     ).toBe("StreetViewCard");
-    expect(safeAgentUiSpec(spec)?.elements.view).toBeUndefined();
-    const sanitized = safeAgentUiSpec({
-        ...spec,
-        elements: {
-          ...spec.elements,
-          open: {
-            ...spec.elements.open,
-            on: { press: { action: "openStreetView", params: { imageId: "../token" } } },
-          },
-        },
-      }, { allowedStreetViewImageIds: new Set(["123456"]) });
-    expect(sanitized?.elements.open).toBeUndefined();
-    expect(sanitized?.elements.stack?.children).toEqual(["view"]);
+    expect(safeAgentUiSpec(spec)).toBeNull();
   });
 
-  it("trusts street-view ids only from successful tool outputs", () => {
+  it("trusts street-view ids only from successful grounding parts", () => {
     const parts = [
       {
-        type: "tool-streetViewSearch",
-        state: "output-available",
-        output: {
+        type: "data-agent-grounding",
+        id: "grounding-found",
+        data: {
+          kind: "street-view",
           outcome: "found",
-          images: [{ id: "trusted-search" }, { id: "also-trusted" }],
+          request: {
+            kind: "coordinate",
+            lat: 35,
+            lng: 139,
+            language: "en",
+            selectionIndex: 0,
+          },
+          placeLabel: "35.0000, 139.0000",
+          imageIds: ["trusted-search", "also-trusted"],
+          selectedImageId: "trusted-search",
         },
       },
       {
-        type: "tool-streetViewInspect",
-        state: "output-available",
-        output: { id: "trusted-inspect" },
-      },
-      {
         type: "tool-streetViewSearch",
-        state: "output-error",
+        state: "output-available",
         output: { outcome: "found", images: [{ id: "not-trusted" }] },
       },
     ];
     expect([...allowedStreetViewImageIds(parts)]).toEqual([
       "trusted-search",
       "also-trusted",
-      "trusted-inspect",
     ]);
   });
 
@@ -278,30 +275,21 @@ describe("agent UI spec parts", () => {
     ).toEqual({ valid: true });
   });
 
-  it("requires a real street-view result for grounded turns", () => {
-    expect(
-      validateAgentUiProtocol([{ type: "text", text: "I found it" }], {
-        requireStreetViewToolResult: true,
-      }),
-    ).toEqual({ valid: false, reason: "missing_required_tool" });
-    expect(
-      validateAgentUiProtocol(
-        [
-          {
-            type: "tool-streetViewSearch",
-            state: "output-available",
-            output: { outcome: "empty", images: [] },
-          },
-          { type: "text", text: "No nearby imagery was returned." },
-        ],
-        { requireStreetViewToolResult: true },
-      ),
-    ).toEqual({ valid: true });
-  });
-
   it("creates a typed localized fallback signal", () => {
-    const part = createAgentUiFallbackPart("grounding_failed");
+    const part = createAgentUiFallbackPart("service_unavailable", {
+      id: "status-turn-1",
+      retryable: true,
+      retryRequest: {
+        request: {
+          kind: "place",
+          query: "Tokyo Tower",
+          language: "en",
+          selectionIndex: 0,
+        },
+      },
+    });
     expect(isAgentStatusPart(part)).toBe(true);
     expect(part.data.retryable).toBe(true);
+    expect(part.id).toBe("status-turn-1");
   });
 });

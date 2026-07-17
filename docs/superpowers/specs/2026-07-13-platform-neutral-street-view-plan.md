@@ -18,3 +18,8 @@
    add focused unit, HTTP, and UI tests; run type checks and relevant test suites.
 8. Query bounded panorama and general candidate lanes in the provider, merge by
    id, then filter, rank, and truncate deterministically in the application.
+# Superseded
+
+This historical plan was replaced by the deterministic application-layer
+grounding flow in `docs/backend/street-view.md`. Street view is no longer an AI
+SDK model tool.

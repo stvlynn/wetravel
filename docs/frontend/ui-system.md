@@ -68,10 +68,13 @@ validation and an error boundary isolate invalid generated content from the
 chat timeline. Static fallback, status, and comparison copy stays in the agent
 locale resources; model-provided plan content remains message data.
 
-When the API emits a typed `data-agent-status` generated-UI fallback, the page
-shows localized fixed copy and a cossUI retry button instead of model text. The
-button submits a localized, explicit street-view retry request so the backend
-re-enters the grounded tool workflow.
+Street-view responses carry typed, persistent `data-agent-grounding` parts;
+`found` responses also carry a server-built `data-spec`. When the API emits a
+typed `data-agent-status`, the page shows localized fixed copy instead of the
+accompanying persisted text. A cossUI retry button appears only when
+`retryable=true` and a structured place/coordinate request is present. Its
+localized follow-up reconstructs that explicit request and re-enters the same
+deterministic application workflow.
 
 `StreetViewCard` accepts only a bounded opaque image id and optional place
 label. It hydrates static preview, capture time, and attribution from the

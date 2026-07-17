@@ -15,7 +15,7 @@
   "AI_BASE_URL": "",
   "AI_PROACTIVE_THRESHOLD": "0.7",
   "AI_MAX_TOOL_STEPS": "16",
-  "AI_TELEMETRY_RECORD_CONTENT": "true",
+  "AI_TELEMETRY_RECORD_CONTENT": "false",
   "SENTRY_ENVIRONMENT": "production",
   "SENTRY_ORG": "<sentry-org-slug>",
   "SENTRY_PROJECT": "<sentry-project-slug>",

@@ -1,24 +1,34 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleAlert } from "lucide-react";
-import type { AgentUiFallbackReason } from "@opentrip/agent-ui-catalog";
+import type { AgentStatusPart } from "@opentrip/agent-ui-catalog";
 import { Button } from "@/shared/ui/button";
 
 export function AgentGeneratedFallback({
-  reason,
+  status,
   onRetry,
 }: {
-  reason: AgentUiFallbackReason;
+  status: AgentStatusPart["data"];
   onRetry: (message: string) => Promise<void>;
 }) {
   const { t } = useTranslation("agent");
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
-    if (retrying) return;
+    if (retrying || !status.retryable || !status.retryRequest) return;
     setRetrying(true);
     try {
-      await onRetry(t("generated.fallback.retryMessage"));
+      const request = status.retryRequest.request;
+      await onRetry(
+        request.kind === "place"
+          ? t("generated.fallback.retryPlaceMessage", {
+              place: request.query,
+            })
+          : t("generated.fallback.retryCoordinateMessage", {
+              lat: request.lat,
+              longitude: request.lng,
+            }),
+      );
     } finally {
       setRetrying(false);
     }
@@ -38,20 +48,22 @@ export function AgentGeneratedFallback({
           {t("generated.fallback.title")}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {t(`generated.fallback.${reason}`)}
+          {t(`generated.fallback.${status.reason}`)}
         </p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="mt-2"
-          disabled={retrying}
-          onClick={() => void handleRetry()}
-        >
-          {retrying
-            ? t("generated.fallback.retrying")
-            : t("generated.fallback.retry")}
-        </Button>
+        {status.retryable && status.retryRequest ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            disabled={retrying}
+            onClick={() => void handleRetry()}
+          >
+            {retrying
+              ? t("generated.fallback.retrying")
+              : t("generated.fallback.retry")}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

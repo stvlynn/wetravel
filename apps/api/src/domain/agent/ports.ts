@@ -3,6 +3,7 @@ import type {
   AgentMessage,
   AgentMessagePart,
   AgentSuggestion,
+  AgentStreetViewGrounding,
   InterventionDecision,
   NewAgentMessage,
   NewAgentSuggestion,
@@ -60,6 +61,8 @@ export interface AgentChatRequest {
   trip: TripSnapshot;
   history: AgentMessage[];
   observability: AgentObservabilityContext;
+  /** Deterministic application-layer result for an explicit street-view turn. */
+  streetViewGrounding?: AgentStreetViewGrounding;
   /**
    * Full UI messages from the current client turn. Required for AI SDK tool
    * approval continuation (`approval-responded` parts → tool execution).
@@ -76,6 +79,13 @@ export interface AgentChatRequest {
    * `messageId` is the AI SDK UIMessage id so shared history matches the
    * live buffer for dedupe. */
   onFinish: (parts: AgentMessagePart[], messageId?: string) => Promise<void>;
+}
+
+export interface AgentReplyRequest {
+  trip: TripSnapshot;
+  history: AgentMessage[];
+  observability: AgentObservabilityContext;
+  streetViewGrounding?: AgentStreetViewGrounding;
 }
 
 export interface AgentEvaluationRequest {
@@ -101,9 +111,7 @@ export interface AgentModel {
   /** Stream a chat reply as a web Response carrying an AI SDK UI message stream. */
   streamChat(request: AgentChatRequest): Promise<Response>;
   /** Generate a non-streaming reply (ambient / mention replies). Read-only tools only. */
-  generateReply(
-    request: Pick<AgentChatRequest, "trip" | "history" | "observability">,
-  ): Promise<AgentMessagePart[]>;
+  generateReply(request: AgentReplyRequest): Promise<AgentMessagePart[]>;
   /**
    * Judge whether a plain member message is addressing the agent. Prefer true
    * when the prior turn was the agent and the member continues that thread

@@ -23,6 +23,7 @@ import { uploadTripMedia } from "@/shared/api/media";
 import { config, queryKeys } from "@/shared/config";
 import { looksLikeAgentThreadFollowUp } from "../lib/agentThreadFollowUp";
 import { mergeTripToolEcho } from "./mergeTripToolEcho";
+import type { AgentUIMessage } from "./agent-ui-message";
 
 const MENTION_PATTERN = /@agent\b/i;
 
@@ -202,7 +203,7 @@ export function useAgentChat(tripId: string, enabled: boolean) {
 
   const transport = useMemo(
     () =>
-      new DefaultChatTransport({
+      new DefaultChatTransport<AgentUIMessage>({
         api: `${config.baseUrl}/api/trips/${tripId}/agent/chat`,
         credentials: "include",
         fetch: async (input, init) => {
@@ -222,7 +223,7 @@ export function useAgentChat(tripId: string, enabled: boolean) {
     [tripId],
   );
 
-  const chat = useChat({
+  const chat = useChat<AgentUIMessage>({
     id: `trip-agent-${tripId}`,
     transport,
     // After the user approves/denies tools, auto-continue the stream so execute runs.

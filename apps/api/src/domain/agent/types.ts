@@ -8,6 +8,59 @@ import type {
 
 export type AgentMessageRole = "user" | "assistant" | "system";
 
+export type AgentLanguage = "en" | "zh";
+
+export type AgentStreetViewRequest =
+  | {
+      kind: "place";
+      query: string;
+      language: AgentLanguage;
+      selectionIndex: number;
+    }
+  | {
+      kind: "coordinate";
+      lat: number;
+      lng: number;
+      language: AgentLanguage;
+      selectionIndex: number;
+    };
+
+export type AgentStreetViewGrounding =
+  | {
+      outcome: "found";
+      request: AgentStreetViewRequest;
+      placeLabel: string;
+      imageIds: string[];
+      selectedImageId: string;
+      text: string;
+    }
+  | {
+      outcome: "empty";
+      request: AgentStreetViewRequest;
+      placeLabel: string;
+      imageIds: string[];
+      text: string;
+    }
+  | {
+      outcome: "place_not_found";
+      request: AgentStreetViewRequest;
+      imageIds: [];
+      text: string;
+    }
+  | {
+      outcome: "invalid_request";
+      language: AgentLanguage;
+      imageIds: [];
+      text: string;
+    }
+  | {
+      outcome: "service_unavailable";
+      request: AgentStreetViewRequest;
+      retryable: boolean;
+      imageIds: [];
+      text: string;
+    };
+
 /** What caused a message to enter the shared trip session. */
 export type AgentMessageSource =
   | "chat"

@@ -220,42 +220,31 @@ dictionary-tested; restrict Workers Logs access accordingly.
 
 ## Street-view card runbook
 
-For a missing or invalid generated card, query the copied message id and inspect
-these events in order:
+For a missing or invalid deterministic card, query the copied message id and
+inspect these events and spans in order:
 
-1. `agent.model.step_completed`: confirm the model actually emitted a tool call.
-2. `agent.tool.started` and `agent.tool.completed`/`agent.tool.failed`: verify
-   the real `toolCallId`, coordinates, radius, and tool result state.
-   Failed tool events include `errorType`, `errorMessage`, and, when supplied by
-   the error, `errorCode`, `upstreamStatus`, `retryable`, `providerOperation`,
-   and `attempt`.
-3. `agent.stream.failed`: distinguish a model/provider stream failure from an
-   individual tool execution failure using the same request, trip, and turn
-   correlation fields.
-4. `street_view.provider.request_failed` and
+1. `opentrip.provider.geo.place_search` exists for a place request and records
+   `requestedLimit=1`, result count, duration, request id, and turn id. It is
+   absent for a coordinate request.
+2. `opentrip.provider.street_view.search` records `radiusMeters=100`,
+   `requestedLimit=5`, provider outcome, result count, duration, and the same
+   correlation ids. Each application provider span occurs at most once.
+3. `street_view.provider.request_failed` and
    `street_view.provider.retry_scheduled`: distinguish 401/403 configuration,
-   429, timeout, and provider 5xx; attempts never exceed two.
-5. `street_view.search_completed`: only `outcome=found` ids may ground a card.
-6. `street_view.search_model_output`: confirm whether search `toModelOutput`
-   attached a static preview (`previewAttach=attached`) or skipped
-   (`skipped_empty` / `skipped_panorama_only` / `preview_unavailable`).
-7. `street_view.cache.hit`/`miss`: a card immediately following a successful
+   429, timeout, and provider 5xx inside the single provider operation.
+4. `agent.street_view_grounding.completed` records only request kind, outcome,
+   result count, duration, and correlation ids; it never records raw place
+   text.
+5. `street_view.cache.hit`/`miss`: a card immediately following a successful
    search should use the 15-minute metadata cache; preview bytes are cached
    after their first successful read.
-8. `agent.persist_message`: confirm the sanitized assistant message and its
+6. `agent.persist_message`: confirm the sanitized assistant message and its
    fingerprint were written.
 
-Before persistence, inspect `agent.generated_ui.accepted` or
-`agent.generated_ui.rejected` and its
-`opentrip.agent.generated_ui.validate` span. The span records contract version,
-attempt, high-risk status, outcome, and rejection reason. A rejection should be
-followed by `agent.generated_ui.repair_started` and either
-`agent.generated_ui.repair_completed` or `agent.generated_ui.fallback`; there
-is never a third generation attempt.
-
-If the provider call failed, the generation policy removes both street-view
-tools for the remainder of that attempt. Any prose claiming additional
-coordinates were tried is therefore a model-grounding defect and should be
-reported with the turnId and toolCallId. The response gate prevents both raw
-protocol text and ungrounded `StreetViewCard` content from reaching persistence
-or the browser; after one failed repair, only the typed fallback is stored.
+Production acceptance requires both provider spans for a place request, no
+MiniMax/model span in the street-view trace, and a persisted card image id that
+belongs to the same message's `outcome=found` grounding part. A coordinate
+request requires only the street-view provider span. There are no street-view
+tool events, generated-UI repair events, or replay telemetry. Keep
+`AI_TELEMETRY_RECORD_CONTENT=false`; provider events must not add raw place
+text.

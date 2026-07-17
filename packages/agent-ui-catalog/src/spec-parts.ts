@@ -12,6 +12,7 @@ import { agentUiCatalog } from "./catalog";
 
 export interface MessagePartLike {
   type: string;
+  id?: unknown;
   text?: unknown;
   data?: unknown;
   state?: unknown;
@@ -23,26 +24,73 @@ export interface AgentUiSafetyContext {
 }
 
 export const AGENT_STATUS_DATA_PART_TYPE = "data-agent-status" as const;
+export const AGENT_GROUNDING_DATA_PART_TYPE = "data-agent-grounding" as const;
 
 export type AgentUiProtocolViolationReason =
   | "wrong_fence"
   | "flat_spec_leak"
   | "invalid_patch"
   | "invalid_catalog_spec"
-  | "ungrounded_media"
-  | "missing_required_tool";
+  | "ungrounded_media";
 
 export type AgentUiFallbackReason =
-  | "protocol_invalid"
-  | "grounding_failed"
+  | "place_not_found"
+  | "invalid_request"
   | "service_unavailable";
+
+export type AgentGroundingRequest =
+  | {
+      kind: "place";
+      query: string;
+      language: "en" | "zh";
+      selectionIndex: number;
+    }
+  | {
+      kind: "coordinate";
+      lat: number;
+      lng: number;
+      language: "en" | "zh";
+      selectionIndex: number;
+    };
+
+export interface AgentGroundingData {
+  kind: "street-view";
+  outcome:
+    | "found"
+    | "empty"
+    | "place_not_found"
+    | "invalid_request"
+    | "service_unavailable";
+  request?: AgentGroundingRequest;
+  placeLabel?: string;
+  imageIds: string[];
+  selectedImageId?: string;
+}
+
+export interface AgentGroundingPart extends MessagePartLike {
+  type: typeof AGENT_GROUNDING_DATA_PART_TYPE;
+  id: string;
+  data: AgentGroundingData;
+}
+
+export interface AgentRetryRequest {
+  request: AgentGroundingRequest;
+}
+
+export type AgentUIDataParts = {
+  "agent-grounding": AgentGroundingData;
+  "agent-status": AgentStatusPart["data"];
+  spec: SpecDataPart;
+};
 
 export interface AgentStatusPart extends MessagePartLike {
   type: typeof AGENT_STATUS_DATA_PART_TYPE;
+  id: string;
   data: {
     kind: "generated-ui-fallback";
     reason: AgentUiFallbackReason;
-    retryable: true;
+    retryable: boolean;
+    retryRequest?: AgentRetryRequest;
   };
 }
 
@@ -109,16 +157,6 @@ function protocolViolationInText(
   return null;
 }
 
-function hasSuccessfulStreetViewSearch(parts: readonly MessagePartLike[]): boolean {
-  return parts.some(
-    (part) =>
-      part.type === "tool-streetViewSearch" &&
-      part.state === "output-available" &&
-      isRecord(part.output) &&
-      (part.output.outcome === "found" || part.output.outcome === "empty"),
-  );
-}
-
 function hasUngroundedStreetViewElement(
   spec: Spec,
   allowedIds: ReadonlySet<string>,
@@ -135,27 +173,125 @@ function hasUngroundedStreetViewElement(
 
 export function createAgentUiFallbackPart(
   reason: AgentUiFallbackReason,
+  options: {
+    id: string;
+    retryable: boolean;
+    retryRequest?: AgentRetryRequest;
+  },
 ): AgentStatusPart {
   return {
     type: AGENT_STATUS_DATA_PART_TYPE,
+    id: options.id,
     data: {
       kind: "generated-ui-fallback",
       reason,
-      retryable: true,
+      retryable: options.retryable,
+      ...(options.retryRequest ? { retryRequest: options.retryRequest } : {}),
     },
   };
 }
 
-export function isAgentStatusPart(part: MessagePartLike): part is AgentStatusPart {
+function isGroundingRequest(value: unknown): value is AgentGroundingRequest {
+  if (!isRecord(value)) return false;
+  if (
+    (value.language !== "en" && value.language !== "zh") ||
+    !Number.isInteger(value.selectionIndex) ||
+    (value.selectionIndex as number) < 0 ||
+    (value.selectionIndex as number) > 4
+  ) {
+    return false;
+  }
+  if (value.kind === "place") {
+    return (
+      typeof value.query === "string" &&
+      value.query.length >= 2 &&
+      value.query.length <= 160
+    );
+  }
   return (
+    value.kind === "coordinate" &&
+    typeof value.lat === "number" &&
+    typeof value.lng === "number" &&
+    Number.isFinite(value.lat) &&
+    Number.isFinite(value.lng) &&
+    value.lat >= -90 &&
+    value.lat <= 90 &&
+    value.lng >= -180 &&
+    value.lng <= 180
+  );
+}
+
+export function isAgentGroundingPart(
+  part: MessagePartLike,
+): part is AgentGroundingPart {
+  if (
+    part.type !== AGENT_GROUNDING_DATA_PART_TYPE ||
+    typeof part.id !== "string" ||
+    !isRecord(part.data) ||
+    part.data.kind !== "street-view" ||
+    !Array.isArray(part.data.imageIds) ||
+    part.data.imageIds.length > 5 ||
+    !part.data.imageIds.every(
+      (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,160}$/.test(id),
+    )
+  ) {
+    return false;
+  }
+  if (
+    part.data.outcome !== "found" &&
+    part.data.outcome !== "empty" &&
+    part.data.outcome !== "place_not_found" &&
+    part.data.outcome !== "invalid_request" &&
+    part.data.outcome !== "service_unavailable"
+  ) {
+    return false;
+  }
+  if (part.data.outcome === "invalid_request") {
+    return (
+      part.data.request === undefined &&
+      part.data.imageIds.length === 0 &&
+      part.data.selectedImageId === undefined
+    );
+  }
+  if (!isGroundingRequest(part.data.request)) return false;
+  if (part.data.outcome === "found" || part.data.outcome === "empty") {
+    if (
+      typeof part.data.placeLabel !== "string" ||
+      part.data.placeLabel.length < 1 ||
+      part.data.placeLabel.length > 160
+    ) {
+      return false;
+    }
+  }
+  if (part.data.outcome === "found") {
+    return (
+      typeof part.data.selectedImageId === "string" &&
+      part.data.imageIds.includes(part.data.selectedImageId)
+    );
+  }
+  return part.data.selectedImageId === undefined;
+}
+
+export function isAgentStatusPart(part: MessagePartLike): part is AgentStatusPart {
+  if (!(
     part.type === AGENT_STATUS_DATA_PART_TYPE &&
+    typeof part.id === "string" &&
     isRecord(part.data) &&
     part.data.kind === "generated-ui-fallback" &&
-    (part.data.reason === "protocol_invalid" ||
-      part.data.reason === "grounding_failed" ||
+    (part.data.reason === "place_not_found" ||
+      part.data.reason === "invalid_request" ||
       part.data.reason === "service_unavailable") &&
-    part.data.retryable === true
-  );
+    typeof part.data.retryable === "boolean"
+  )) {
+    return false;
+  }
+  if (part.data.reason === "service_unavailable") {
+    return part.data.retryable
+      ? isRecord(part.data.retryRequest) &&
+          isGroundingRequest(part.data.retryRequest.request)
+      : part.data.retryRequest === undefined;
+  }
+  return part.data.retryable === false && part.data.retryRequest === undefined;
 }
 
 /** Validate the complete transformed assistant message before it is exposed or
@@ -163,18 +299,10 @@ export function isAgentStatusPart(part: MessagePartLike): part is AgentStatusPar
  * protocol and grounding boundary. */
 export function validateAgentUiProtocol(
   parts: readonly MessagePartLike[],
-  options: { requireStreetViewToolResult?: boolean } = {},
 ): AgentUiProtocolValidation {
   for (const part of parts) {
     const violation = protocolViolationInText(textOf(part));
     if (violation) return { valid: false, reason: violation };
-  }
-
-  if (
-    options.requireStreetViewToolResult &&
-    !hasSuccessfulStreetViewSearch(parts)
-  ) {
-    return { valid: false, reason: "missing_required_tool" };
   }
 
   const spec = specFromAgentUiParts(parts);
@@ -264,7 +392,7 @@ export function safeAgentUiSpec(
     if (element.visible !== undefined && typeof element.visible !== "boolean") {
       continue;
     }
-    if (!safeElementActions(element.type, element.on, context)) continue;
+    if (!safeElementActions(element.type, element.on)) continue;
     const definition = componentDefinitions[element.type];
     const parsed = definition?.props.safeParse(element.props);
     if (!parsed?.success) continue;
@@ -302,7 +430,6 @@ const actionDefinitions = agentUiCatalog.data.actions as Record<
 function safeElementActions(
   componentType: string,
   events: Record<string, ActionBinding | ActionBinding[]> | undefined,
-  context: AgentUiSafetyContext,
 ): boolean {
   if (!events) return true;
   if (componentType !== "ActionButton") return false;
@@ -317,9 +444,6 @@ function safeElementActions(
     if (!definition) return false;
     const parsed = definition.params?.safeParse(binding.params ?? {});
     if (parsed?.success !== true) return false;
-    if (binding.action === "openStreetView") {
-      return isAllowedStreetViewImageId(binding.params, context);
-    }
     return true;
   });
 }
@@ -332,29 +456,15 @@ function isAllowedStreetViewImageId(
   return context.allowedStreetViewImageIds?.has(value.imageId) === true;
 }
 
-/** IDs are grounded only when the same assistant UIMessage contains a
- * successful street-view tool output. Text and tool input are never sources. */
+/** IDs are grounded only by a persistent successful application part in the
+ * same assistant UIMessage. Text, model output, and tool parts are never sources. */
 export function allowedStreetViewImageIds(
   parts: readonly MessagePartLike[],
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const part of parts) {
-    if (part.state !== "output-available" || !isRecord(part.output)) continue;
-    if (part.type === "tool-streetViewSearch") {
-      if (part.output.outcome !== "found" || !Array.isArray(part.output.images)) {
-        continue;
-      }
-      for (const image of part.output.images) {
-        if (isRecord(image) && typeof image.id === "string") ids.add(image.id);
-      }
-      continue;
-    }
-    if (
-      part.type === "tool-streetViewInspect" &&
-      typeof part.output.id === "string"
-    ) {
-      ids.add(part.output.id);
-    }
+    if (!isAgentGroundingPart(part) || part.data.outcome !== "found") continue;
+    for (const imageId of part.data.imageIds) ids.add(imageId);
   }
   return ids;
 }

@@ -55,13 +55,14 @@
     "staleDay": "该日期已不在当前行程中。",
     "staleStop": "该地点已不在当前行程中。",
     "fallback": {
-      "title": "暂时无法显示街景",
-      "protocol_invalid": "生成结果不符合安全展示格式。",
-      "grounding_failed": "无法根据街景搜索结果验证这次回答。",
+      "title": "街景暂不可用",
+      "place_not_found": "没有找到这个地点，请换一个更明确的地点。",
+      "invalid_request": "请提供明确的地点名称或有效坐标。",
       "service_unavailable": "街景服务暂时不可用。",
       "retry": "重试",
       "retrying": "正在重试…",
-      "retryMessage": "请重试刚才的街景请求，并只返回有工具结果依据的内容。"
+      "retryPlaceMessage": "@agent 看看{{place}}附近的街景。",
+      "retryCoordinateMessage": "@agent 看看坐标 {{lat}}, {{longitude}} 的街景。"
     },
     "streetView": {
       "previewAlt": "街景预览",
@@ -88,8 +89,6 @@
       "routeMatrix": "行程矩阵",
       "reviewLookup": "查看评价",
       "readTripMedia": "读取行程文件",
-      "streetViewSearch": "查找街景",
-      "streetViewInspect": "查看街景图片",
       "appendStopNote": "追加地点备注"
     }
   },

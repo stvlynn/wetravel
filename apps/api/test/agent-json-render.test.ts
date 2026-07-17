@@ -29,10 +29,19 @@ describe("agent json-render persistence", () => {
       assistantPartsHaveContent([
         {
           type: "data-agent-status",
+          id: "status-turn-1",
           data: {
             kind: "generated-ui-fallback",
-            reason: "grounding_failed",
+            reason: "service_unavailable",
             retryable: true,
+            retryRequest: {
+              request: {
+                kind: "place",
+                query: "Tokyo Tower",
+                language: "en",
+                selectionIndex: 0,
+              },
+            },
           },
         },
       ]),

@@ -5,10 +5,12 @@ import type {
   AgentModel,
   AgentObservabilityContext,
   AgentSessionRepository,
+  AgentStreetViewGrounding,
   OperationEvent,
   PendingPatch,
 } from "../../domain/agent";
 import {
+  isAgentGroundingPart,
   isAgentStatusPart,
   isAgentUiPart,
   sanitizeAgentUiParts,
@@ -38,6 +40,7 @@ import {
 import { buildUserMessageParts, containsAgentMention, mentionedUserIdsFromParts } from "./mentions";
 import { looksLikeAgentThreadFollowUp } from "./addressed";
 import { createSequentialTripPatchApplier } from "./sequential-trip-patch-applier";
+import type { StreetViewGroundingService } from "./street-view-grounding-service";
 import {
   noopObservability,
   type Observability,
@@ -130,6 +133,7 @@ export function assistantPartsHaveContent(parts: AgentMessage["parts"]): boolean
     }
     if (typeof type === "string" && type.startsWith("tool-")) return true;
     if (type === "file") return true;
+    if (isAgentGroundingPart(p as { type: string; data?: unknown })) return true;
     if (isAgentStatusPart(p as { type: string; data?: unknown })) return true;
     if (isAgentUiPart(p as { type: string; data?: unknown })) return true;
     return false;
@@ -143,6 +147,7 @@ export class AgentService {
     private tripRepo: TripRepository,
     private sessionRepo: AgentSessionRepository,
     private model: AgentModel,
+    private streetViewGroundingService: StreetViewGroundingService,
     private options: AgentServiceOptions,
     private tripChangePublisher: TripChangePublisher | null = null,
     private observability: Observability = noopObservability,
@@ -224,9 +229,9 @@ export class AgentService {
     };
   }
 
-  /** Persist a plain (non-streaming) member message. Every message is read by
-   * the model; an ambient reply is generated only when the agent judges that
-   * it was addressed (explicit @agent, a direct ask, or a clear request).
+  /** Persist a plain (non-streaming) member message. Street-view requests are
+   * resolved deterministically; other messages use the model to decide whether
+   * the agent was addressed (explicit @agent, a direct ask, or a clear request).
    * Returns the inserted message so clients can update cache without a stale
    * Hyperdrive list GET. */
   async postMessage(
@@ -349,6 +354,13 @@ export class AgentService {
     }
 
     const history = await this.listContextMessages(tripId);
+    const streetViewGrounding = approvalContinue
+      ? undefined
+      : (await this.streetViewGroundingService.resolve({
+          tripId,
+          history,
+          observability,
+        })) ?? undefined;
 
     // One in-memory Trip for this request — never findById between patches
     // (Hyperdrive SELECT cache would echo stale sibling days/stops).
@@ -381,6 +393,7 @@ export class AgentService {
         this.model.streamChat({
           trip: trip.toSnapshot(),
           history,
+          streetViewGrounding,
           clientMessages: input.clientMessages,
           canEdit,
           observability,
@@ -698,9 +711,15 @@ export class AgentService {
       try {
         const trip = await this.load(tripId);
         const history = await this.listContextMessages(tripId);
+        const streetViewGrounding = await this.streetViewGroundingService.resolve({
+          tripId,
+          history,
+          observability,
+        });
         // Deterministic: short confirmations / follow-ups right after an agent
         // turn continue the thread without requiring @agent.
         const addressed =
+          streetViewGrounding !== null ||
           looksLikeAgentThreadFollowUp(history, messageText) ||
           (await this.model.isAddressed({
             trip: trip.toSnapshot(),
@@ -709,10 +728,11 @@ export class AgentService {
             observability,
           }));
         if (!addressed) return;
-        await this.generateAmbientReply(tripId, undefined, {
-          ...observability,
-          trigger: "ambient",
-        });
+        await this.generateAmbientReply(
+          tripId,
+          streetViewGrounding ? { streetViewGrounding } : undefined,
+          { ...observability, trigger: "ambient" },
+        );
       } catch (err) {
         span.recordError(err);
         this.observability.logger.error("agent.addressed_check_failed", {
@@ -735,7 +755,10 @@ export class AgentService {
 
   private async generateAmbientReply(
     tripId: string,
-    options?: { stopId?: string },
+    options?: {
+      stopId?: string;
+      streetViewGrounding?: AgentStreetViewGrounding;
+    },
     observability: AgentObservabilityContext = modelObservability("ambient"),
   ): Promise<void> {
     const span = this.observability.startTrace("opentrip.agent.ambient_reply", {
@@ -749,10 +772,19 @@ export class AgentService {
       try {
         const trip = await this.load(tripId);
         const history = await this.listContextMessages(tripId);
+        const streetViewGrounding =
+          options?.streetViewGrounding ??
+          (await this.streetViewGroundingService.resolve({
+            tripId,
+            history,
+            observability,
+          })) ??
+          undefined;
         const parts = await this.model.generateReply({
           trip: trip.toSnapshot(),
           history,
           observability,
+          streetViewGrounding,
         });
         const stopId = options?.stopId?.trim();
         await this.appendMessage(trip, {

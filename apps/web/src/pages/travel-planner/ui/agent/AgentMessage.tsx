@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Copy, MapPinIcon } from "lucide-react";
-import { getToolName, isToolUIPart, type UIMessage } from "ai";
+import { getToolName, isToolUIPart } from "ai";
 import { Streamdown } from "streamdown";
 import type { Trip } from "@/entities/trip";
 import type { AgentMessageSource, AgentSuggestion } from "@/shared/api";
@@ -25,6 +25,7 @@ import { AgentGeneratedUi } from "./AgentGeneratedUi";
 import { AgentGeneratedFallback } from "./AgentGeneratedFallback";
 import { toolDisplayName } from "./toolDisplayName";
 import { isAgentStatusPart } from "@opentrip/agent-ui-catalog";
+import type { AgentUIMessage } from "../../model/agent-ui-message";
 import {
   fingerprintMessageText,
   textFromMessageParts,
@@ -73,7 +74,7 @@ export interface AgentDisplayMessage {
   source: AgentMessageSource;
   createdAt: string | null;
   /** Live AI SDK message parts (text, reasoning, tool approval UI). */
-  parts?: UIMessage["parts"];
+  parts?: AgentUIMessage["parts"];
   /** True while this live assistant turn is still streaming. */
   streaming?: boolean;
   debugRequestId?: string;
@@ -81,7 +82,7 @@ export interface AgentDisplayMessage {
 }
 
 /** Join AI SDK text parts the way the chatbot docs recommend. */
-export function textFromParts(parts: UIMessage["parts"] | undefined): string {
+export function textFromParts(parts: AgentUIMessage["parts"] | undefined): string {
   if (!parts?.length) return "";
   return parts
     .filter(
@@ -93,7 +94,7 @@ export function textFromParts(parts: UIMessage["parts"] | undefined): string {
 }
 
 function filePartsFromMessage(
-  parts: UIMessage["parts"] | undefined,
+  parts: AgentUIMessage["parts"] | undefined,
 ): Array<{
   mediaType: string;
   url: string;
@@ -174,7 +175,7 @@ function AgentFileAttachments({
   );
 }
 
-function reasoningFromParts(parts: UIMessage["parts"] | undefined): {
+function reasoningFromParts(parts: AgentUIMessage["parts"] | undefined): {
   text: string;
   streaming: boolean;
 } | null {
@@ -276,6 +277,7 @@ export function AgentMessageItem({
     !quote &&
     !fileAttachments.length &&
     !toolParts.length &&
+    !generatedFallback &&
     !(reasoning?.text);
 
   // Match the author to a trip member for their avatar. Prefer userId so
@@ -299,6 +301,7 @@ export function AgentMessageItem({
   const replyText = (body.trim() || quote?.text || "").trim();
   const canReply =
     Boolean(onReply) &&
+    !generatedFallback &&
     !isOwnMessage &&
     !message.streaming &&
     Boolean(replyText);
@@ -416,7 +419,7 @@ export function AgentMessageItem({
             />
           ) : null}
 
-          {body || quote ? (
+          {!generatedFallback && (body || quote) ? (
             <div className="relative w-fit max-w-full">
               <div
                 className={cn(
@@ -451,7 +454,7 @@ export function AgentMessageItem({
 
           {isAgent && generatedFallback ? (
             <AgentGeneratedFallback
-              reason={generatedFallback.data.reason}
+              status={generatedFallback.data}
               onRetry={onGeneratedFollowUp}
             />
           ) : isAgent && message.parts?.length ? (

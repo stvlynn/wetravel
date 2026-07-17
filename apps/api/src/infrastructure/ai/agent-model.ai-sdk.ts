@@ -6,9 +6,6 @@ import {
   generateId,
   generateObject,
   generateText,
-  getToolName,
-  isToolUIPart,
-  readUIMessageStream,
   stepCountIs,
   streamText,
   toUIMessageStream,
@@ -24,6 +21,8 @@ import {
   type UIMessageChunk,
 } from "ai";
 import {
+  AGENT_GROUNDING_DATA_PART_TYPE,
+  AGENT_STATUS_DATA_PART_TYPE,
   agentUiPrompt,
   buildAgentUiRefinementPrompt,
   createAgentUiFallbackPart,
@@ -32,9 +31,12 @@ import {
   refinableAgentUiSpec,
   SPEC_DATA_PART_TYPE,
   specFromAgentUiParts,
-  validateAgentUiProtocol,
-  type AgentUiFallbackReason,
-  type AgentUiProtocolViolationReason,
+  type AgentGroundingData,
+  type AgentGroundingPart,
+  type AgentGroundingRequest,
+  type AgentStatusPart,
+  type AgentUIDataParts,
+  type SpecDataPart,
   type Spec,
 } from "@opentrip/agent-ui-catalog";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -50,6 +52,9 @@ import type {
   AgentMessagePart,
   AgentModel,
   AgentObservabilityContext,
+  AgentReplyRequest,
+  AgentStreetViewGrounding,
+  AgentStreetViewRequest,
   AgentToolApplyResult,
   InterventionDecision,
   PendingPatch,
@@ -58,12 +63,6 @@ import type { TripSnapshot } from "../../domain/trip";
 import type { WeatherService } from "../../application/weather/weather-service";
 import type { GeoService } from "../../application/geo/geo-service";
 import type { LodgingService } from "../../application/lodging/lodging-service";
-import {
-  StreetViewError,
-  type StreetViewImageDto,
-  type StreetViewSearchResultDto,
-  type StreetViewService,
-} from "../../application/street-view";
 import type { FileStorage } from "../../application/storage";
 import {
   isTripMediaStoragePath,
@@ -80,230 +79,10 @@ import type { AiConfig } from "../config";
 import {
   captureException,
   logger,
-  setActiveSpanAttributes,
   startSpan as startObservabilitySpan,
 } from "../observability";
 
 const NOTE_CONTEXT_MAX = 2_000;
-const AGENT_UI_CONTRACT_VERSION = "2026-07-16.1";
-const AGENT_UI_REPAIR_MAX_STEPS = 6;
-const STREET_VIEW_TOOLS = new Set(["streetViewSearch", "streetViewInspect"]);
-const INITIAL_STREET_VIEW_RADIUS_METERS = 100;
-const MAX_AGENT_STREET_VIEW_RETRY_RADIUS_METERS = 250;
-const STREET_VIEW_FAILURE_INSTRUCTION =
-  "The one real street-view provider call in this turn failed. Do not call another street-view tool, claim that other coordinates were tried, reuse an older image id, or emit StreetViewCard/openStreetView UI. State only that this call failed and let the member choose whether to try again in a new request.";
-const STREET_VIEW_POLICY_INSTRUCTION =
-  "An extra street-view tool call was rejected locally by the one-retry policy and did not reach the provider. Do not claim it ran or that another coordinate was tried. Use only successful tool output already present in this turn.";
-const GROUNDED_UI_CONTRACT = [
-  `GROUNDING AND GENERATED UI CONTRACT ${AGENT_UI_CONTRACT_VERSION} (takes precedence over earlier formatting guidance):`,
-  "For an explicit street-view request, first resolve a place with placeSearch unless the member supplied valid coordinates, then call streetViewSearch.",
-  "Never claim imagery was found without a successful streetViewSearch result in this turn.",
-  "For outcome=found, use only an image id from that result and emit StreetViewCard as RFC 6902 JSON Patch lines inside one ```spec fence.",
-  "Never emit a complete {root,elements} object and never put UI JSON in a ```json fence.",
-  "For outcome=empty or a failed/unavailable service, report that outcome in prose without StreetViewCard or openStreetView.",
-].join("\n");
-
-const STREET_VIEW_INTENT_PATTERN =
-  /(?:街景|道路影像|实景图|全景(?:图|影像)?|street\s*view|streetview|streetscape|roadside\s+imagery|panorama)/iu;
-const COORDINATE_PAIR_PATTERN =
-  /(?:^|[^\d.-])(-?(?:[1-8]?\d(?:\.\d+)?|90(?:\.0+)?))\s*[,，]\s*(-?(?:1[0-7]\d(?:\.\d+)?|(?:\d?\d)(?:\.\d+)?|180(?:\.0+)?))(?:$|[^\d.])/u;
-
-export interface GroundedStreetViewTurn {
-  required: boolean;
-  hasCoordinates: boolean;
-}
-
-export function groundedStreetViewTurn(
-  history: readonly AgentMessage[],
-): GroundedStreetViewTurn {
-  let latestUserIndex = -1;
-  for (let index = history.length - 1; index >= 0; index -= 1) {
-    if (history[index]?.role === "user") {
-      latestUserIndex = index;
-      break;
-    }
-  }
-  if (latestUserIndex < 0) return { required: false, hasCoordinates: false };
-
-  const latestText = textOf(history[latestUserIndex]!.parts).normalize("NFKC").trim();
-  const hasCoordinates = COORDINATE_PAIR_PATTERN.test(latestText);
-  if (STREET_VIEW_INTENT_PATTERN.test(latestText)) {
-    return { required: true, hasCoordinates };
-  }
-
-  if (latestText.length > 80) return { required: false, hasCoordinates };
-  for (let index = latestUserIndex - 1; index >= Math.max(0, latestUserIndex - 3); index -= 1) {
-    const message = history[index]!;
-    if (message.role !== "assistant") continue;
-    const continuedStreetViewTurn =
-      STREET_VIEW_INTENT_PATTERN.test(textOf(message.parts)) ||
-      message.parts.some(
-        (part) =>
-          part.type === "tool-streetViewSearch" ||
-          part.type === "tool-streetViewInspect",
-      );
-    return { required: continuedStreetViewTurn, hasCoordinates };
-  }
-  return { required: false, hasCoordinates };
-}
-
-interface StreetViewSearchToolInput {
-  lat: number;
-  lng: number;
-  radiusMeters?: number;
-  limit?: number;
-}
-
-interface StreetViewSearchState {
-  input: StreetViewSearchToolInput;
-  outcome: "found" | "empty";
-  completeness: "complete" | "partial";
-}
-
-export class StreetViewToolPolicy {
-  private firstSearch: StreetViewSearchState | null = null;
-  private searchCount = 0;
-  private blockedReason: "provider" | "policy" | null = null;
-  private searchInFlight = false;
-  private readonly inspectableIds = new Set<string>();
-
-  validateSearch(input: StreetViewSearchToolInput): StreetViewSearchToolInput {
-    if (this.blockedReason || this.searchInFlight || this.searchCount >= 2) {
-      this.blockedReason ??= "policy";
-      throw this.policyError("Street-view search is no longer available in this turn");
-    }
-    if (!this.firstSearch) {
-      this.searchInFlight = true;
-      this.searchCount += 1;
-      return { ...input, radiusMeters: INITIAL_STREET_VIEW_RADIUS_METERS };
-    }
-    const effectiveInput = {
-      ...input,
-      radiusMeters: Math.min(
-        input.radiusMeters ?? INITIAL_STREET_VIEW_RADIUS_METERS,
-        MAX_AGENT_STREET_VIEW_RETRY_RADIUS_METERS,
-      ),
-    };
-    const retryableResult =
-      this.firstSearch.outcome === "empty" ||
-      this.firstSearch.completeness === "partial";
-    const firstRadius =
-      this.firstSearch.input.radiusMeters ?? INITIAL_STREET_VIEW_RADIUS_METERS;
-    const retryRadius = effectiveInput.radiusMeters;
-    const sameCenter =
-      Math.abs(effectiveInput.lat - this.firstSearch.input.lat) <= 1e-5 &&
-      Math.abs(effectiveInput.lng - this.firstSearch.input.lng) <= 1e-5;
-    if (!retryableResult || !sameCenter || retryRadius <= firstRadius) {
-      this.blockedReason = "policy";
-      throw this.policyError(
-        "A street-view retry must follow an empty or partial result at the same coordinates with a larger radius",
-      );
-    }
-    this.searchInFlight = true;
-    this.searchCount += 1;
-    return effectiveInput;
-  }
-
-  recordSearchSuccess(
-    input: StreetViewSearchToolInput,
-    result: {
-      outcome: "found" | "empty";
-      completeness: "complete" | "partial";
-      images: Array<{ id: string; supports360: boolean }>;
-    },
-  ): void {
-    this.searchInFlight = false;
-    this.firstSearch ??= {
-      input: { ...input },
-      outcome: result.outcome,
-      completeness: result.completeness,
-    };
-    for (const image of result.images) {
-      if (!image.supports360) this.inspectableIds.add(image.id);
-    }
-  }
-
-  recordSearchFailure(): void {
-    this.searchInFlight = false;
-    this.blockedReason = "provider";
-  }
-
-  validateInspect(imageId: string): void {
-    if (this.blockedReason === "provider" || !this.inspectableIds.has(imageId)) {
-      throw this.policyError(
-        "Street-view inspection requires a static image returned by a successful search in this turn",
-      );
-    }
-  }
-
-  prepareStep(toolNames: string[], instructions: unknown) {
-    const searchExhausted =
-      this.blockedReason !== null ||
-      this.searchCount >= 2 ||
-      (this.firstSearch?.outcome === "found" &&
-        this.firstSearch.completeness === "complete");
-    const activeTools = toolNames.filter((name) => {
-      if (this.blockedReason === "provider") return !STREET_VIEW_TOOLS.has(name);
-      if (name === "streetViewInspect" && this.inspectableIds.size === 0) {
-        return false;
-      }
-      return name !== "streetViewSearch" || !searchExhausted;
-    });
-    if (!this.blockedReason) return { activeTools };
-    const base = typeof instructions === "string" ? instructions : "";
-    return {
-      activeTools,
-      instructions: `${base}\n\n${
-        this.blockedReason === "provider"
-          ? STREET_VIEW_FAILURE_INSTRUCTION
-          : STREET_VIEW_POLICY_INSTRUCTION
-      }`.trim(),
-    };
-  }
-
-  private policyError(message: string): StreetViewError {
-    return new StreetViewError("street_view_invalid_query", message, {
-      retryable: false,
-      providerOperation: "tool_policy",
-    });
-  }
-}
-
-interface CompletedToolStep {
-  toolCalls: Array<{ toolName: string }>;
-}
-
-/** Compose the provider policy with the deterministic tool order required for
- * grounded street-view turns. */
-export function prepareGroundedStreetViewStep(
-  policy: StreetViewToolPolicy,
-  toolNames: string[],
-  turn: GroundedStreetViewTurn,
-  options: {
-    steps: CompletedToolStep[];
-    instructions: unknown;
-  },
-) {
-  const prepared = policy.prepareStep(toolNames, options.instructions);
-  if (!turn.required) return prepared;
-
-  const calledTools = new Set(
-    options.steps.flatMap((step) => step.toolCalls.map((call) => call.toolName)),
-  );
-  if (calledTools.has("streetViewSearch")) {
-    return { ...prepared, toolChoice: "none" as const };
-  }
-
-  const forcedTool =
-    turn.hasCoordinates || calledTools.has("placeSearch")
-      ? "streetViewSearch"
-      : "placeSearch";
-  if (!prepared.activeTools.includes(forcedTool)) return prepared;
-  return {
-    ...prepared,
-    toolChoice: { type: "tool" as const, toolName: forcedTool },
-  };
-}
 
 function providerCall<T>(
   provider: string,
@@ -315,23 +94,6 @@ function providerCall<T>(
     { provider, providerOperation: operation },
     async () => call(),
   );
-}
-
-function safeToolInputFields(
-  toolName: string,
-  input: unknown,
-): Record<string, unknown> {
-  if (toolName !== "streetViewSearch" || !input || typeof input !== "object") {
-    return {};
-  }
-  const value = input as Record<string, unknown>;
-  return {
-    ...(typeof value.lat === "number" ? { lat: value.lat } : {}),
-    ...(typeof value.lng === "number" ? { lng: value.lng } : {}),
-    radiusMeters:
-      typeof value.radiusMeters === "number" ? value.radiusMeters : 100,
-    requestedLimit: typeof value.limit === "number" ? value.limit : 5,
-  };
 }
 
 export function safeAgentErrorFields(error: unknown): Record<string, unknown> {
@@ -418,139 +180,6 @@ function createAgentLanguageModel(config: AiConfig): LanguageModel {
   }
   const openai = createOpenAI({ apiKey: config.apiKey });
   return openai(config.model);
-}
-
-interface BufferedUiMessage {
-  chunks: UIMessageChunk[];
-  message: UIMessage;
-}
-
-async function bufferUiMessageStream(
-  stream: ReadableStream<UIMessageChunk>,
-): Promise<BufferedUiMessage> {
-  const [chunkStream, messageStream] = stream.tee();
-  const chunksPromise = (async () => {
-    const chunks: UIMessageChunk[] = [];
-    for await (const chunk of chunkStream) chunks.push(chunk);
-    return chunks;
-  })();
-  let message: UIMessage | undefined;
-  for await (const state of readUIMessageStream({
-    stream: messageStream,
-    terminateOnError: true,
-  })) {
-    message = state;
-  }
-  const chunks = await chunksPromise;
-  if (!message) throw new Error("Agent UI stream completed without a message");
-  return { chunks, message };
-}
-
-function replayUiMessageChunks(
-  chunks: readonly UIMessageChunk[],
-): ReadableStream<UIMessageChunk> {
-  return new ReadableStream({
-    start(controller) {
-      for (const chunk of chunks) controller.enqueue(chunk);
-      controller.close();
-    },
-  });
-}
-
-function completedToolChunks(part: UIMessage["parts"][number]): UIMessageChunk[] {
-  if (!isToolUIPart(part) || part.state !== "output-available") return [];
-  const toolName = getToolName(part);
-  return [
-    {
-      type: "tool-input-available",
-      toolCallId: part.toolCallId,
-      toolName,
-      input: part.input,
-    },
-    {
-      type: "tool-output-available",
-      toolCallId: part.toolCallId,
-      output: part.output,
-    },
-  ];
-}
-
-function uiMessageChunksFromParts(
-  messageId: string,
-  parts: readonly UIMessage["parts"][number][],
-): UIMessageChunk[] {
-  const chunks: UIMessageChunk[] = [{ type: "start", messageId }];
-  parts.forEach((part, index) => {
-    if (part.type === "text" && part.text.trim()) {
-      const id = `repair-text-${index}`;
-      chunks.push(
-        { type: "text-start", id },
-        { type: "text-delta", id, delta: part.text },
-        { type: "text-end", id },
-      );
-      return;
-    }
-    if (part.type.startsWith("data-")) {
-      chunks.push(part as UIMessageChunk);
-      return;
-    }
-    chunks.push(...completedToolChunks(part));
-  });
-  chunks.push({ type: "finish", finishReason: "stop" });
-  return chunks;
-}
-
-function awaitingManualApproval(parts: readonly UIMessage["parts"][number][]): boolean {
-  return parts.some(
-    (part) =>
-      isToolUIPart(part) &&
-      part.state === "approval-requested" &&
-      !part.approval.isAutomatic,
-  );
-}
-
-function trustedStreetViewParts(
-  parts: readonly UIMessage["parts"][number][],
-): UIMessage["parts"] {
-  return parts.filter(
-    (part) =>
-      isToolUIPart(part) &&
-      part.type === "tool-streetViewSearch" &&
-      part.state === "output-available" &&
-      typeof part.output === "object" &&
-      part.output !== null &&
-      ["found", "empty"].includes(
-        String((part.output as { outcome?: unknown }).outcome),
-      ),
-  );
-}
-
-function fallbackReasonFor(
-  reason: AgentUiProtocolViolationReason | undefined,
-): AgentUiFallbackReason {
-  return reason === "missing_required_tool" || reason === "ungrounded_media"
-    ? "grounding_failed"
-    : "protocol_invalid";
-}
-
-function repairInstruction(
-  trustedParts: readonly UIMessage["parts"][number][],
-  reason: AgentUiProtocolViolationReason | undefined,
-): ModelMessage {
-  const trustedOutputs = trustedParts.map((part) =>
-    isToolUIPart(part) && part.state === "output-available"
-      ? { toolName: getToolName(part), output: part.output }
-      : null,
-  ).filter(Boolean);
-  return {
-    role: "user",
-    content: [
-      `The previous draft violated generated UI contract ${AGENT_UI_CONTRACT_VERSION} (${reason ?? "unknown"}).`,
-      "Regenerate the answer once. Do not mention the rejected draft or these repair instructions.",
-      "Use the trusted tool result below exactly. Do not call tools, invent ids, or output a complete root/elements object.",
-      `Trusted tool result: ${JSON.stringify(trustedOutputs)}`,
-    ].join("\n"),
-  };
 }
 
 function chatSystemPrompt(): string {
@@ -972,6 +601,139 @@ export function buildAgentTelemetryOptions(
   };
 }
 
+export type AgentUIMessage = UIMessage<unknown, AgentUIDataParts>;
+
+function stablePartId(prefix: string, turnId: string): string {
+  const suffix = turnId.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 120);
+  return `${prefix}-${suffix || "turn"}`;
+}
+
+function groundingRequest(
+  request: AgentStreetViewRequest,
+): AgentGroundingRequest {
+  return request.kind === "place"
+    ? {
+        kind: "place",
+        query: request.query,
+        language: request.language,
+        selectionIndex: request.selectionIndex,
+      }
+    : {
+        kind: "coordinate",
+        lat: request.lat,
+        lng: request.lng,
+        language: request.language,
+        selectionIndex: request.selectionIndex,
+      };
+}
+
+function groundingData(
+  grounding: AgentStreetViewGrounding,
+): AgentGroundingData {
+  return {
+    kind: "street-view",
+    outcome: grounding.outcome,
+    ...(grounding.outcome === "invalid_request"
+      ? {}
+      : { request: groundingRequest(grounding.request) }),
+    ...(grounding.outcome === "found" || grounding.outcome === "empty"
+      ? { placeLabel: grounding.placeLabel }
+      : {}),
+    imageIds: [...grounding.imageIds],
+    ...(grounding.outcome === "found"
+      ? { selectedImageId: grounding.selectedImageId }
+      : {}),
+  };
+}
+
+function streetViewSpec(
+  grounding: Extract<AgentStreetViewGrounding, { outcome: "found" }>,
+): Spec {
+  const root = "street-view-card";
+  return {
+    root,
+    elements: {
+      [root]: {
+        type: "StreetViewCard",
+        props: {
+          imageId: grounding.selectedImageId,
+          placeLabel: grounding.placeLabel,
+        },
+        children: [],
+      },
+    },
+  };
+}
+
+function deterministicGroundingPart(
+  grounding: AgentStreetViewGrounding,
+  turnId: string,
+): AgentGroundingPart {
+  return {
+    type: AGENT_GROUNDING_DATA_PART_TYPE,
+    id: stablePartId("grounding", turnId),
+    data: groundingData(grounding),
+  };
+}
+
+function deterministicStatusPart(
+  grounding: AgentStreetViewGrounding,
+  turnId: string,
+): AgentStatusPart | null {
+  if (
+    grounding.outcome !== "place_not_found" &&
+    grounding.outcome !== "invalid_request" &&
+    grounding.outcome !== "service_unavailable"
+  ) {
+    return null;
+  }
+  const retryable =
+    grounding.outcome === "service_unavailable" && grounding.retryable;
+  return createAgentUiFallbackPart(grounding.outcome, {
+    id: stablePartId("status", turnId),
+    retryable,
+    ...(retryable
+      ? { retryRequest: { request: groundingRequest(grounding.request) } }
+      : {}),
+  });
+}
+
+function deterministicSpecPart(
+  grounding: AgentStreetViewGrounding,
+  turnId: string,
+): { type: typeof SPEC_DATA_PART_TYPE; id: string; data: SpecDataPart } | null {
+  return grounding.outcome === "found"
+    ? {
+        type: SPEC_DATA_PART_TYPE,
+        id: stablePartId("street-view-spec", turnId),
+        data: { type: "flat", spec: streetViewSpec(grounding) },
+      }
+    : null;
+}
+
+/** Complete deterministic UI parts used by streaming and ambient replies. */
+export function deterministicStreetViewParts(
+  grounding: AgentStreetViewGrounding,
+  turnId: string,
+): AgentMessagePart[] {
+  const groundingPart = deterministicGroundingPart(grounding, turnId);
+  const parts: AgentMessagePart[] = [
+    {
+      type: groundingPart.type,
+      id: groundingPart.id,
+      data: groundingPart.data,
+    },
+    { type: "text", text: grounding.text },
+  ];
+  const specPart = deterministicSpecPart(grounding, turnId);
+  if (specPart) parts.push(specPart);
+  const statusPart = deterministicStatusPart(grounding, turnId);
+  if (statusPart) {
+    parts.push({ type: statusPart.type, id: statusPart.id, data: statusPart.data });
+  }
+  return parts;
+}
+
 /** Vercel AI SDK adapter behind the AgentModel port. */
 export class AiSdkAgentModel implements AgentModel {
   private model: LanguageModel;
@@ -982,7 +744,6 @@ export class AiSdkAgentModel implements AgentModel {
     private geoService: GeoService,
     private lodgingService: LodgingService,
     private fileStorage: FileStorage,
-    private streetViewService: StreetViewService | null,
   ) {
     this.model = createAgentLanguageModel(config);
   }
@@ -1002,62 +763,34 @@ export class AiSdkAgentModel implements AgentModel {
 
   /** Read-only tools always available (no approval). Not part of trip ops.
    * Weather, geo, and trip media go through application/storage ports. */
-  private readTools(
-    tripId: string,
-    streetViewPolicy = new StreetViewToolPolicy(),
-    observability?: AgentObservabilityContext,
-  ): ToolSet {
+  private readTools(tripId: string): ToolSet {
     return {
       ...buildWeatherReadTools(this.weatherService),
       ...buildGeoReadTools(this.geoService),
       ...buildLodgingReadTools(this.lodgingService),
       ...buildTripMediaReadTools(this.fileStorage, tripId),
-      ...(this.streetViewService
-        ? buildStreetViewReadTools(
-            this.streetViewService,
-            tripId,
-            streetViewPolicy,
-            observability,
-          )
-        : {}),
     };
   }
 
   private chatTools(
     tripId: string,
     applyPatch?: (patch: PendingPatch) => Promise<AgentToolApplyResult>,
-    streetViewPolicy = new StreetViewToolPolicy(),
-    observability?: AgentObservabilityContext,
   ): ToolSet {
     if (!applyPatch) {
-      return this.readTools(tripId, streetViewPolicy, observability);
+      return this.readTools(tripId);
     }
     return {
-      ...this.readTools(tripId, streetViewPolicy, observability),
+      ...this.readTools(tripId),
       ...buildWriteTools(applyPatch),
     };
   }
 
   private chatSystem(trip: TripSnapshot): string {
-    return `${chatSystemPrompt()}\n\n${this.streetViewInstructions()}\n\n${agentUiPrompt}\n\n${GROUNDED_UI_CONTRACT}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
+    return `${chatSystemPrompt()}\n\n${agentUiPrompt}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
   }
 
   private ambientSystem(trip: TripSnapshot): string {
-    return `${ambientSystemPrompt()}\n\n${this.streetViewInstructions()}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
-  }
-
-  private streetViewInstructions(): string {
-    if (!this.streetViewService) return "Street-view imagery is not configured.";
-    return [
-      "Street-view tools are provider-neutral. Resolve a place to real coordinates with placeSearch/placeDetail before streetViewSearch.",
-      "Use StreetViewCard with an imageId returned by a street-view tool in this same reply; never invent an image id, preview URL, capture time, heading, distance, or attribution.",
-      "A successful streetViewSearch already supplies trusted captions and at most one static preview to you. When outcome is found, emit StreetViewCard with one returned imageId in the same reply. Do not replace the card with a prose metadata caption.",
-      "Never claim street-view imagery was found unless this turn contains a successful street-view tool result. Do not reuse image ids from earlier messages.",
-      "A streetViewSearch outcome of found is a successful call, even when panoramaAvailable is false. An empty outcome only means this search area had no returned images. Never describe either outcome as a tool failure, provider outage, or global coverage gap.",
-      "Start streetViewSearch without radiusMeters. The first search is always executed at 100 metres even if you supply a larger value. Retry at most once, and only after an empty or partial successful result, at the same coordinates with a larger radius no greater than 250 metres. Do not retry a thrown error with guessed coordinates or claim that the error proves a coverage gap. If completeness is partial, state only that the search result may be incomplete.",
-      "Use streetViewInspect only for another supports360=false id from this turn's search when a second visual look is useful. Panorama content is for the member's interactive viewer and must never be inspected by the model.",
-      "When a member explicitly asks to save a reference, call appendStopNote with the stop id and trusted same-origin preview/metadata from the tool result.",
-    ].join("\n");
+    return `${ambientSystemPrompt()}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
   }
 
   private actorNameResolver(trip: TripSnapshot) {
@@ -1118,7 +851,6 @@ export class AiSdkAgentModel implements AgentModel {
           ...common,
           toolCallId: event.toolCall.toolCallId,
           toolName: event.toolCall.toolName,
-          ...safeToolInputFields(event.toolCall.toolName, event.toolCall.input),
         });
       },
       onToolExecutionEnd: (event: ToolExecutionEndEvent) => {
@@ -1133,7 +865,6 @@ export class AiSdkAgentModel implements AgentModel {
             durationMs: event.toolExecutionMs,
             outcome: failed ? "error" : "success",
             ...(failed ? safeAgentErrorFields(error) : {}),
-            ...safeToolInputFields(event.toolCall.toolName, event.toolCall.input),
           },
         );
       },
@@ -1164,7 +895,17 @@ export class AiSdkAgentModel implements AgentModel {
       // map approval-responded parts → tool-approval-response and run execute.
       return {
         messages: await convertToModelMessages(
-          clientMessages as unknown as UIMessage[],
+          clientMessages.map((message) => ({
+            ...message,
+            id: message.id ?? generateId(),
+            role: message.role as UIMessage["role"],
+            // Application control parts are persistent UI state, never model input.
+            parts: message.parts.filter(
+              (part) =>
+                part.type !== AGENT_GROUNDING_DATA_PART_TYPE &&
+                part.type !== AGENT_STATUS_DATA_PART_TYPE,
+            ) as UIMessage["parts"],
+          })) as UIMessage[],
           { tools },
         ),
         refinementSpec: null,
@@ -1188,55 +929,29 @@ export class AiSdkAgentModel implements AgentModel {
     request: AgentChatRequest;
     messages: ModelMessage[];
     tools: ToolSet;
-    streetViewPolicy: StreetViewToolPolicy;
-    groundedTurn: GroundedStreetViewTurn;
     originalMessages: UIMessage[];
     refinementSpec: Spec | null;
-    maxSteps: number;
-    allowWrites: boolean;
-    attempt: 1 | 2;
-    systemSuffix?: string;
   }): ReadableStream<UIMessageChunk> {
     const {
       request,
       messages,
       tools,
-      streetViewPolicy,
-      groundedTurn,
       originalMessages,
       refinementSpec,
-      maxSteps,
-      allowWrites,
-      attempt,
-      systemSuffix,
     } = options;
-    const system = [this.chatSystem(request.trip), systemSuffix]
-      .filter(Boolean)
-      .join("\n\n");
     const result = streamText({
       model: this.model,
-      system,
+      system: this.chatSystem(request.trip),
       messages,
       tools,
-      ...(allowWrites
-        ? {
-            toolApproval: buildWriteToolApproval(request.canEdit),
-            experimental_toolApprovalSecret: this.config.apiKey,
-          }
-        : {}),
+      toolApproval: buildWriteToolApproval(request.canEdit),
+      experimental_toolApprovalSecret: this.config.apiKey,
       providerOptions: this.providerOptions(),
       experimental_download: createTripMediaDownload(
         this.fileStorage,
         request.trip.id,
       ),
-      stopWhen: stepCountIs(maxSteps),
-      prepareStep: ({ steps, instructions }) =>
-        prepareGroundedStreetViewStep(
-          streetViewPolicy,
-          Object.keys(tools),
-          groundedTurn,
-          { steps, instructions },
-        ),
+      stopWhen: stepCountIs(this.config.maxToolSteps),
       ...this.lifecycleCallbacks(request.trip.id, request.observability),
       onError: ({ error }) => {
         const fields = {
@@ -1246,7 +961,6 @@ export class AiSdkAgentModel implements AgentModel {
           agentSessionId: request.trip.id,
           turnId: request.observability.turnId,
           trigger: request.observability.trigger,
-          attempt,
           ...safeAgentErrorFields(error),
         };
         logger.error("agent.stream.failed", fields);
@@ -1254,7 +968,7 @@ export class AiSdkAgentModel implements AgentModel {
       },
       runtimeContext: this.runtimeContext(request.trip.id, request.observability),
       telemetry: {
-        ...this.telemetry(attempt === 1 ? "agent.chat" : "agent.chat.repair"),
+        ...this.telemetry("agent.chat"),
         includeRuntimeContext: this.includedRuntimeContext(),
       },
     });
@@ -1283,271 +997,83 @@ export class AiSdkAgentModel implements AgentModel {
     });
   }
 
-  private async validateGeneratedUi(
+  private deterministicStreetViewResponse(
     request: AgentChatRequest,
-    parts: AgentMessagePart[],
-    attempt: 1 | 2,
-    requireStreetViewToolResult: boolean,
-  ) {
-    const validation = await startObservabilitySpan(
-      "opentrip.agent.generated_ui.validate",
-      {
-        requestId: request.observability.requestId,
-        tripId: request.trip.id,
-        agentSessionId: request.trip.id,
-        turnId: request.observability.turnId,
-        runtime: request.observability.runtime,
-        uiContractVersion: AGENT_UI_CONTRACT_VERSION,
-        uiAttempt: attempt,
-        uiHighRisk: requireStreetViewToolResult,
-      },
-      async () => {
-        const result = validateAgentUiProtocol(parts, {
-          requireStreetViewToolResult,
-        });
-        setActiveSpanAttributes({
-          uiOutcome: result.valid ? "accepted" : "rejected",
-          ...(result.reason ? { uiReason: result.reason } : {}),
-        });
-        return result;
-      },
+    originalMessages: AgentUIMessage[],
+  ): Response {
+    const grounding = request.streetViewGrounding!;
+    const groundingPart = deterministicGroundingPart(
+      grounding,
+      request.observability.turnId,
     );
-    logger[validation.valid ? "info" : "warn"](
-      validation.valid
-        ? "agent.generated_ui.accepted"
-        : "agent.generated_ui.rejected",
-      {
-        runtime: request.observability.runtime,
-        requestId: request.observability.requestId,
-        tripId: request.trip.id,
-        turnId: request.observability.turnId,
-        attempt,
-        highRisk: requireStreetViewToolResult,
-        uiContractVersion: AGENT_UI_CONTRACT_VERSION,
-        outcome: validation.valid ? "accepted" : "rejected",
-        reason: validation.reason,
-      },
+    const statusPart = deterministicStatusPart(
+      grounding,
+      request.observability.turnId,
     );
-    return validation;
-  }
-
-  private async fallbackResponse(
-    request: AgentChatRequest,
-    reason: AgentUiFallbackReason,
-  ): Promise<Response> {
-    const messageId = generateId();
-    const part = createAgentUiFallbackPart(reason);
-    logger.warn("agent.generated_ui.fallback", {
-      runtime: request.observability.runtime,
-      requestId: request.observability.requestId,
-      tripId: request.trip.id,
-      turnId: request.observability.turnId,
-      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
-      outcome: "fallback",
-      reason,
-    });
-    await request.onFinish([part as unknown as AgentMessagePart], messageId);
-    return createUIMessageStreamResponse({
-      stream: replayUiMessageChunks(
-        uiMessageChunksFromParts(messageId, [part as UIMessage["parts"][number]]),
-      ),
-    });
-  }
-
-  private async gatedStreetViewResponse(options: {
-    request: AgentChatRequest;
-    messages: ModelMessage[];
-    tools: ToolSet;
-    originalMessages: UIMessage[];
-    refinementSpec: Spec | null;
-    groundedTurn: GroundedStreetViewTurn;
-  }): Promise<Response> {
-    const {
-      request,
-      messages,
-      tools,
+    const specPart = deterministicSpecPart(
+      grounding,
+      request.observability.turnId,
+    );
+    const textId = stablePartId("text", request.observability.turnId);
+    const stream = createUIMessageStream<AgentUIMessage>({
       originalMessages,
-      refinementSpec,
-      groundedTurn,
-    } = options;
-    if (!this.streetViewService) {
-      return this.fallbackResponse(request, "service_unavailable");
-    }
-
-    const first = await bufferUiMessageStream(
-      this.createChatUiStream({
-        request,
-        messages,
-        tools,
-        streetViewPolicy: new StreetViewToolPolicy(),
-        groundedTurn,
-        originalMessages,
-        refinementSpec,
-        maxSteps: this.config.maxToolSteps,
-        allowWrites: true,
-        attempt: 1,
-      }),
-    );
-    if (awaitingManualApproval(first.message.parts)) {
-      await request.onFinish(
-        first.message.parts as AgentMessagePart[],
-        first.message.id,
-      );
-      return createUIMessageStreamResponse({
-        stream: replayUiMessageChunks(first.chunks),
-      });
-    }
-
-    const firstValidation = await this.validateGeneratedUi(
-      request,
-      first.message.parts as AgentMessagePart[],
-      1,
-      true,
-    );
-    if (firstValidation.valid) {
-      await request.onFinish(
-        first.message.parts as AgentMessagePart[],
-        first.message.id,
-      );
-      return createUIMessageStreamResponse({
-        stream: replayUiMessageChunks(first.chunks),
-      });
-    }
-
-    logger.warn("agent.generated_ui.repair_started", {
-      runtime: request.observability.runtime,
-      requestId: request.observability.requestId,
-      tripId: request.trip.id,
-      turnId: request.observability.turnId,
-      attempt: 2,
-      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
-      reason: firstValidation.reason,
+      generateId,
+      execute: ({ writer }) => {
+        writer.write(groundingPart);
+        writer.write({ type: "text-start", id: textId });
+        writer.write({ type: "text-delta", id: textId, delta: grounding.text });
+        writer.write({ type: "text-end", id: textId });
+        if (specPart) writer.write(specPart);
+        if (statusPart) writer.write(statusPart);
+      },
+      onEnd: async ({ responseMessage }) => {
+        await request.onFinish(
+          responseMessage.parts as AgentMessagePart[],
+          responseMessage.id,
+        );
+      },
     });
-
-    const trustedParts = trustedStreetViewParts(first.message.parts);
-    const repairPolicy = new StreetViewToolPolicy();
-    const repairTools =
-      trustedParts.length > 0
-        ? {}
-        : this.readTools(
-            request.trip.id,
-            repairPolicy,
-            request.observability,
-          );
-    const repair = await bufferUiMessageStream(
-      this.createChatUiStream({
-        request,
-        messages:
-          trustedParts.length > 0
-            ? [
-                ...messages,
-                repairInstruction(trustedParts, firstValidation.reason),
-              ]
-            : messages,
-        tools: repairTools,
-        streetViewPolicy: repairPolicy,
-        groundedTurn:
-          trustedParts.length > 0
-            ? { required: false, hasCoordinates: false }
-            : groundedTurn,
-        originalMessages: [],
-        refinementSpec: null,
-        maxSteps: AGENT_UI_REPAIR_MAX_STEPS,
-        allowWrites: false,
-        attempt: 2,
-        systemSuffix:
-          "This is the only repair attempt. Follow the grounding and generated UI contract exactly.",
-      }),
-    );
-
-    const repairedParts =
-      trustedParts.length > 0
-        ? ([
-            ...trustedParts,
-            ...repair.message.parts.filter((part) => !isToolUIPart(part)),
-          ] as UIMessage["parts"])
-        : repair.message.parts;
-    const secondValidation = await this.validateGeneratedUi(
-      request,
-      repairedParts as AgentMessagePart[],
-      2,
-      true,
-    );
-    if (!secondValidation.valid) {
-      return this.fallbackResponse(
-        request,
-        fallbackReasonFor(secondValidation.reason ?? firstValidation.reason),
-      );
-    }
-
-    const messageId = repair.message.id || first.message.id;
-    logger.info("agent.generated_ui.repair_completed", {
-      runtime: request.observability.runtime,
-      requestId: request.observability.requestId,
-      tripId: request.trip.id,
-      turnId: request.observability.turnId,
-      attempt: 2,
-      uiContractVersion: AGENT_UI_CONTRACT_VERSION,
-      outcome: "repaired",
-      reusedToolResult: trustedParts.length > 0,
-    });
-    await request.onFinish(repairedParts as AgentMessagePart[], messageId);
-    const chunks =
-      trustedParts.length > 0
-        ? uiMessageChunksFromParts(messageId, repairedParts)
-        : repair.chunks;
     return createUIMessageStreamResponse({
-      stream: replayUiMessageChunks(chunks),
+      stream,
+      consumeSseStream: ({ stream: sseStream }) =>
+        consumeStream({ stream: sseStream }),
     });
   }
 
   async streamChat(request: AgentChatRequest): Promise<Response> {
-    const streetViewPolicy = new StreetViewToolPolicy();
-    const tools = this.chatTools(
-      request.trip.id,
-      request.applyPatch,
-      streetViewPolicy,
-      request.observability,
-    );
-    const { messages, refinementSpec } = await this.resolveModelMessages(
-      request,
-      tools,
-    );
-
     // When the last message is an assistant with tool parts, the UI stream
     // must continue that same message — pass originalMessages for approval
     // continuation (AI SDK official pattern).
     const originalMessages = (request.clientMessages ?? []).map((m) => ({
       id: m.id ?? generateId(),
       role: m.role as UIMessage["role"],
-      parts: m.parts as UIMessage["parts"],
+      // Grounding/status are server-owned persistent controls and are never
+      // accepted from a client continuation.
+      parts: m.parts.filter(
+        (part) =>
+          part.type !== AGENT_GROUNDING_DATA_PART_TYPE &&
+          part.type !== AGENT_STATUS_DATA_PART_TYPE,
+      ) as UIMessage["parts"],
     })) as UIMessage[];
-    const groundedTurn = groundedStreetViewTurn(request.history);
-    const approvalContinuation = clientHasToolApprovalResponse(
-      request.clientMessages ?? [],
-    );
-    if (groundedTurn.required && !approvalContinuation) {
-      return this.gatedStreetViewResponse({
+    if (request.streetViewGrounding) {
+      return this.deterministicStreetViewResponse(
         request,
-        messages,
-        tools,
-        originalMessages,
-        refinementSpec,
-        groundedTurn,
-      });
+        originalMessages as AgentUIMessage[],
+      );
     }
+
+    const tools = this.chatTools(request.trip.id, request.applyPatch);
+    const { messages, refinementSpec } = await this.resolveModelMessages(
+      request,
+      tools,
+    );
 
     const generatedStream = this.createChatUiStream({
       request,
       messages,
       tools,
-      streetViewPolicy,
-      groundedTurn: { required: false, hasCoordinates: false },
       originalMessages,
       refinementSpec,
-      maxSteps: this.config.maxToolSteps,
-      allowWrites: true,
-      attempt: 1,
     });
 
     const stream = createUIMessageStream({
@@ -1579,17 +1105,16 @@ export class AiSdkAgentModel implements AgentModel {
     });
   }
 
-  async generateReply(
-    request: Pick<AgentChatRequest, "trip" | "history" | "observability">,
-  ): Promise<AgentMessagePart[]> {
+  async generateReply(request: AgentReplyRequest): Promise<AgentMessagePart[]> {
+    if (request.streetViewGrounding) {
+      return deterministicStreetViewParts(
+        request.streetViewGrounding,
+        request.observability.turnId,
+      );
+    }
     // Ambient replies stay read-only: no write tools, no approval loop.
     // Use ambientSystem so the model is not told it has editor write tools.
-    const streetViewPolicy = new StreetViewToolPolicy();
-    const tools = this.readTools(
-      request.trip.id,
-      streetViewPolicy,
-      request.observability,
-    );
+    const tools = this.readTools(request.trip.id);
     const result = await generateText({
       model: this.model,
       system: this.ambientSystem(request.trip),
@@ -1606,8 +1131,6 @@ export class AiSdkAgentModel implements AgentModel {
         request.trip.id,
       ),
       stopWhen: stepCountIs(this.config.maxToolSteps),
-      prepareStep: ({ instructions }) =>
-        streetViewPolicy.prepareStep(Object.keys(tools), instructions),
       ...this.lifecycleCallbacks(request.trip.id, request.observability),
       runtimeContext: this.runtimeContext(request.trip.id, request.observability),
       telemetry: {
@@ -1790,236 +1313,6 @@ export function buildGeoReadTools(geoService: GeoService): ToolSet {
         providerCall("geo", "review_lookup", () => geoService.reviewLookup(input)),
     }),
   };
-}
-
-/** Provider-neutral street-view tools. Search/inspect may add one trusted preview. */
-export function buildStreetViewReadTools(
-  streetViewService: StreetViewService,
-  tripId: string,
-  policy = new StreetViewToolPolicy(),
-  observability?: AgentObservabilityContext,
-): ToolSet {
-  return {
-    streetViewSearch: tool({
-      description:
-        "Find street-level imagery near real coordinates. Omit radiusMeters first; the first search is always executed at 100 metres. Retry once at the same coordinates with a radius up to 250 metres only after an empty or partial result. A found or empty outcome is a successful call; only a thrown error is a failure. On found, you receive trusted captions and at most one static preview — emit StreetViewCard with a returned imageId in the same reply. Prefer supports360=true only for the member's interactive viewer.",
-      inputSchema: z.object({
-        lat: z.number().min(-90).max(90),
-        lng: z.number().min(-180).max(180),
-        radiusMeters: z.number().int().min(1).max(1_000).optional(),
-        limit: z.number().int().min(1).max(10).optional(),
-      }),
-      execute: async (input) => {
-        const effectiveInput = policy.validateSearch(input);
-        const startedAt = Date.now();
-        try {
-          const result = await providerCall("street_view", "search", () =>
-            streetViewService.searchNearby({
-              tripId,
-              ...effectiveInput,
-              observability,
-            }),
-          );
-          logger.info("street_view.search_completed", {
-            tripId,
-            requestedRadiusMeters:
-              input.radiusMeters ?? INITIAL_STREET_VIEW_RADIUS_METERS,
-            radiusMeters: effectiveInput.radiusMeters,
-            requestedLimit: effectiveInput.limit ?? 5,
-            candidateCount: result.candidateCount,
-            resultCount: result.images.length,
-            panoramaCount: result.panoramaCount,
-            outcome: result.outcome,
-            completeness: result.completeness,
-            durationMs: Date.now() - startedAt,
-          });
-          policy.recordSearchSuccess(effectiveInput, result);
-          return result;
-        } catch (error) {
-          policy.recordSearchFailure();
-          logger.error("street_view.search_failed", {
-            tripId,
-            requestedRadiusMeters:
-              input.radiusMeters ?? INITIAL_STREET_VIEW_RADIUS_METERS,
-            radiusMeters: effectiveInput.radiusMeters,
-            requestedLimit: effectiveInput.limit ?? 5,
-            errorCode:
-              error instanceof StreetViewError ? error.code : "street_view_unexpected_error",
-            durationMs: Date.now() - startedAt,
-          });
-          throw error;
-        }
-      },
-      toModelOutput: async ({ output }) =>
-        streetViewSearchToModelOutput(streetViewService, tripId, output, observability),
-    }),
-    streetViewInspect: tool({
-      description:
-        "Visually inspect exactly one ordinary static street-view result. Use only an imageId returned by streetViewSearch with supports360=false. Panorama inspection is forbidden.",
-      inputSchema: z.object({
-        imageId: z.string().regex(/^[A-Za-z0-9_-]{1,160}$/),
-      }),
-      execute: async ({ imageId }) => {
-        policy.validateInspect(imageId);
-        return providerCall("street_view", "inspect", () =>
-          streetViewService.getInspectableImage(tripId, imageId, observability),
-        );
-      },
-      toModelOutput: async ({ output }) => {
-        if (output.supports360) {
-          throw new StreetViewError(
-            "street_view_panorama_inspection_forbidden",
-            "Panorama content cannot be supplied to the model",
-          );
-        }
-        return streetViewStaticPreviewToModelOutput(
-          streetViewService,
-          output,
-          formatStreetViewImageCaption(output),
-          observability,
-        );
-      },
-    }),
-  };
-}
-
-type StreetViewModelContent = {
-  type: "content";
-  value: Array<
-    | { type: "text"; text: string }
-    | {
-        type: "file";
-        mediaType: string;
-        data: { type: "data"; data: Uint8Array };
-        filename: string;
-      }
-  >;
-};
-
-type StreetViewModelText = { type: "text"; value: string };
-
-type StreetViewPreviewAttachOutcome =
-  | "attached"
-  | "skipped_empty"
-  | "skipped_panorama_only"
-  | "preview_unavailable";
-
-export function formatStreetViewImageCaption(image: StreetViewImageDto): string {
-  const parts = [
-    `id=${image.id}`,
-    image.distanceMeters === undefined
-      ? null
-      : `distanceMeters=${image.distanceMeters}`,
-    image.headingDegrees === undefined
-      ? null
-      : `headingDegrees=${Math.round(image.headingDegrees)}`,
-    image.capturedAt ? `capturedAt=${image.capturedAt}` : null,
-    `supports360=${image.supports360}`,
-    `attribution=${image.attribution.label}`,
-  ].filter((part): part is string => part !== null);
-  return parts.join(" ");
-}
-
-export function formatStreetViewSearchModelText(
-  result: StreetViewSearchResultDto,
-): string {
-  const header = [
-    `Street-view search outcome=${result.outcome}`,
-    `completeness=${result.completeness}`,
-    `resultCount=${result.images.length}`,
-    `candidateCount=${result.candidateCount}`,
-    `panoramaAvailable=${result.panoramaAvailable}`,
-    `panoramaCount=${result.panoramaCount}`,
-  ].join(" ");
-  if (result.outcome === "empty" || result.images.length === 0) {
-    return [
-      header,
-      "No images returned for this search area.",
-      "Do not invent image ids or claim coverage elsewhere.",
-    ].join("\n");
-  }
-  const lines = result.images.map(
-    (image, index) => `${index + 1}. ${formatStreetViewImageCaption(image)}`,
-  );
-  return [
-    header,
-    "Trusted candidates (use only these image ids for StreetViewCard):",
-    ...lines,
-    "Emit StreetViewCard with one of these imageIds in this same reply. Do not invent image ids, capture times, headings, distances, or attribution. Keep prose brief; the card hydrates preview metadata.",
-  ].join("\n");
-}
-
-export async function streetViewSearchToModelOutput(
-  streetViewService: StreetViewService,
-  tripId: string,
-  output: StreetViewSearchResultDto,
-  observability?: AgentObservabilityContext,
-): Promise<StreetViewModelContent | StreetViewModelText> {
-  const text = formatStreetViewSearchModelText(output);
-  if (output.outcome === "empty" || output.images.length === 0) {
-    logSearchPreviewAttach(tripId, "skipped_empty");
-    return { type: "text", value: text };
-  }
-  const staticImage = output.images.find((image) => !image.supports360);
-  if (!staticImage) {
-    logSearchPreviewAttach(tripId, "skipped_panorama_only");
-    return {
-      type: "text",
-      value: `${text}\nNo ordinary static preview is available for the model; panoramas are for the member viewer only.`,
-    };
-  }
-  const withPreview = await streetViewStaticPreviewToModelOutput(
-    streetViewService,
-    staticImage,
-    text,
-    observability,
-  );
-  if (withPreview.type === "content") {
-    logSearchPreviewAttach(tripId, "attached", staticImage.id);
-    return withPreview;
-  }
-  logSearchPreviewAttach(tripId, "preview_unavailable", staticImage.id);
-  return withPreview;
-}
-
-async function streetViewStaticPreviewToModelOutput(
-  streetViewService: StreetViewService,
-  image: Pick<StreetViewImageDto, "id">,
-  text: string,
-  observability?: AgentObservabilityContext,
-): Promise<StreetViewModelContent | StreetViewModelText> {
-  try {
-    const preview = await providerCall("street_view", "read_preview", () =>
-      streetViewService.readPreview(image.id, observability),
-    );
-    return {
-      type: "content",
-      value: [
-        { type: "text", text },
-        {
-          type: "file",
-          mediaType: preview.mediaType,
-          data: { type: "data", data: preview.bytes },
-          filename: `street-view-${image.id}`,
-        },
-      ],
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Preview unavailable";
-    return { type: "text", value: `${text}\nPreview unavailable: ${message}` };
-  }
-}
-
-function logSearchPreviewAttach(
-  tripId: string,
-  outcome: StreetViewPreviewAttachOutcome,
-  imageId?: string,
-): void {
-  logger.info("street_view.search_model_output", {
-    tripId,
-    previewAttach: outcome,
-    ...(imageId ? { imageId } : {}),
-  });
 }
 
 const lodgingPropertyTypeSchema = z.enum([

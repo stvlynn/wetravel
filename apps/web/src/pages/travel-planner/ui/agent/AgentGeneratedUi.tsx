@@ -23,7 +23,7 @@ import {
   ScanLine,
   Sparkles,
 } from "lucide-react";
-import type { UIMessage } from "ai";
+import type { AgentUIMessage } from "../../model/agent-ui-message";
 import { cn } from "@/shared/lib";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -41,7 +41,7 @@ import {
 import { useStreetViewViewer } from "../street-view/StreetViewViewerProvider";
 
 interface AgentGeneratedUiProps {
-  parts: UIMessage["parts"];
+  parts: AgentUIMessage["parts"];
   streaming: boolean;
   onSendFollowUp: (message: string) => Promise<void>;
   onFocusDay: (dayNumber: number) => void;
@@ -190,7 +190,6 @@ export function AgentGeneratedUi({
   onFocusStop,
 }: AgentGeneratedUiProps) {
   const { t, i18n } = useTranslation("agent");
-  const { tripId, openStreetView } = useStreetViewViewer();
   const { spec, hasSpec } = useJsonRenderMessage(parts as unknown as DataPart[]);
   const safeSpec = useMemo(
     () =>
@@ -441,11 +440,6 @@ export function AgentGeneratedUi({
         focusStop: async (params) => {
           if (params) onFocusStop(params.stopId);
         },
-        openStreetView: async (params) => {
-          if (!params) return;
-          const image = await fetchStreetViewImage(tripId, params.imageId);
-          if (image.supports360) openStreetView(params.imageId);
-        },
       },
     });
 
@@ -460,7 +454,7 @@ export function AgentGeneratedUi({
         () => localState,
       ),
     };
-  }, [i18n.language, onFocusDay, onFocusStop, onSendFollowUp, openStreetView, t, tripId]);
+  }, [i18n.language, onFocusDay, onFocusStop, onSendFollowUp, t]);
 
   if (!hasSpec) return null;
   if (!safeSpec) {
