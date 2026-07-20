@@ -5,30 +5,38 @@ import { authClient } from "@/shared/auth";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 
-const initialCode = readAndClearBridgeCode();
+const initialBridgeState = readAndClearBridgeState();
 let exchangeAttempt:
   | { code: string; promise: Promise<void> }
   | undefined;
 
-export function MiniappBootstrap({ onComplete }: { onComplete: () => void }) {
+export function MiniappBootstrap({
+  onComplete,
+}: {
+  onComplete: (path: string) => void;
+}) {
   const { t } = useTranslation("common");
-  const [failed, setFailed] = useState(!initialCode);
+  const [failed, setFailed] = useState(false);
 
   const connect = useCallback(async () => {
-    if (!initialCode) {
-      setFailed(true);
-      return;
-    }
     setFailed(false);
     try {
-      await exchangeOnce(initialCode);
-      const session = await authClient.getSession({
-        query: { disableCookieCache: true },
-      });
-      if (session.error || !session.data) {
+      // Each native shell page mints its own single-use code, but the WebView
+      // may already hold a session cookie (shared storage across pages or a
+      // reload after the code was consumed). Prefer the existing session.
+      if (await hasSession()) {
+        onComplete(initialBridgeState.path);
+        return;
+      }
+      if (!initialBridgeState.code) {
+        setFailed(true);
+        return;
+      }
+      await exchangeOnce(initialBridgeState.code);
+      if (!(await hasSession())) {
         throw new Error("WebView session cookie was not established");
       }
-      onComplete();
+      onComplete(initialBridgeState.path);
     } catch {
       setFailed(true);
     }
@@ -64,6 +72,13 @@ export function MiniappBootstrap({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+async function hasSession(): Promise<boolean> {
+  const session = await authClient.getSession({
+    query: { disableCookieCache: true },
+  });
+  return !session.error && Boolean(session.data);
+}
+
 function exchangeOnce(code: string): Promise<void> {
   if (!exchangeAttempt || exchangeAttempt.code !== code) {
     const promise = exchangeMiniappWebviewCode(code).catch((error) => {
@@ -75,16 +90,27 @@ function exchangeOnce(code: string): Promise<void> {
   return exchangeAttempt.promise;
 }
 
-function readAndClearBridgeCode(): string | null {
+/**
+ * Reads the one-time bridge code and the target PWA path from the fragment
+ * the native shell composed, then strips the fragment before any further
+ * request can leak it.
+ */
+function readAndClearBridgeState(): { code: string | null; path: string } {
   if (typeof window === "undefined" || window.location.pathname !== "/miniapp") {
-    return null;
+    return { code: null, path: "/" };
   }
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const code = params.get("code")?.trim() || null;
+  const path = sanitizeInternalPath(params.get("path"));
   window.history.replaceState(
     null,
     "",
     `${window.location.pathname}${window.location.search}`,
   );
-  return code;
+  return { code, path };
+}
+
+function sanitizeInternalPath(path: string | null): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return "/";
+  return path;
 }

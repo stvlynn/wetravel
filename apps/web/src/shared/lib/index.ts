@@ -31,3 +31,11 @@ export {
   useMediaQuery,
   useIsMobile,
 } from "./media-query";
+export { useDocumentTitle } from "./document-title";
+export {
+  loadWechatMiniProgramBridge,
+  getWechatMiniProgramBridge,
+  postMiniappShareContext,
+  type MiniappShareContext,
+  type WechatMiniProgramBridge,
+} from "./wechat-bridge";

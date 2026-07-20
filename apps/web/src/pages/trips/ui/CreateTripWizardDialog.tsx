@@ -154,7 +154,7 @@ export function CreateTripWizardDialog({
       });
       onOpenChange(false);
       reset();
-      navigate(`/trips/${trip.id}`);
+      navigate(`/trips/${trip.id}`, { title: trip.title });
     },
   });
 

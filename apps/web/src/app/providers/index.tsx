@@ -9,6 +9,7 @@ import {
     installSystemNotificationBridge,
     ToastProvider,
 } from "@/shared/ui/toast";
+import { loadWechatMiniProgramBridge } from "@/shared/lib";
 import { MobileOnboarding } from "@/features/mobile-onboarding";
 import { SettingsProvider } from "@/features/settings";
 import { subscribeToThemeChanges } from "@/features/toggle-theme";
@@ -29,7 +30,13 @@ export function AppProviders({
     children: ReactNode;
 }) {
     useEffect(() => {
-        if (!embedded) installSystemNotificationBridge();
+        if (embedded) {
+            // Preload the JSSDK so navigation clicks can use wx.miniProgram
+            // synchronously once it resolves.
+            void loadWechatMiniProgramBridge();
+        } else {
+            installSystemNotificationBridge();
+        }
         return subscribeToThemeChanges();
     }, [embedded]);
 

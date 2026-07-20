@@ -9,6 +9,8 @@ import { UserMenu } from "@/widgets/user-menu";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 import { useRouter } from "@/app/router";
+import { useIsMiniappEmbedded } from "@/app/embedded-environment";
+import { useDocumentTitle } from "@/shared/lib";
 import { TripCard } from "./ui/TripCard";
 import { CreateTripWizardDialog } from "./ui/CreateTripWizardDialog";
 
@@ -16,7 +18,11 @@ export function TripsPage() {
   const { t } = useTranslation("trips");
   const { t: tc } = useTranslation("common");
   const { navigate } = useRouter();
+  const embedded = useIsMiniappEmbedded();
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  // Labels the native navigation bar inside the Mini Program WebView.
+  useDocumentTitle(embedded ? tc("appName") : undefined);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: queryKeys.trips,
@@ -29,9 +35,12 @@ export function TripsPage() {
 
       <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)] max-md:rounded-none max-md:border-0 max-md:shadow-none">
         <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-1 md:hidden">
-          <span className="font-heading text-lg font-semibold">
-            {tc("appName")}
-          </span>
+          {/* The native navigation bar already shows the brand when embedded. */}
+          {embedded ? <span aria-hidden="true" /> : (
+            <span className="font-heading text-lg font-semibold">
+              {tc("appName")}
+            </span>
+          )}
           <UserMenu compact direction="down" />
         </div>
         <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
@@ -69,7 +78,7 @@ export function TripsPage() {
                 <TripCard
                   key={trip.id}
                   trip={trip}
-                  onOpen={() => navigate(`/trips/${trip.id}`)}
+                  onOpen={() => navigate(`/trips/${trip.id}`, { title: trip.title })}
                 />
               ))}
             </div>

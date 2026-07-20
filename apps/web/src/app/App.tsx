@@ -49,12 +49,17 @@ function Gate() {
 }
 
 function AppContent({ startsInBootstrap }: { startsInBootstrap: boolean }) {
-  const { navigate } = useRouter();
+  const { replace } = useRouter();
   const [isBootstrapping, setIsBootstrapping] = useState(startsInBootstrap);
-  const completeBootstrap = useCallback(() => {
-    navigate("/");
-    setIsBootstrapping(false);
-  }, [navigate]);
+  const completeBootstrap = useCallback(
+    (path: string) => {
+      // Internal redirect only: the current WebView must render the target
+      // route itself instead of pushing a new native page.
+      replace(path);
+      setIsBootstrapping(false);
+    },
+    [replace],
+  );
 
   if (isBootstrapping) {
     return <MiniappBootstrap onComplete={completeBootstrap} />;

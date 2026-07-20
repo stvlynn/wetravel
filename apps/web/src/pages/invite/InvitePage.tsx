@@ -112,7 +112,7 @@ function AcceptCard({
       queryClient.setQueryData<TripSummary[]>(queryKeys.trips, (previous) =>
         upsertTripSummary(previous, trip),
       );
-      navigate(`/trips/${trip.id}`);
+      navigate(`/trips/${trip.id}`, { title: trip.title });
     },
     onError: (err) => {
       toastManager.add({
@@ -179,7 +179,9 @@ function AcceptCard({
           <Button
             variant="brand"
             size="lg"
-            onClick={() => navigate(`/trips/${preview.tripId}`)}
+            onClick={() =>
+              navigate(`/trips/${preview.tripId}`, { title: preview.tripTitle })
+            }
           >
             {t("accept.open")}
           </Button>
