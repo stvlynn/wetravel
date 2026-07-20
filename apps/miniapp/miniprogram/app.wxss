@@ -4,3 +4,56 @@ page {
   color: #172033;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* Loading / error states shared by every WebView page. */
+.shell-state {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 96rpx 48rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  text-align: center;
+}
+
+.shell-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 6rpx solid #dce4f5;
+  border-top-color: #4274cc;
+  border-radius: 999rpx;
+  animation: spin 800ms linear infinite;
+}
+
+.shell-title {
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.shell-message {
+  max-width: 560rpx;
+  color: #667085;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.shell-retry {
+  min-width: 240rpx;
+  margin-top: 16rpx;
+  border-radius: 20rpx;
+  background: #4274cc;
+  color: #ffffff;
+  font-size: 30rpx;
+}
+
+.shell-retry::after {
+  border: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

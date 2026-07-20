@@ -1,0 +1,16 @@
+<web-view
+  wx:if="{{webviewUrl}}"
+  src="{{webviewUrl}}"
+  bindload="handleWebviewLoad"
+  binderror="handleWebviewError"
+  bindmessage="handleWebviewMessage"
+/>
+
+<view wx:else class="shell-state">
+  <view wx:if="{{loading}}" class="shell-spinner" aria-label="{{copy.connecting}}"></view>
+  <block wx:else>
+    <text class="shell-title">{{copy.openFailedTitle}}</text>
+    <text class="shell-message">{{errorMessage}}</text>
+    <button class="shell-retry" bindtap="connect">{{copy.retry}}</button>
+  </block>
+</view>

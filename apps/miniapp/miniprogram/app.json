@@ -1,5 +1,5 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": ["pages/home/home", "pages/trip/trip", "pages/invite/invite"],
   "window": {
     "navigationBarTitleText": "OpenTrip",
     "navigationBarBackgroundColor": "#ffffff",
