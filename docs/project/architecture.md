@@ -33,8 +33,11 @@ flowchart TD
 - **apps/web** — React SPA (FSD). Renders Trips and the Planner, talks to the
   API over `fetch`, and delegates auth to the Better Auth client.
 - **apps/miniapp** — dependency-free native WeChat shell. It exchanges
-  `wx.login` for a short-lived bearer, immediately mints a single-use WebView
-  code, and hosts the responsive PWA without persisting the bearer.
+  `wx.login` for a short-lived in-memory bearer, mints a single-use WebView
+  code per native page, and hosts the responsive PWA behind a native page
+  stack (one native page per page-level PWA route) so navigation bar, back
+  gestures, share cards, and deep links are native. See
+  [../frontend/miniapp.md](../frontend/miniapp.md).
 - **apps/api** — Hono app (DDD + Hexagonal). `interfaces/http` routes call
   `application` use cases, which operate on `domain` aggregates through
   repository ports implemented in `infrastructure`.

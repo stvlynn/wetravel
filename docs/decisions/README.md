@@ -30,3 +30,6 @@ Each ADR uses: **Context**, **Decision**, **Consequences**, **Status**
 - [0009-mini-program-pwa-webview-shell.md](0009-mini-program-pwa-webview-shell.md)
   — replace the duplicated Taro client with a native login shell hosting the
   responsive PWA through a secure one-time-code bridge.
+- [0010-miniapp-native-page-stack.md](0010-miniapp-native-page-stack.md) — one
+  native page per page-level PWA route so WeChat provides native navigation,
+  back gestures, titles, share cards, and deep links.

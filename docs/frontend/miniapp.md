@@ -1,45 +1,97 @@
 # WeChat Mini Program PWA shell
 
 `apps/miniapp` is a dependency-free native WeChat Mini Program shell. It owns
-only WeChat login, secure browser-session handoff, and WebView failure recovery.
-All product UI is the responsive PWA from `apps/web`.
+WeChat login, secure browser-session handoff, the native page stack (navigation
+bar, back button, swipe-back), share cards, and WebView failure recovery. All
+product UI is the responsive PWA from `apps/web`.
+
+## Hybrid native architecture
+
+The shell is not a single-page WebView wrapper. Each page-level PWA route is
+hosted by its own native page so WeChat provides real native navigation:
+
+| Native page | PWA route | Role |
+| --- | --- | --- |
+| `pages/home/home` | `/` | Stack bottom; trips list |
+| `pages/trip/trip` | `/trips/:id` | Trip planner; share-card target |
+| `pages/invite/invite` | `/invite/:token` | Invite acceptance |
+
+Every native page uses the default (native) navigation bar and embeds a
+`<web-view>` that loads `https://<web-origin>/miniapp#code=…&path=…`. The
+target PWA path and the single-use auth code travel in the URL fragment, which
+the PWA strips before making any request.
+
+Page-level transitions are driven from the PWA through the official JSSDK
+(`wx.miniProgram.*`, loaded on demand by `shared/lib/wechat-bridge.ts` in
+embedded mode — no `wx.config` signature is required for this API family):
+
+- opening a trip or invite calls `wx.miniProgram.navigateTo` with the PWA path
+  (and an optional `title` used to pre-label the native bar) in the query;
+- "back to trips" calls `wx.miniProgram.reLaunch` to the home page, which is
+  stack-safe from any entry point (including share cards) and avoids the
+  ten-page stack limit;
+- the native back button and iOS swipe-back pop the stack without any web
+  code.
+
+In-page panels (map / schedule / reservations / budget) remain PWA state inside
+one WebView; there is no app-level native `tabBar` because those panels belong
+to a single trip, not to the app shell.
+
+The native navigation bar title mirrors the WebView's `document.title`, which
+the PWA sets per page (`useDocumentTitle`); the shell also applies the `title`
+query via `wx.setNavigationBarTitle` before the WebView finishes loading.
 
 ## Runtime flow
 
-1. The shell calls `wx.login()`.
-2. `POST /api/auth/wechat-mini-program/sign-in` exchanges the short-lived code
-   server-side and returns a normal Better Auth bearer session.
-3. The shell immediately calls `POST /api/mobile-auth/webview/mint` with that
-   bearer and receives a hashed, single-use, three-minute bridge code.
-4. The shell opens `https://<web-origin>/miniapp#code=…`.
-5. The PWA removes the fragment before making further requests, exchanges the
-   code at `POST /api/mobile-auth/webview/exchange`, and receives an HttpOnly
-   Better Auth cookie.
-6. The PWA reloads at `/` in embedded mode. The bearer is never stored by the
-   shell and never appears in a URL.
+1. A native page loads and calls into `miniprogram/lib/session.js`.
+2. On first use the shell calls `wx.login()` and exchanges the code at
+   `POST /api/auth/wechat-mini-program/sign-in` for a Better Auth bearer. The
+   bearer lives only in `App.globalData` (memory) — never persisted, never in
+   a URL.
+3. Each native page mints its own hashed, single-use, three-minute bridge code
+   at `POST /api/mobile-auth/webview/mint`. If the bearer expired, the shell
+   retries once with a fresh `wx.login`.
+4. The page opens `https://<web-origin>/miniapp#code=…&path=…`.
+5. The PWA removes the fragment, then prefers an existing session cookie; only
+   when none exists does it exchange the code at
+   `POST /api/mobile-auth/webview/exchange` for the HttpOnly Better Auth
+   cookie. This keeps multi-page stacks working regardless of whether the
+   WebView shares cookies across native pages.
+6. The PWA replaces its location with the target path (an internal redirect —
+   never a native stack push) and renders in embedded mode.
 
 Critical application state remains on the API. `wx.miniProgram.postMessage` is
-not used as a state transport because WeChat delivers it only at selected page
-lifecycle events.
+used only for share payloads because WeChat delivers it exclusively at selected
+lifecycle moments (back navigation, component destroy, share, copy link); it is
+never a real-time transport.
 
-## Native shell
+## Share cards and deep links
 
-The native source is under `apps/miniapp/miniprogram`:
+- The PWA queues the current share context (`{ type: "share", title, path,
+  imageUrl }`) with `postMiniappShareContext` whenever an embedded trip page is
+  active.
+- The shell collects payloads in `bindmessage` and answers
+  `onShareAppMessage` with a card pointing at the right native page, carrying
+  the PWA `path` (and `title`) in its query.
+- Opening a share card lands on that native page directly; `onLoad` sanitizes
+  the `path` query (internal, single-slash-rooted paths only) and boots the
+  WebView at the requested route.
+
+## Native shell source
 
 ```text
-app.js
-app.json
-app.wxss
-pages/index/
-  index.js
-  index.json
-  index.wxml
-  index.wxss
+app.js                  App.globalData.bearer (memory only)
+app.json                pages/home, pages/trip, pages/invite; native nav bar
+app.wxss                shared loading/error styles
+lib/copy.js             single source of shell copy
+lib/session.js          wx.login + sign-in + per-page mint
+lib/webview-page.js     shared Page factory (connect, share, deep link)
+lib/webview-shell.wxml  shared <web-view> + loading/error markup
+pages/{home,trip,invite}/
 ```
 
-The page uses the WebView renderer and custom navigation so the PWA owns the
-visible mobile header. Native UI is limited to loading, error, and retry states.
-There is no Taro, React, duplicated trip model, or native product page.
+There is no Taro, React, duplicated trip model, or native product page. Native
+UI is limited to the navigation bar plus loading, error, and retry states.
 
 ## Configuration
 
@@ -82,10 +134,16 @@ source directly from `apps/miniapp/miniprogram`.
 ## Embedded PWA behavior
 
 `/miniapp` is a bootstrap route handled before the regular auth gate. Embedded
-mode suppresses browser-only install/update prompts, mobile onboarding, and
-system-notification setup. Once the cookie handoff succeeds, the existing PWA
-trips, planner, map, agent, settings, uploads, and API caching behavior are used
-unchanged.
+mode:
+
+- suppresses browser-only install/update prompts, mobile onboarding, and
+  system-notification setup;
+- preloads the JSSDK bridge and routes page-level `navigate()` calls through
+  the native stack (with an SPA history fallback while the JSSDK loads);
+- hides the self-drawn back button and title on the mobile planner header and
+  the brand label on the trips header — the native navigation bar owns them;
+- keeps the in-trip tab bar, sheets, dialogs, uploads, map, agent, and API
+  caching behavior unchanged.
 
 The Service Worker never caches auth, mutation, or upload requests. Bridge
 responses are `Cache-Control: private, no-store`.
@@ -96,8 +154,10 @@ Test in WeChat DevTools and real iOS/Android WeChat clients:
 
 - first and repeat login;
 - expired and reused bridge codes;
-- cookie persistence and logout;
-- back/deep navigation;
+- cookie persistence across native pages (home → trip → back) and logout;
+- native back button and swipe-back from the trip page;
+- share a trip, open the share card cold (shell must boot straight into the
+  trip), and forward it;
 - avatar and trip-media uploads;
 - planner, map, and agent behavior;
 - offline and upstream failure recovery.
