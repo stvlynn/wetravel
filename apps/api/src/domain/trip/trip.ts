@@ -125,14 +125,14 @@ const MEMBER_PALETTE: Array<{ bg: string; fg: string }> = [
   { bg: "#f3e8d3", fg: "#7a5a1e" },
 ];
 
-function initialsOf(name: string): string {
+export function memberInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-function shortNameOf(name: string): string {
+export function memberShortName(name: string): string {
   return name.trim().split(/\s+/).filter(Boolean)[0] ?? name.trim();
 }
 
@@ -333,8 +333,8 @@ export class Trip {
         {
           id: `m${tripId}-owner`,
           name: owner.name,
-          shortName: shortNameOf(owner.name),
-          initials: initialsOf(owner.name),
+          shortName: memberShortName(owner.name),
+          initials: memberInitials(owner.name),
           avatarBg: palette.bg,
           avatarFg: palette.fg,
           image: owner.image ?? null,
@@ -396,8 +396,8 @@ export class Trip {
         return {
           id: ownerMemberId,
           name: owner.name,
-          shortName: shortNameOf(owner.name),
-          initials: initialsOf(owner.name),
+          shortName: memberShortName(owner.name),
+          initials: memberInitials(owner.name),
           avatarBg: palette.bg,
           avatarFg: palette.fg,
           image: owner.image ?? null,
@@ -945,8 +945,8 @@ export class Trip {
     const member: MemberSnapshot = {
       id: `m${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
-      shortName: shortNameOf(name),
-      initials: initialsOf(name),
+      shortName: memberShortName(name),
+      initials: memberInitials(name),
       avatarBg: palette.bg,
       avatarFg: palette.fg,
       image: params.image ?? null,

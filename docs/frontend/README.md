@@ -1,7 +1,9 @@
 # Frontend (Feature-Sliced Design)
 
-The frontend (`apps/web`) is a React + TypeScript + Vite SPA organized with
-Feature-Sliced Design v2.1. Reference: [../reference/frontend-sources.md](../reference/frontend-sources.md).
+The browser frontend (`apps/web`) is a React + TypeScript + Vite SPA and the
+WeChat client (`apps/miniapp`) is a Taro + React + TypeScript application. Both
+are organized with Feature-Sliced Design v2.1. Reference:
+[../reference/frontend-sources.md](../reference/frontend-sources.md).
 
 ## Layers
 
@@ -45,6 +47,7 @@ import { Button } from "@/shared/ui/button/button";
 ## Related
 
 - [ui-system.md](ui-system.md) — cossUI tokens, primitives, polish.
+- [miniapp.md](miniapp.md) — Taro architecture, supported surfaces, and setup.
 - [map.md](map.md) — MapLibre wrapper.
 - [i18n.md](i18n.md) — internationalization.
 - [data-caching.md](data-caching.md) — React Query write-echo vs Hyperdrive

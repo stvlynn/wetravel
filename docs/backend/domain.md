@@ -20,6 +20,10 @@ only through aggregate methods.
   invites. `isCurrentUser` is computed per request (member `userId` equals the
   requester) rather than stored, except on legacy demo members where the seeded
   flag is used.
+  User-backed display fields are a denormalized projection of the Better Auth
+  user. A profile update synchronizes `name`, `shortName`, `initials`, and
+  `image` across all memberships for that `userId`, bumps each affected trip
+  revision, and emits a `members` realtime invalidation.
 - **TripDay** — `{ number, date, dateLabel, city, color }`, where `date` is
   ISO `YYYY-MM-DD` and `dateLabel` is a legacy fallback for imported labels.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
@@ -113,6 +117,10 @@ Defined in `domain/trip/ports`:
   `updateDay(tripId, day)`, `reorderDays(trip)`, `deleteDay(trip)`, `save(trip)`.
   `findSummaries` returns trips the user belongs to plus legacy/demo trips with
   no user-backed members.
+
+`application/user/profile-projection-service` defines the
+`MemberProfileProjection` driven port used by Better Auth hooks. The SQL trip
+repository implements it without expanding the aggregate repository contract.
 
 `domain/invite/ports`:
 

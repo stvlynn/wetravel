@@ -1,4 +1,4 @@
-export { Trip } from "./trip";
+export { Trip, memberInitials, memberShortName } from "./trip";
 export type {
   InsertStopDraft,
   MoveStopDraft,

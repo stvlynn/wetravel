@@ -1,0 +1,84 @@
+page {
+  /* Aligned with apps/web cossUI tokens (colors.css):
+     primary = navy ink (ink-800), brand accent = cornflower (corn-500). */
+  --background: #fafbfd;
+  --card: #ffffff;
+  --foreground: #28304a;
+  --muted: #6d788f;
+  --primary: #28304a;
+  --primary-pressed: #1d2540;
+  --brand: #3f6fc9;
+  --brand-pressed: #305bb0;
+  --brand-soft: #eff3fd;
+  --border: #e6e8ef;
+  --danger: #d4483b;
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 28px;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-shell {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.card {
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: 0 12px 36px rgba(23, 32, 51, 0.06);
+}
+
+.primary-button,
+.secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  border-radius: 22px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.primary-button {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.primary-button:active {
+  background: var(--primary-pressed);
+  transform: scale(0.98);
+}
+
+.primary-button[disabled] {
+  opacity: 0.55;
+}
+
+.secondary-button {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 88px;
+  padding: 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fbfcfe;
+  font-size: 28px;
+}
+
+.error-copy {
+  color: var(--danger);
+  font-size: 24px;
+}

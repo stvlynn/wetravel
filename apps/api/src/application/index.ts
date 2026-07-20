@@ -62,6 +62,7 @@ export {
   type ProvisionSampleTripUser,
   type SampleTripTemplateLoader,
 } from "./user/provision-sample-trip";
+export { UserProfileProjectionService } from "./user/profile-projection-service";
 export {
   TripMediaService,
   TripMediaError,

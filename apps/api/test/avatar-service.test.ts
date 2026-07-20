@@ -97,6 +97,7 @@ describe("AvatarService", () => {
         profile,
       ),
     ).rejects.toMatchObject({ code: "avatar_profile_update_failed" } satisfies Partial<AvatarError>);
+    expect(profile.images).toEqual([null]);
     expect(storage.files).toHaveLength(0);
     expect(storage.deleted).toHaveLength(1);
   });

@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import {
   bearer,
   captcha,
@@ -7,6 +8,11 @@ import {
   twoFactor,
 } from "better-auth/plugins";
 import { provisionSampleTripForUser } from "../../application/user/provision-sample-trip";
+import {
+  normalizeDisplayName,
+  UserProfileValidationError,
+  type UserProfileProjectionService,
+} from "../../application/user/profile-projection-service";
 import {
   generateUserAvatar,
   resolveInitialAvatar,
@@ -22,6 +28,10 @@ import {
 import type { AppConfig } from "../config";
 import type { AuthRateLimitStorage } from "./auth-rate-limit";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
+import {
+  WechatCode2SessionClient,
+  wechatMiniProgram,
+} from "./wechat-mini-program";
 
 export interface CreateAuthOptions {
   /** When set, each new user receives a personal copy of the sample trip. */
@@ -29,6 +39,8 @@ export interface CreateAuthOptions {
   loadSampleTripTemplate?: () => Promise<Trip>;
   /** Globally consistent storage supplied by the Cloudflare Worker runtime. */
   rateLimitStorage?: AuthRateLimitStorage;
+  /** Synchronizes Better Auth profile changes into trip member projections. */
+  profileProjection?: UserProfileProjectionService;
   /** Trusted client-IP headers for the active runtime. */
   ipAddressHeaders?: string[];
 }
@@ -113,21 +125,37 @@ export function createAuth(
             sendOnSignIn: true,
             autoSignInAfterVerification: true,
         },
-        socialProviders: config.googleOAuth
+        socialProviders:
+            config.googleOAuth || config.wechatOAuth
             ? {
-                  google: {
-                      clientId: config.googleOAuth.clientId,
-                      clientSecret: config.googleOAuth.clientSecret,
-                      mapProfileToUser: (profile) => {
-                          const dto = mapGoogleProfileToDto(profile);
-                          const seed = dto.email ?? dto.name ?? crypto.randomUUID();
-                          return {
-                              name: dto.name ?? undefined,
-                              email: dto.email ?? undefined,
-                              image: resolveInitialAvatar(dto, seed),
-                          };
-                      },
-                  },
+                  ...(config.googleOAuth
+                      ? {
+                            google: {
+                                clientId: config.googleOAuth.clientId,
+                                clientSecret: config.googleOAuth.clientSecret,
+                                mapProfileToUser: (profile) => {
+                                    const dto = mapGoogleProfileToDto(profile);
+                                    const seed =
+                                        dto.email ??
+                                        dto.name ??
+                                        crypto.randomUUID();
+                                    return {
+                                        name: dto.name ?? undefined,
+                                        email: dto.email ?? undefined,
+                                        image: resolveInitialAvatar(dto, seed),
+                                    };
+                                },
+                            },
+                        }
+                      : {}),
+                  ...(config.wechatOAuth
+                      ? {
+                            wechat: {
+                                clientId: config.wechatOAuth.clientId,
+                                clientSecret: config.wechatOAuth.clientSecret,
+                            },
+                        }
+                      : {}),
               }
             : undefined,
         user: {
@@ -182,6 +210,36 @@ export function createAuth(
                         );
                     },
                 },
+                update: {
+                    before: async (data) => {
+                        if (data.name === undefined) return;
+                        try {
+                            return {
+                                data: {
+                                    ...data,
+                                    name: normalizeDisplayName(data.name),
+                                },
+                            };
+                        } catch (error) {
+                            if (!(error instanceof UserProfileValidationError)) {
+                                throw error;
+                            }
+                            throw new APIError("BAD_REQUEST", {
+                                code: "INVALID_DISPLAY_NAME",
+                                message: error.message,
+                            });
+                        }
+                    },
+                    after: async (user, ctx) => {
+                        if (!options.profileProjection) return;
+                        const fields = profileFieldsFromBody(ctx?.body);
+                        if (!fields) return;
+                        await options.profileProjection.synchronize(user.id, {
+                            ...(fields.name ? { name: user.name } : {}),
+                            ...(fields.image ? { image: user.image ?? null } : {}),
+                        });
+                    },
+                },
             },
         },
         plugins: [
@@ -226,6 +284,16 @@ export function createAuth(
                 // without one when they have no credential account yet.
                 allowPasswordless: true,
             }),
+            ...(config.wechatMiniProgram
+                ? [
+                      wechatMiniProgram({
+                          identityPort: new WechatCode2SessionClient({
+                              appId: config.wechatMiniProgram.appId,
+                              appSecret: config.wechatMiniProgram.appSecret,
+                          }),
+                      }),
+                  ]
+                : []),
             ...(config.captcha
                 ? [
                       captcha({
@@ -240,3 +308,13 @@ export function createAuth(
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+function profileFieldsFromBody(
+  body: unknown,
+): { name: boolean; image: boolean } | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const record = body as Record<string, unknown>;
+  const name = Object.prototype.hasOwnProperty.call(record, "name");
+  const image = Object.prototype.hasOwnProperty.call(record, "image");
+  return name || image ? { name, image } : null;
+}

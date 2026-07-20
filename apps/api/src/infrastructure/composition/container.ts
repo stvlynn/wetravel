@@ -11,6 +11,7 @@ import {
   TripMediaService,
   StreetViewService,
   ReservationService,
+  UserProfileProjectionService,
 } from "../../application";
 import { AvatarService } from "../../application/avatar";
 import type { FileStorage } from "../../application/storage";
@@ -146,8 +147,13 @@ export function createContainer(
   // sessions are consistency-critical. Hyperdrive does not invalidate cached
   // SELECTs after writes, so these adapters must all use the fresh binding.
   const tripRepository = new SqlTripRepository(poolFresh);
+  const profileProjection = new UserProfileProjectionService(
+    tripRepository,
+    options?.tripChangePublisher ?? null,
+  );
   const auth = createAuth(config, authDriver, {
     tripRepository,
+    profileProjection,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
     rateLimitStorage: options?.authRateLimitStorage,
     ipAddressHeaders: options?.authIpAddressHeaders,

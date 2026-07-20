@@ -5,8 +5,11 @@ COMPOSE_FILE ?= deploy/docker/compose.yaml
 POSTGRES_PORT ?= 5430
 POSTGRES_USER ?= opentrip
 POSTGRES_DB ?= opentrip
+MINIAPP_DIR ?= apps/miniapp
+WECHAT_DEVTOOLS_CLI ?= /Applications/wechatwebdevtools.app/Contents/MacOS/cli
 
 .PHONY: help install env setup postgres-up postgres-down dev dev-nodb dev-web dev-api
+.PHONY: miniapp-env miniapp-sync-appid miniapp-clear-cache miniapp build-miniapp dev-miniapp miniapp-open dev-miniapp-api
 .PHONY: db-init db-reset db-migrate db-seed db-generate db-pull db-push db-studio db-snapshot
 .PHONY: deploy-up deploy-down deploy-logs
 .PHONY: build test lint typecheck check docs clean deploy
@@ -25,7 +28,7 @@ help:
 	@echo ""
 	@echo "Docker (full stack):"
 	@echo "  make deploy-up       Build and start postgres + api + web"
-	@echo "  make deploy-down   Stop full docker compose stack"
+	@echo "  make deploy-down     Stop full docker compose stack"
 	@echo "  make deploy-logs     Follow api container logs"
 	@echo ""
 	@echo "Development:"
@@ -33,6 +36,15 @@ help:
 	@echo "  make dev-nodb        Start web + api only (skip Postgres startup)"
 	@echo "  make dev-web         Start Vite only (http://localhost:5170)"
 	@echo "  make dev-api         Start API only (http://localhost:8780)"
+	@echo ""
+	@echo "WeChat Mini Program (Taro):"
+	@echo "  make miniapp              Build weapp, open DevTools, then watch"
+	@echo "  make dev-miniapp          Taro weapp watch only"
+	@echo "  make build-miniapp        One-shot weapp build → apps/miniapp/dist"
+	@echo "  make miniapp-open         Open apps/miniapp in WeChat Developer Tools"
+	@echo "  make miniapp-sync-appid   Sync TARO_APP_WECHAT_APP_ID into private config"
+	@echo "  make miniapp-clear-cache  Clear DevTools file/compile cache and rebuild watcher"
+	@echo "  make dev-miniapp-api      Postgres + API + Taro watch (local Mini Program debug)"
 	@echo ""
 	@echo "Database (Prisma):"
 	@echo "  make db-generate     Generate Prisma Client from schema.prisma"
@@ -113,6 +125,71 @@ dev-web: env
 dev-api: env postgres-up db-migrate
 	pnpm --filter @opentrip/api dev
 
+miniapp-sync-appid:
+	@node "$(MINIAPP_DIR)/scripts/sync-wechat-appid.mjs"
+
+miniapp-env: install
+	@if [ ! -f $(MINIAPP_DIR)/.env ]; then \
+		cp $(MINIAPP_DIR)/.env.example $(MINIAPP_DIR)/.env; \
+		echo "Created $(MINIAPP_DIR)/.env from .env.example"; \
+	else \
+		echo "$(MINIAPP_DIR)/.env already exists"; \
+	fi
+	@$(MAKE) miniapp-sync-appid
+
+build-miniapp: miniapp-env
+	@echo "Building WeChat Mini Program (taro build --type weapp)…"
+	pnpm --filter @opentrip/miniapp build
+
+dev-miniapp: miniapp-env
+	@echo "Taro weapp watch → $(MINIAPP_DIR)/dist (Ctrl+C to stop)"
+	@echo "Open the project in WeChat Developer Tools: make miniapp-open"
+	@echo "In DevTools Details, enable 不校验合法域名 for local http://localhost:8780"
+	pnpm --filter @opentrip/miniapp dev
+
+miniapp-clear-cache: miniapp-env
+	@if [ ! -d $(MINIAPP_DIR)/dist ]; then \
+		echo "$(MINIAPP_DIR)/dist missing — run make build-miniapp (or make miniapp) first."; \
+		exit 1; \
+	fi
+	@node -e 'const fs=require("fs");const p="$(MINIAPP_DIR)/project.private.config.json";let id="";try{id=JSON.parse(fs.readFileSync(p,"utf8")).appid||""}catch{}if(!String(id).trim()){console.error("WeChat AppID missing. Set TARO_APP_WECHAT_APP_ID in apps/miniapp/.env, then run: make miniapp-sync-appid");process.exit(1)}console.log("DevTools AppID synced ("+String(id).trim().slice(0,4)+"…).")'
+	@if [ ! -x "$(WECHAT_DEVTOOLS_CLI)" ]; then \
+		echo "WeChat Developer Tools CLI not found: $(WECHAT_DEVTOOLS_CLI)"; \
+		echo "Set WECHAT_DEVTOOLS_CLI to the installed CLI path."; \
+		exit 1; \
+	fi
+	@echo "Opening project before DevTools cache cleanup…"
+	@printf 'n\n' | "$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_DIR)" || { \
+		echo "DevTools CLI unavailable. Manually enable 设置 → 安全设置 → 服务端口, then retry."; \
+		exit 1; \
+	}
+	@echo "Clearing DevTools file and compile caches…"
+	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean file --project "$(CURDIR)/$(MINIAPP_DIR)"
+	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean compile --project "$(CURDIR)/$(MINIAPP_DIR)"
+	@echo "Rebuilding DevTools file watcher…"
+	@"$(WECHAT_DEVTOOLS_CLI)" reset-fileutils --project "$(CURDIR)/$(MINIAPP_DIR)"
+
+miniapp-open: miniapp-clear-cache
+	@echo "Project directory: $(CURDIR)/$(MINIAPP_DIR)"
+	@echo "(project.config.json sets miniprogramRoot=dist/; AppID comes from env via project.private.config.json)"
+	@echo "Restarting project after cache cleanup…"
+	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_DIR)" || true
+	@"$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_DIR)"
+	@echo "Enable 不校验合法域名 for local API (http://localhost:8780)."
+
+# One-shot: compile → open DevTools → watch (standard local Mini Program debug loop).
+miniapp: miniapp-env build-miniapp miniapp-open
+	@echo "Starting Taro weapp watch (Ctrl+C to stop)…"
+	pnpm --filter @opentrip/miniapp dev
+
+# API + Mini Program compile watch (no Vite). Use with make miniapp-open in another terminal.
+dev-miniapp-api: env postgres-up db-migrate miniapp-env
+	@echo "API → http://localhost:8780"
+	@echo "Taro weapp watch → $(MINIAPP_DIR)/dist"
+	@echo "Then open DevTools: make miniapp-open"
+	@echo "DevTools: enable 不校验合法域名 for local API calls"
+	pnpm --filter @opentrip/api --filter @opentrip/miniapp --parallel dev
+
 db-generate:
 	pnpm --filter @opentrip/api db:generate
 
@@ -179,7 +256,7 @@ docs:
 	pnpm docs:check
 
 clean:
-	rm -rf apps/web/dist
+	rm -rf apps/web/dist apps/miniapp/dist
 	@echo "Cleaned build artifacts."
 
 deploy:

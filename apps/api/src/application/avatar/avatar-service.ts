@@ -50,7 +50,12 @@ export class AvatarService {
     try {
       await profile.updateImage(url);
     } catch (error) {
-      await this.compensateNewFile(storagePath, error);
+      await this.compensateNewFile(
+        storagePath,
+        previousUrl,
+        profile,
+        error,
+      );
     }
 
     try {
@@ -87,14 +92,31 @@ export class AvatarService {
     if (path) await this.storage.delete(path);
   }
 
-  private async compensateNewFile(path: string, cause: unknown): Promise<never> {
+  private async compensateNewFile(
+    path: string,
+    previousUrl: string | null,
+    profile: CurrentUserProfile,
+    cause: unknown,
+  ): Promise<never> {
+    const compensationErrors: unknown[] = [];
+    try {
+      // Better Auth update hooks run after the account write. If a projection
+      // hook rejects, explicitly restore the previous image before deleting
+      // the just-uploaded file.
+      await profile.updateImage(previousUrl);
+    } catch (rollbackError) {
+      compensationErrors.push(rollbackError);
+    }
     try {
       await this.storage.delete(path);
     } catch (cleanupError) {
+      compensationErrors.push(cleanupError);
+    }
+    if (compensationErrors.length > 0) {
       throw new AvatarError(
         "avatar_transaction_failed",
-        "Profile update and uploaded-file cleanup both failed",
-        new AggregateError([cause, cleanupError]),
+        "Profile update compensation failed",
+        new AggregateError([cause, ...compensationErrors]),
       );
     }
     throw new AvatarError("avatar_profile_update_failed", "Could not update the user profile", cause);

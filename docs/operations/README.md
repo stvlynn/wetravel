@@ -21,10 +21,19 @@ Other useful targets:
 | `make dev-nodb` | Start web + api only (skip Postgres startup) |
 | `make dev-web` | Vite only |
 | `make dev-api` | Postgres + migrations + API only |
+| `make miniapp` | Sync AppID, build weapp, open WeChat DevTools, then Taro watch |
+| `make dev-miniapp` | Sync AppID + Taro weapp watch only |
+| `make build-miniapp` | Sync AppID + one-shot weapp build |
+| `make miniapp-open` | Sync AppID, clear DevTools project cache, and reopen `apps/miniapp` |
+| `make miniapp-sync-appid` | Rewrite gitignored AppID private config from `apps/miniapp/.env` |
+| `make miniapp-clear-cache` | Clear DevTools file/compile cache and rebuild its file watcher |
+| `make dev-miniapp-api` | Postgres + API + Taro watch (no Vite) |
 | `make postgres-up` / `make postgres-down` | Start/stop local Postgres container |
 | `make db-init` | `db:migrate` + `db:seed` |
 | `make db-reset` | drop all tables, then `db:migrate` + `db:seed` |
 | `make deploy-up` | Full docker stack (postgres + api + web on :8090) |
+
+WeChat Mini Program local debug details: [../frontend/miniapp.md](../frontend/miniapp.md).
 
 `.env` is created from `.env.example` on first run. `BASE_URL` is the single
 public origin used by the frontend API client and Better Auth (default:
@@ -62,6 +71,9 @@ not part of automated verification.
 | `S3_ACCESS_KEY_ID` | api (`s3`) | secret access key id |
 | `S3_SECRET_ACCESS_KEY` | api (`s3`) | secret access key |
 | `S3_FORCE_PATH_STYLE` | api (`s3`) | optional `true`/`false`, default `false` |
+| `WECHAT_WEB_APP_ID` / `WECHAT_WEB_APP_SECRET` | api | optional WeChat Open Platform website QR login |
+| `WECHAT_MINI_PROGRAM_APP_ID` / `WECHAT_MINI_PROGRAM_APP_SECRET` | api only | Mini Program login (`jscode2session`); never ship secret to the client |
+| `TARO_APP_WECHAT_APP_ID` | `make miniapp*` | Mini Program AppID for WeChat DevTools; synced into gitignored `project.private.config.json` |
 | `CLOUDFLARE_OBSERVABILITY_TOKEN` | local operator | historical Workers Logs query token; never synced to the Worker |
 
 On Cloudflare, `DATABASE_URL` is replaced by the Hyperdrive binding; set Worker

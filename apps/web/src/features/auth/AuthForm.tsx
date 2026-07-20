@@ -53,6 +53,21 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
+function WechatIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+            <path
+                fill="#07C160"
+                d="M9.3 3.5C4.72 3.5 1 6.58 1 10.38c0 2.12 1.17 4.03 3 5.29l-.74 2.22 2.62-1.3c1.08.43 2.23.66 3.42.66.28 0 .55-.01.82-.04a6.33 6.33 0 0 1-.33-2.01c0-3.68 3.37-6.67 7.55-6.67h.2C16.56 5.63 13.27 3.5 9.3 3.5Zm-2.77 5.7a1.04 1.04 0 1 1 0-2.08 1.04 1.04 0 0 1 0 2.08Zm5.54 0a1.04 1.04 0 1 1 0-2.08 1.04 1.04 0 0 1 0 2.08Z"
+            />
+            <path
+                fill="#07C160"
+                d="M23 15.2c0-3.14-3.08-5.69-6.88-5.69s-6.88 2.55-6.88 5.69 3.08 5.68 6.88 5.68c.98 0 1.92-.17 2.79-.5l2.18 1.08-.62-1.84C22.03 18.56 23 16.97 23 15.2Zm-9.17-1.05a.86.86 0 1 1 0-1.72.86.86 0 0 1 0 1.72Zm4.58 0a.86.86 0 1 1 0-1.72.86.86 0 0 1 0 1.72Z"
+            />
+        </svg>
+    );
+}
+
 function isEmailNotVerified(error: { code?: string; message?: string } | null | undefined) {
     if (!error) return false;
     const code = error.code?.toUpperCase() ?? "";
@@ -348,7 +363,7 @@ export function AuthForm() {
         }
     }
 
-    async function signInWithGoogle() {
+    async function signInWithSocial(provider: "google" | "wechat") {
         setPending(true);
         try {
             // Better Auth defaults callbackURL to the API baseURL when omitted,
@@ -357,7 +372,7 @@ export function AuthForm() {
             // continues after OAuth instead of dropping the user on "/".
             const returnTo = `${window.location.origin}${window.location.pathname}${window.location.search}`;
             const result = await signIn.social({
-                provider: "google",
+                provider,
                 callbackURL: returnTo,
                 errorCallbackURL: returnTo,
             });
@@ -792,10 +807,21 @@ export function AuthForm() {
                 variant="outline"
                 size="lg"
                 disabled={pending}
-                onClick={signInWithGoogle}
+                onClick={() => void signInWithSocial("google")}
             >
                 <GoogleIcon className="size-5" />
                 {t("social.google")}
+            </Button>
+
+            <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={pending}
+                onClick={() => void signInWithSocial("wechat")}
+            >
+                <WechatIcon className="size-5" />
+                {t("social.wechat")}
             </Button>
 
             <button

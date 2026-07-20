@@ -1,0 +1,43 @@
+{
+  "name": "@opentrip/miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "taro build --type weapp --watch",
+    "build": "taro build --type weapp",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.27.0",
+    "@tarojs/components": "4.2.0",
+    "@tarojs/helper": "4.2.0",
+    "@tarojs/plugin-framework-react": "4.2.0",
+    "@tarojs/plugin-platform-weapp": "4.2.0",
+    "@tarojs/react": "4.2.0",
+    "@tarojs/runtime": "4.2.0",
+    "@tarojs/shared": "4.2.0",
+    "@tarojs/taro": "4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.0",
+    "@babel/preset-react": "^7.24.1",
+    "@eslint/js": "^9.17.0",
+    "@tarojs/cli": "4.2.0",
+    "@tarojs/taro-loader": "4.2.0",
+    "@tarojs/webpack5-runner": "4.2.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "babel-preset-taro": "4.2.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "react-refresh": "^0.14.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^2.1.8"
+  }
+}

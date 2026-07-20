@@ -5,8 +5,11 @@
 ```mermaid
 flowchart TD
   browser[Browser] --> web[apps/web React SPA]
+  wechat[WeChat] --> miniapp[apps/miniapp Taro client]
   web -->|"/api/*"| api[apps/api Hono]
   web -->|"/api/auth/*"| api
+  miniapp -->|"Bearer /api/*"| api
+  miniapp -->|"/api/auth/*"| api
   api --> app[Application use cases]
   app --> domain[Domain aggregates]
   app --> ports[Repository ports]
@@ -29,6 +32,9 @@ flowchart TD
 
 - **apps/web** — React SPA (FSD). Renders Trips and the Planner, talks to the
   API over `fetch`, and delegates auth to the Better Auth client.
+- **apps/miniapp** — Taro React WeChat Mini Program (FSD). Uses Taro components
+  and `Taro.request`, persists the Better Auth bearer token, and implements the
+  mobile trips/list/detail interaction without importing browser UI internals.
 - **apps/api** — Hono app (DDD + Hexagonal). `interfaces/http` routes call
   `application` use cases, which operate on `domain` aggregates through
   repository ports implemented in `infrastructure`.
@@ -49,7 +55,10 @@ flowchart TD
 ## Auth flow
 
 - The SPA uses the Better Auth React client against `/api/auth/*`.
+- The mini program calls the same auth surface, captures the bearer plugin's
+  `set-auth-token` response header, and sends `Authorization: Bearer`.
 - The API mounts `auth.handler` on `/api/auth/*`. Sessions are cookie-based;
+  the bearer plugin converts mobile credentials to the same session model;
   business routes read the session through shared middleware.
 
 ## Data flow

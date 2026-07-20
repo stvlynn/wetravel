@@ -1,0 +1,12 @@
+{
+  "miniprogramRoot": "dist/",
+  "projectname": "OpenTrip",
+  "description": "OpenTrip Taro WeChat Mini Program",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "compileHotReLoad": true
+  },
+  "compileType": "miniprogram"
+}

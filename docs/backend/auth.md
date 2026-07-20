@@ -23,7 +23,7 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
   },
-  socialProviders: config.googleOAuth
+  socialProviders: config.googleOAuth || config.wechatOAuth
     ? {
         google: {
           clientId: config.googleOAuth.clientId,
@@ -37,6 +37,10 @@ export const auth = betterAuth({
               image: resolveInitialAvatar(dto, seed),
             };
           },
+        },
+        wechat: {
+          clientId: config.wechatOAuth.clientId,
+          clientSecret: config.wechatOAuth.clientSecret,
         },
       }
     : undefined,
@@ -65,6 +69,7 @@ export const auth = betterAuth({
       },
     }),
     twoFactor({ issuer: "OpenTrip", allowPasswordless: true }),
+    wechatMiniProgram({ identityPort: new WechatCode2SessionClient(/* … */) }),
     // optional captcha…
   ],
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
@@ -211,6 +216,32 @@ After Better Auth finishes the callback, it redirects the browser to the
 current SPA location (`origin + pathname + search`, see `AuthForm`) so invite
 pages (`/invite/:token`) resume after Google sign-in. If omitted, Better Auth
 defaults to API `baseURL` and the user lands on `api.*` instead of the frontend.
+
+WeChat web QR login is enabled when `WECHAT_WEB_APP_ID` and
+`WECHAT_WEB_APP_SECRET` are both set. These must belong to a WeChat Open
+Platform **Website Application**. Configure its authorization callback domain
+for `{BASE_URL}/api/auth/callback/wechat`. The web form places this action below
+Google and uses Better Auth's built-in `wechat` social provider.
+
+Mini Programs use a separate protocol and credential pair:
+`WECHAT_MINI_PROGRAM_APP_ID` + `WECHAT_MINI_PROGRAM_APP_SECRET`.
+`POST /api/auth/wechat-mini-program/sign-in` accepts the short-lived code from
+`Taro.login()`. The infrastructure adapter exchanges it with WeChat's
+`jscode2session` endpoint, discards `session_key`, and creates the normal Better
+Auth session. The Mini Program AppSecret is never shipped to Taro.
+
+The Mini Program collects the user-confirmed nickname and avatar with WeChat's
+native `input type="nickname"` and `button open-type="chooseAvatar"` controls
+before requesting that session. After identity exchange, it calls Better
+Auth's native `POST /api/auth/update-user` for the nickname and
+`POST /api/users/avatar` for the temporary avatar file. The bearer token is
+persisted only after both profile writes succeed, so a failed upload cannot
+bypass profile completion on the next launch.
+
+Bind the Website Application and Mini Program to the same WeChat Open Platform
+account when cross-surface account continuity is required. The adapter prefers
+`unionid` as the Better Auth `wechat` account id (falling back to Mini Program
+`openid`), matching the built-in web provider's identity selection.
 
 Google profiles are normalized through the shared `OAuthProfileDto`
 (`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers
@@ -378,7 +409,11 @@ enrollment / management.
 
 Avatar changes use the authenticated `/api/users/avatar` endpoints. The
 application service stores or removes the object and updates Better Auth through
-the server `auth.api.updateUser` API, with compensating cleanup on failure.
+the server `auth.api.updateUser` API, with compensating profile rollback and
+object cleanup on failure. `databaseHooks.user.update.before` trims and validates
+display names (1–64 characters). The corresponding `after` hook synchronizes
+name/image changes to user-backed trip member projections and publishes
+`members` realtime invalidations.
 
 ### Native iOS sessions
 

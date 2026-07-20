@@ -9,7 +9,11 @@ import type {
   TripStatus,
   TripSummary,
 } from "../../domain/trip";
-import { Trip } from "../../domain/trip";
+import { memberInitials, memberShortName, Trip } from "../../domain/trip";
+import type {
+  MemberProfileUpdate,
+  SyncedMemberTrip,
+} from "../../application/user/profile-projection-service";
 import { createDialect, type SqlClient, type SqlConnection } from "./sql";
 
 /** Parse intake JSON from Postgres/MySQL drivers (object or string). */
@@ -419,6 +423,62 @@ export class SqlTripRepository implements TripRepository {
       member.canInvite,
     ]);
     await bumpVersion(this.db, tripId);
+  }
+
+  async syncMemberProfile(
+    userId: string,
+    profile: MemberProfileUpdate,
+  ): Promise<SyncedMemberTrip[]> {
+    if (profile.name === undefined && profile.image === undefined) return [];
+
+    const { rows } = await this.db.query<{ trip_id: string }>(
+      `SELECT trip_id FROM trip_members WHERE user_id = $1`,
+      [userId],
+    );
+    const tripIds = [...new Set(rows.map((row) => row.trip_id))];
+    if (tripIds.length === 0) return [];
+
+    const assignments: string[] = [];
+    const params: unknown[] = [userId];
+    if (profile.name !== undefined) {
+      params.push(profile.name);
+      assignments.push(`name = $${params.length}`);
+      params.push(memberShortName(profile.name));
+      assignments.push(`short_name = $${params.length}`);
+      params.push(memberInitials(profile.name));
+      assignments.push(`initials = $${params.length}`);
+    }
+    if (profile.image !== undefined) {
+      params.push(profile.image);
+      assignments.push(`image = $${params.length}`);
+    }
+
+    const client = await this.db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `UPDATE trip_members SET ${assignments.join(", ")} WHERE user_id = $1`,
+        params,
+      );
+
+      const synced: SyncedMemberTrip[] = [];
+      for (const tripId of tripIds) {
+        await bumpVersion(client, tripId);
+        const version = await client.query<{ version: number | string }>(
+          `SELECT version FROM trips WHERE id = $1`,
+          [tripId],
+        );
+        const revision = Number(version.rows[0]?.version);
+        if (Number.isSafeInteger(revision)) synced.push({ tripId, revision });
+      }
+      await client.query("COMMIT");
+      return synced;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async rename(id: string, title: string): Promise<void> {
