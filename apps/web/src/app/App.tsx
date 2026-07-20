@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { AppProviders } from "./providers";
 import { RouterProvider, useRouter, matchTripId, matchInviteToken } from "./router";
 import { detectMiniappContainer } from "./embedded-environment";
@@ -47,14 +48,28 @@ function Gate() {
   );
 }
 
+function AppContent({ startsInBootstrap }: { startsInBootstrap: boolean }) {
+  const { navigate } = useRouter();
+  const [isBootstrapping, setIsBootstrapping] = useState(startsInBootstrap);
+  const completeBootstrap = useCallback(() => {
+    navigate("/");
+    setIsBootstrapping(false);
+  }, [navigate]);
+
+  if (isBootstrapping) {
+    return <MiniappBootstrap onComplete={completeBootstrap} />;
+  }
+
+  return <Gate />;
+}
+
 export function App() {
   const embedded = detectMiniappContainer();
-  const isMiniappBootstrap = window.location.pathname === "/miniapp";
 
   return (
     <AppProviders embedded={embedded}>
       <RouterProvider>
-        {isMiniappBootstrap ? <MiniappBootstrap /> : <Gate />}
+        <AppContent startsInBootstrap={window.location.pathname === "/miniapp"} />
       </RouterProvider>
     </AppProviders>
   );

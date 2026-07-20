@@ -10,6 +10,7 @@ Page({
     loading: true,
     errorMessage: "",
     webviewUrl: "",
+    webviewLoaded: false,
   },
 
   onLoad() {
@@ -21,6 +22,7 @@ Page({
       loading: true,
       errorMessage: "",
       webviewUrl: "",
+      webviewLoaded: false,
     });
 
     try {
@@ -51,7 +53,13 @@ Page({
     }
   },
 
-  handleWebviewError() {
+  handleWebviewLoad() {
+    this.setData({ webviewLoaded: true });
+  },
+
+  handleWebviewError(event) {
+    console.error("OpenTrip WebView load failed", event.detail);
+    if (this.data.webviewLoaded) return;
     this.setData({
       loading: false,
       webviewUrl: "",

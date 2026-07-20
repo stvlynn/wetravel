@@ -1,6 +1,7 @@
 <web-view
   wx:if="{{webviewUrl}}"
   src="{{webviewUrl}}"
+  bindload="handleWebviewLoad"
   binderror="handleWebviewError"
 />
 

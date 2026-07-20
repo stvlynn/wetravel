@@ -9,7 +9,7 @@ let exchangeAttempt:
   | { code: string; promise: Promise<void> }
   | undefined;
 
-export function MiniappBootstrap() {
+export function MiniappBootstrap({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("common");
   const [failed, setFailed] = useState(!initialCode);
 
@@ -21,11 +21,11 @@ export function MiniappBootstrap() {
     setFailed(false);
     try {
       await exchangeOnce(initialCode);
-      window.location.replace("/");
+      onComplete();
     } catch {
       setFailed(true);
     }
-  }, []);
+  }, [onComplete]);
 
   useEffect(() => {
     void connect();
