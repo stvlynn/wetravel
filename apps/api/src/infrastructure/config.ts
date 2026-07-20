@@ -146,7 +146,15 @@ export interface S3StorageConfig extends StorageConfigBase {
     forcePathStyle: boolean;
 }
 
-export type StorageConfig = FileSystemStorageConfig | S3StorageConfig;
+export interface R2StorageConfig extends StorageConfigBase {
+    backend: "r2";
+    root: string;
+}
+
+export type StorageConfig =
+    | FileSystemStorageConfig
+    | S3StorageConfig
+    | R2StorageConfig;
 
 export interface RawEnv {
     BASE_URL?: string;
@@ -527,7 +535,14 @@ function loadStorageConfig(env: RawEnv, publicUrl: string): StorageConfig {
             ),
         };
     }
-    throw new Error('STORAGE_BACKEND must be either "fs" or "s3"');
+    if (backend === "r2") {
+        return {
+            backend,
+            root: env.STORAGE_ROOT?.trim().replace(/^\/+|\/+$/g, "") ?? "",
+            publicUrl,
+        };
+    }
+    throw new Error('STORAGE_BACKEND must be "fs", "s3", or "r2"');
 }
 
 function requireEnv(value: string | undefined, name: string): string {

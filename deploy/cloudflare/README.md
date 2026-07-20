@@ -50,7 +50,6 @@ Production config lives in **GitHub Actions secrets/variables**, not in git.
 | `HYPERDRIVE_CACHE_DISABLED_ID` | Cache-disabled Hyperdrive for consistency-critical repositories |
 | `DATABASE_URL` | Origin DB URL for CI migrate only |
 | `BETTER_AUTH_SECRET` | Auth signing secret |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | R2 credentials |
 
 ### Auth / captcha / email secrets
 
@@ -175,19 +174,17 @@ as alternate auth paths.
 
 ## R2
 
-Configure the R2 bucket **only** via GitHub Actions variables/secrets (not in
-git):
+Configure the R2 bucket **only** via GitHub Actions variables (not in git):
 
 | Actions | Key | Notes |
 | --- | --- | --- |
-| Variable | `STORAGE_BACKEND` | `s3` |
-| Variable | `S3_BUCKET` | R2 bucket name (e.g. set with `gh variable set`) |
-| Variable | `S3_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
-| Variable | `S3_REGION` | `auto` |
-| Secret | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | R2 S3 API token |
+| Variable | `STORAGE_BACKEND` | `r2` |
+| Variable | `R2_BUCKET_NAME` | R2 bucket name (e.g. set with `gh variable set`) |
 
-`deploy-api.mjs` overlays these at deploy time and refuses to deploy
-`STORAGE_BACKEND=s3` without `S3_BUCKET` + `S3_ENDPOINT` from env.
+`deploy-api.mjs` injects `R2_FILE_STORAGE` as a native Worker binding and
+refuses to deploy `STORAGE_BACKEND=r2` without `R2_BUCKET_NAME`. Same-account
+Workers need no R2 API credentials; reserve the S3-compatible API for external
+tools or cross-account access.
 
 ## Rollback
 

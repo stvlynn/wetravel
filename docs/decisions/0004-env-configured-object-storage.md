@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted; Worker-specific S3 credential handling is superseded by
+[0008](0008-native-r2-worker-binding.md).
 
 ## Context
 
@@ -25,7 +26,8 @@ configuration rather than code changes or runtime-specific bucket bindings.
 
 ## Consequences
 
-- Cloudflare R2 requires S3 API credentials instead of a Worker R2 binding.
+- Node and cross-account deployments may use S3 API credentials; same-account
+  Cloudflare Workers use the native R2 binding defined by ADR 0008.
 - The Worker bundle contains the modular S3 client but no native binaries.
 - Docker uploads survive container replacement through `opentrip-uploads`.
 - Invalid storage configuration fails visibly during startup rather than

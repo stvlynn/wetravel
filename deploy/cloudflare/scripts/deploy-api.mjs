@@ -93,6 +93,7 @@ function resolveBaseUrlEnv() {
 const config = loadConfigObject(baseConfigPath);
 const hyperdriveId = process.env.HYPERDRIVE_ID?.trim();
 const hyperdriveFreshId = process.env.HYPERDRIVE_CACHE_DISABLED_ID?.trim();
+const r2BucketName = process.env.R2_BUCKET_NAME?.trim();
 
 function assertHyperdriveId(name, id) {
   if (id.startsWith("<") || id.includes("your-")) {
@@ -165,6 +166,26 @@ if (storageBackend === "s3") {
     );
     process.exit(1);
   }
+}
+if (storageBackend === "r2") {
+  if (!r2BucketName) {
+    console.error(
+      "STORAGE_BACKEND=r2 requires R2_BUCKET_NAME from env " +
+        "(GitHub Actions variable). Do not commit production R2 values.",
+    );
+    process.exit(1);
+  }
+  config.r2_buckets = [
+    {
+      binding: "R2_FILE_STORAGE",
+      bucket_name: r2BucketName,
+    },
+  ];
+  console.log(
+    "Injecting R2 binding R2_FILE_STORAGE (bucket name from env, not written to git).",
+  );
+} else {
+  delete config.r2_buckets;
 }
 
 writeFileSync(generatedConfigPath, `${JSON.stringify(config, null, 2)}\n`, {

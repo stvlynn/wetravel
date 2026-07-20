@@ -11,7 +11,7 @@
 #   HYPERDRIVE_ID — Hyperdrive config id (deploy inject only; never commit)
 #   HYPERDRIVE_CACHE_DISABLED_ID — cache-disabled Hyperdrive for auth/agent fresh reads
 #   DATABASE_URL  — origin Postgres URL for CI migrations only (not Worker runtime)
-#   BETTER_AUTH_SECRET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY
+#   BETTER_AUTH_SECRET
 #
 # Auth / email / captcha (production):
 #   Secrets: CAPTCHA_SECRET_KEY, TURNSTILE_SITE_KEY, RESEND_API_KEY,
@@ -165,6 +165,7 @@ jobs:
           STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND }}
           STORAGE_ROOT: ${{ vars.STORAGE_ROOT }}
           STORAGE_PUBLIC_URL: ${{ vars.STORAGE_PUBLIC_URL }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
           S3_BUCKET: ${{ vars.S3_BUCKET }}
           S3_REGION: ${{ vars.S3_REGION }}
           S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
@@ -201,8 +202,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Intentionally NOT syncing DATABASE_URL to Worker when using Hyperdrive.
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           MAPILLARY_ACCESS_TOKEN: ${{ secrets.MAPILLARY_ACCESS_TOKEN }}
           OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY }}

@@ -41,7 +41,6 @@ local/manual defaults only.
 | `HYPERDRIVE_CACHE_DISABLED_ID` | for API | Cache-disabled Hyperdrive for consistency-critical repositories |
 | `DATABASE_URL` | for migrate | Origin Postgres URL (CI only, not Worker runtime) |
 | `BETTER_AUTH_SECRET` | for API | ≥ 32 chars |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | for API | R2 S3 API credentials |
 | `TURNSTILE_SITE_KEY` | captcha | Public site key baked into the SPA |
 | `CAPTCHA_SECRET_KEY` | captcha | Worker-only; pair with var `CAPTCHA_PROVIDER` |
 | `RESEND_API_KEY` | email OTP | Required when var `EMAIL_PROVIDER=resend` |
@@ -65,7 +64,7 @@ for the full list. Production must set at least:
 | `EMAIL_FROM` | `OpenTrip <noreply@opentrip.im>` |
 | `CAPTCHA_PROVIDER` | `cloudflare-turnstile` |
 | `DATABASE_PROVIDER` | `postgres` |
-| `STORAGE_BACKEND` / `S3_*` | Set in Actions only (R2 bucket/endpoint) |
+| `STORAGE_BACKEND` / `R2_BUCKET_NAME` | `r2` plus the bucket name; deploy injects a native binding |
 | `AI_*` / `GEO_*` | Agent and geo |
 
 Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.
@@ -257,6 +256,11 @@ ships `_redirects` (SPA fallback) and `_headers` (service worker + manifest
 - **Variables** — key names in
   [deploy/cloudflare/vars.example.json](../../deploy/cloudflare/vars.example.json).
   Prefer GitHub Actions variables; `deploy-api.mjs` overlays them at deploy.
+
+R2 uses the native `R2_FILE_STORAGE` Worker binding injected from
+`R2_BUCKET_NAME`. Same-account Workers must not receive S3 access-key secrets;
+the S3-compatible adapter remains available only for non-Worker runtimes or
+cross-account interoperability.
 
 Captcha: `CAPTCHA_PROVIDER` must be `cloudflare-turnstile`; public
 `TURNSTILE_SITE_KEY` (secret in GitHub only so it is not

@@ -62,9 +62,10 @@ not part of automated verification.
 | `DATABASE_URL` | api (Node/Docker) | Postgres or MySQL connection string |
 | `BETTER_AUTH_SECRET` | api | >= 32 chars |
 | `TRUSTED_ORIGINS` | api | comma-separated web origins |
-| `STORAGE_BACKEND` | api | required: `fs` on Node/Docker or `s3` for S3-compatible storage |
-| `STORAGE_ROOT` | api | filesystem root or optional S3 object prefix |
+| `STORAGE_BACKEND` | api | required: `fs`, `s3`, or native Worker `r2` |
+| `STORAGE_ROOT` | api | filesystem root or optional object prefix |
 | `STORAGE_PUBLIC_URL` | api | optional public base URL; defaults to `BASE_URL/api/uploads` |
+| `R2_BUCKET_NAME` | Cloudflare deploy | bucket injected as `R2_FILE_STORAGE`; not exposed as a Worker var |
 | `S3_BUCKET` | api (`s3`) | bucket name |
 | `S3_REGION` | api (`s3`) | region; use `auto` for Cloudflare R2 |
 | `S3_ENDPOINT` | api (`s3`) | S3-compatible endpoint URL |

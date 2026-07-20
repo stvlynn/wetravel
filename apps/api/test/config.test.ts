@@ -141,9 +141,23 @@ describe("loadConfig storage", () => {
     });
   });
 
+  it("loads native R2 binding storage without API credentials", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "r2",
+      STORAGE_ROOT: "/uploads/",
+    });
+
+    expect(config.storage).toEqual({
+      backend: "r2",
+      root: "uploads",
+      publicUrl: "https://api.example.test/api/uploads",
+    });
+  });
+
   it("rejects unknown backends and invalid booleans", () => {
-    expect(() => loadConfig({ ...BASE_ENV, STORAGE_BACKEND: "r2" })).toThrow(
-      'STORAGE_BACKEND must be either "fs" or "s3"',
+    expect(() => loadConfig({ ...BASE_ENV, STORAGE_BACKEND: "unknown" })).toThrow(
+      'STORAGE_BACKEND must be "fs", "s3", or "r2"',
     );
     expect(() =>
       loadConfig({

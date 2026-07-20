@@ -1,6 +1,7 @@
 import { createContainer } from "./infrastructure/composition/container";
 import { loadConfig, type RawEnv } from "./infrastructure/config";
 import { createWorkerStorage } from "./infrastructure/storage/create-worker-storage";
+import type { R2BucketLike } from "./infrastructure/storage/r2-storage";
 import { createApp } from "./interfaces/http/app";
 import {
   AuthRateLimitObject,
@@ -41,6 +42,7 @@ interface WorkerEnv extends RawEnv {
   BASE_URL?: string;
   TRIP_REALTIME: DurableObjectNamespaceLike;
   AUTH_RATE_LIMIT: DurableObjectNamespaceLike;
+  R2_FILE_STORAGE?: R2BucketLike;
   REALTIME_GRANT_SECRET: string;
 }
 
@@ -83,7 +85,7 @@ function buildApp(env: WorkerEnv, ctx: WorkerExecutionContext) {
   // Keep total per-request client slots ≤ 5 when both Hyperdrive bindings are live.
   const container = createContainer(
     config,
-    createWorkerStorage(config.storage),
+    createWorkerStorage(config.storage, env.R2_FILE_STORAGE),
     {
       poolMax: dualPools ? 3 : 5,
       poolMaxFresh: 2,
