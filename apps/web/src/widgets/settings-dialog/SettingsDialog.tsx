@@ -20,7 +20,7 @@ import { useSettings, type SettingsPane } from "@/features/settings";
 import { ThemeModeSelect } from "@/features/toggle-theme";
 import { config } from "@/shared/config";
 import { LanguageSwitch } from "@/shared/i18n/LanguageSwitch";
-import { cn, interactive } from "@/shared/lib";
+import { cn, interactive, VISUAL_VIEWPORT_FIXED_CLASS } from "@/shared/lib";
 import {
   Dialog,
   DialogBackdrop,
@@ -65,8 +65,13 @@ export function SettingsDialog(): React.ReactElement {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogPortal>
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-200 data-[ending-style]:opacity-0" />
-        <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-0 md:p-6">
-          <DialogPopup className="flex h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-card pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:h-[560px] md:max-w-[860px] md:flex-row md:rounded-2xl md:border md:border-border md:pt-0 md:pb-0">
+        <DialogViewport
+          className={cn(
+            VISUAL_VIEWPORT_FIXED_CLASS,
+            "z-50 flex items-center justify-center overflow-y-auto p-0 md:p-6",
+          )}
+        >
+          <DialogPopup className="flex h-full w-full max-w-none flex-col overflow-hidden rounded-none bg-card pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:h-[560px] md:max-w-[860px] md:flex-row md:rounded-2xl md:border md:border-border md:pt-0 md:pb-0">
             <SettingsNavigation
               pane={pane}
               onSelect={setPane}

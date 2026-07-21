@@ -151,7 +151,8 @@ mode:
 - hides the self-drawn back button and title on the mobile planner header and
   the brand label on the trips header — the native navigation bar owns them;
 - keeps the in-trip tab bar, sheets, dialogs, uploads, map, agent, and API
-  caching behavior unchanged.
+  caching behavior unchanged — sheet/dialog overlays follow the Visual
+  Viewport keyboard policy documented in [mobile-pwa.md](mobile-pwa.md).
 
 The Service Worker never caches auth, mutation, or upload requests. Bridge
 responses are `Cache-Control: private, no-store`.
@@ -169,5 +170,7 @@ Test in WeChat DevTools and real iOS/Android WeChat clients:
 - share a trip, open the share card cold (shell must boot straight into the
   trip), and forward it;
 - avatar and trip-media uploads;
+- create-trip wizard and other sheet inputs remain visible above the virtual
+  keyboard on iOS and Android WeChat;
 - planner, map, and agent behavior;
 - offline and upstream failure recovery.

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { cn } from "@/shared/lib";
+import { cn, VISUAL_VIEWPORT_FIXED_CLASS } from "@/shared/lib";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -15,6 +15,10 @@ export const DialogClose = DialogPrimitive.Close;
 /**
  * Responsive dialog viewport: bottom-aligned sheet below `md`, centered
  * card above. Pair with `DialogSheetPopup`.
+ *
+ * Positioned against the Visual Viewport (`--vv-*` CSS vars) so the sheet
+ * stays above the virtual keyboard on engines that only resize the visual
+ * viewport (iOS Safari / WeChat WKWebView). See `installVisualViewportCssVars`.
  */
 export function DialogSheetViewport({
   className,
@@ -24,7 +28,8 @@ export function DialogSheetViewport({
   return (
     <DialogPrimitive.Viewport
       className={cn(
-        "fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-0 md:items-center md:p-6",
+        VISUAL_VIEWPORT_FIXED_CLASS,
+        "z-50 flex items-end justify-center overflow-hidden p-0 md:items-center md:p-6",
         className,
       )}
       {...props}
@@ -50,6 +55,9 @@ export interface DialogSheetPopupProps
  * above. Headers that can reach the top edge should pad with
  * `pt-[max(1.5rem,env(safe-area-inset-top))] md:pt-6`, and footers with the
  * matching safe-area-inset-bottom.
+ *
+ * `max-h` uses a percentage of the Visual Viewport parent (not bare `dvh`) so
+ * the sheet shrinks with the keyboard even when `dvh` is sticky on WebKit.
  */
 export function DialogSheetPopup({
   size = "md",
@@ -60,7 +68,7 @@ export function DialogSheetPopup({
   return (
     <DialogPrimitive.Popup
       className={cn(
-        "flex max-h-[min(92dvh,760px)] w-full flex-col overflow-hidden rounded-t-2xl bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-[var(--dur-slow)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:rounded-2xl",
+        "flex max-h-[min(92%,760px)] w-full flex-col overflow-hidden rounded-t-2xl bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-[var(--dur-slow)] ease-[var(--ease-out)] data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:rounded-2xl",
         SHEET_POPUP_SIZES[size],
         className,
       )}
@@ -78,7 +86,7 @@ export function DialogHeader({
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
   return (
     <div
-      className={cn("flex flex-col gap-1.5 px-6 pt-6 pb-4", className)}
+      className={cn("flex flex-none flex-col gap-1.5 px-6 pt-6 pb-4", className)}
       {...props}
     >
       {children}
@@ -86,13 +94,37 @@ export function DialogHeader({
   );
 }
 
+/**
+ * Scrollable dialog body. On focusin, keeps the focused control visible in
+ * the panel scrollport after the Visual Viewport resizes for the keyboard.
+ */
 export function DialogPanel({
   className,
   children,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !root.contains(target)) return;
+      // Wait one frame so --vv-* / layout have applied after focus.
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    };
+
+    root.addEventListener("focusin", onFocusIn);
+    return () => root.removeEventListener("focusin", onFocusIn);
+  }, []);
+
   return (
     <div
+      ref={ref}
       className={cn(
         "scrollbar-overlay min-h-0 flex-1 overflow-auto px-6 py-2",
         className,
@@ -117,7 +149,7 @@ export function DialogFooter({
   return (
     <div
       className={cn(
-        "flex items-center justify-end gap-2 px-6 pb-6 pt-4",
+        "flex flex-none items-center justify-end gap-2 px-6 pb-6 pt-4",
         variant === "default" && "border-t border-border bg-card/50",
         className,
       )}

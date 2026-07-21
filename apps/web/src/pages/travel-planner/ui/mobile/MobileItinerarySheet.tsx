@@ -37,7 +37,7 @@ export function MobileItinerarySheet(props: SidebarProps) {
       </button>
 
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent side="bottom" className="h-[85dvh]">
+        <DrawerContent side="bottom" className="h-[85%]">
           <DrawerTitle className="sr-only">{t("itinerary.title")}</DrawerTitle>
           <div className="flex min-h-0 flex-1 flex-col">
             <Sidebar
