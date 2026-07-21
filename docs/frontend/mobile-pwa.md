@@ -59,6 +59,39 @@ day legend is hidden — the itinerary pill occupies that corner (see
   two-pane surface). Small confirm dialogs (`AlertDialog`) stay centered at
   every size.
 
+Sheet heights that must track the visible area (including when the virtual
+keyboard is open) use **percentages of the Visual Viewport parent**
+(`h-[70%]`, `max-h-[min(92%,760px)]`), not bare `dvh` — WebKit does not
+shrink `dvh` for the keyboard.
+
+## Virtual keyboard and Visual Viewport
+
+Bottom sheets and full-screen dialogs are `position: fixed` overlays. By
+default mobile browsers use `interactive-widget=resizes-visual`: only the
+Visual Viewport shrinks when the keyboard opens, so fixed overlays stay
+anchored to the Layout Viewport and cover the focused input (common in the
+PWA and WeChat WKWebView).
+
+Root fix (not per-form scroll hacks):
+
+1. **`interactive-widget=resizes-content`** on the viewport meta in
+   `apps/web/index.html` — Chromium / Firefox resize the Layout Viewport
+   (and therefore `dvh` / fixed overlays) with the keyboard
+   ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag#interactive-widget),
+   [Chrome](https://developer.chrome.com/blog/viewport-resize-behavior/)).
+2. **`installVisualViewportCssVars()`** (`@/shared/lib`) — mirrors
+   `window.visualViewport` into `:root` CSS variables (`--vv-top`,
+   `--vv-left`, `--vv-width`, `--vv-height`, `--keyboard-inset`). Mounted
+   once from `AppProviders`. Covers WebKit (iOS Safari / WeChat), which
+   still ignores `interactive-widget`.
+3. **Overlay viewports** (`DialogSheetViewport`, `DrawerContent`,
+   `SettingsDialog`) use `VISUAL_VIEWPORT_FIXED_CLASS` so they occupy the
+   visible box. `DialogPanel` / `DrawerPanel` scroll the focused control
+   into view after focus when the panel itself overflows.
+
+Do not add wizard-specific `scrollIntoView` or hardcoded keyboard offsets
+for new forms — reuse these primitives.
+
 ## Safe areas
 
 `index.html` sets `viewport-fit=cover`, so `env(safe-area-inset-*)` is

@@ -36,7 +36,7 @@ export function MobileStopDetailSheet({
 }) {
   return (
     <Drawer open={Boolean(stop)} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent side="bottom" className="h-[70dvh]">
+      <DrawerContent side="bottom" className="h-[70%]">
         {stop ? (
           <>
             <DrawerTitle className="sr-only">{stop.name}</DrawerTitle>

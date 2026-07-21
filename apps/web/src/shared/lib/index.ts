@@ -39,3 +39,9 @@ export {
   type MiniappShareContext,
   type WechatMiniProgramBridge,
 } from "./wechat-bridge";
+export {
+  VISUAL_VIEWPORT_FIXED_CLASS,
+  computeVisualViewportBox,
+  installVisualViewportCssVars,
+  type VisualViewportBox,
+} from "./visual-viewport";

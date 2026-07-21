@@ -9,12 +9,16 @@ import {
     installSystemNotificationBridge,
     ToastProvider,
 } from "@/shared/ui/toast";
-import { loadWechatMiniProgramBridge } from "@/shared/lib";
+import {
+    installVisualViewportCssVars,
+    loadWechatMiniProgramBridge,
+} from "@/shared/lib";
 import { MobileOnboarding } from "@/features/mobile-onboarding";
 import { SettingsProvider } from "@/features/settings";
 import { subscribeToThemeChanges } from "@/features/toggle-theme";
 import { EmbeddedEnvironmentProvider } from "../embedded-environment";
 import { PwaLifecycle } from "./PwaLifecycle";
+
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -39,6 +43,11 @@ export function AppProviders({
         }
         return subscribeToThemeChanges();
     }, [embedded]);
+
+    // Pin fixed overlays to the Visual Viewport so virtual keyboards (PWA and
+    // WeChat WKWebView) do not cover sheet/dialog inputs. Complements
+    // interactive-widget=resizes-content in index.html for Chromium.
+    useEffect(() => installVisualViewportCssVars(), []);
 
     return (
         <EmbeddedEnvironmentProvider embedded={embedded}>
