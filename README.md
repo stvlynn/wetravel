@@ -67,11 +67,11 @@ The seed demo is **Japan · Autumn** — Tokyo → Kyoto → Osaka, 5 days, 25 s
 
 ## Screenshots
 
-All shots use the default **Japan · Autumn** demo trip.
+Planner shots use the **Japan · Autumn** demo. The trips home also shows other demo trips (Iceland, Lisbon, Bali) with Unsplash covers.
 
 ### Trips home
 
-Browse active trips, members, and status at a glance.
+Browse active trips, cover photos, members, and status at a glance.
 
 | Desktop | PWA |
 | :---: | :---: |
