@@ -97,6 +97,41 @@ model expenses {
   @@index([trip_id], map: "expenses_trip_idx")
 }
 
+model external_identities {
+  id           String    @id
+  user_id      String
+  provider     String
+  subject_type String
+  issuer       String
+  subject      String
+  observed_at  DateTime  @default(now()) @db.Timestamptz(6)
+  verified_at  DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  user         user      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider, subject_type, issuer, subject], map: "external_identity_subject_unique")
+  @@index([user_id], map: "external_identities_user_idx")
+}
+
+model identity_conflicts {
+  id                  String    @id
+  provider            String
+  primary_user_id     String
+  conflicting_user_id String
+  subject_type        String
+  issuer              String
+  subject_hash        String
+  status              String    @default("open")
+  resolution          String?
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  resolved_at         DateTime? @db.Timestamptz(6)
+
+  @@index([conflicting_user_id], map: "identity_conflicts_conflicting_user_idx")
+  @@index([primary_user_id], map: "identity_conflicts_primary_user_idx")
+  @@index([status, created_at], map: "identity_conflicts_status_created_idx")
+}
+
 model reservations {
   id                  String    @id
   trip_id             String
@@ -303,19 +338,21 @@ model twoFactor {
 }
 
 model user {
-  id               String            @id
-  name             String
-  email            String            @unique
-  emailVerified    Boolean           @default(false)
-  image            String?
-  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime          @default(now()) @db.Timestamptz(6)
-  defaultCurrency  String            @default("JPY")
-  twoFactorEnabled Boolean           @default(false)
-  account          account[]
-  session          session[]
-  twoFactor        twoFactor[]
-  user_preferences user_preferences?
+  id                  String                @id
+  name                String
+  email               String                @unique
+  emailVerified       Boolean               @default(false)
+  image               String?
+  createdAt           DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @db.Timestamptz(6)
+  defaultCurrency     String                @default("JPY")
+  twoFactorEnabled    Boolean               @default(false)
+  emailIsPlaceholder  Boolean               @default(false)
+  account             account[]
+  external_identities external_identities[]
+  session             session[]
+  twoFactor           twoFactor[]
+  user_preferences    user_preferences?
 }
 
 model user_preferences {

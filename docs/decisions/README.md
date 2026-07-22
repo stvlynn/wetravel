@@ -33,3 +33,6 @@ Each ADR uses: **Context**, **Decision**, **Consequences**, **Status**
 - [0010-miniapp-native-page-stack.md](0010-miniapp-native-page-stack.md) — one
   native page per page-level PWA route so WeChat provides native navigation,
   back gestures, titles, share cards, and deep links.
+- [0011-wechat-identity-and-placeholder-email.md](0011-wechat-identity-and-placeholder-email.md)
+  — scope OpenID/UnionID by issuer, keep Better Auth placeholder email internal,
+  and fail closed on identity conflicts.

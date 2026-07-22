@@ -14,7 +14,7 @@ export function AccountSecuritySection({
   onOpen: (view: SecurityView) => void;
 }): React.ReactElement {
   const { t } = useTranslation("common");
-  const { email, emailVerified, twoFactorEnabled, hasCredential } =
+  const { emailState, twoFactorEnabled, credentialState } =
     useAccountSecurityStatus();
 
   return (
@@ -32,18 +32,24 @@ export function AccountSecuritySection({
         <SecurityNavRow
           label={t("settings.profile.security.email.label")}
           value={
-            emailVerified
-              ? t("settings.profile.security.email.verified", { email })
-              : email
+            emailState.kind === "unbound"
+              ? t("settings.profile.security.email.unbound")
+              : emailState.verified
+                ? t("settings.profile.security.email.verified", {
+                    email: emailState.address,
+                  })
+                : emailState.address
           }
           onClick={() => onOpen("email")}
         />
         <SecurityNavRow
           label={t("settings.profile.security.password.label")}
           value={
-            hasCredential
-              ? t("settings.profile.security.password.set")
-              : t("settings.profile.security.password.unset")
+            credentialState === "unknown"
+              ? t("settings.profile.security.password.unknown")
+              : credentialState === "present"
+                ? t("settings.profile.security.password.set")
+                : t("settings.profile.security.password.unset")
           }
           onClick={() => onOpen("password")}
         />

@@ -7,6 +7,7 @@ import type { OperationEvent } from "../../domain/agent";
 import { MAX_AVATAR_BYTES } from "../../application/avatar";
 import { MAX_TRIP_MEDIA_BYTES } from "../../application/media";
 import { isManagedUploadPath } from "../../application/storage";
+import { deliverableEmail } from "../../application/user/email-address";
 import {
   dayNumberParamSchema,
   expenseDraftSchema,
@@ -279,7 +280,7 @@ export function createApp(
   const inviteActor = (u: Session["user"]) => ({
     id: u.id,
     name: u.name || u.email,
-    email: u.email,
+    email: deliverableEmail(u),
     image: u.image ?? null,
   });
   const app = new Hono<AppEnv>();

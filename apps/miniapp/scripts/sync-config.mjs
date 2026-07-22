@@ -4,17 +4,19 @@
  * apps/miniapp/.env. Public origins are generated rather than committed so the
  * same native shell can target local/staging/production environments.
  *
- * The Mini Program AppSecret remains server-only.
+ * DevTools opens apps/miniapp/miniprogram as the project root. The AppSecret
+ * remains server-only.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const miniappRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const programRoot = path.join(miniappRoot, "miniprogram");
 const repoRoot = path.resolve(miniappRoot, "../..");
 const envPath = path.join(miniappRoot, ".env");
-const privateConfigPath = path.join(miniappRoot, "project.private.config.json");
-const runtimeConfigPath = path.join(miniappRoot, "miniprogram", "config.js");
+const privateConfigPath = path.join(programRoot, "project.private.config.json");
+const runtimeConfigPath = path.join(programRoot, "config.js");
 
 loadEnvFile(envPath);
 
@@ -28,6 +30,7 @@ const existing = existsSync(privateConfigPath)
 const privateConfig = {
   ...existing,
   appid: appId,
+  projectname: "OpenTrip",
   compileType: "miniprogram",
 };
 

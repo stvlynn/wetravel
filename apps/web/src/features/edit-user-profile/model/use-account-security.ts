@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { authClient, useSession } from "@/shared/auth";
+import {
+  authClient,
+  requestEmailBinding,
+  useSession,
+  verifyEmailBinding,
+} from "@/shared/auth";
 import { toastManager } from "@/shared/ui/toast";
 
 /** Second-level security views reachable from the profile pane. */
@@ -8,6 +13,24 @@ export type SecurityView = "email" | "password" | "twoFactor";
 
 export type EmailStep = "newEmail" | "currentOtp" | "newOtp";
 export type TwoFactorEnableStep = "password" | "scan" | "backup";
+export type CredentialState = "unknown" | "absent" | "present";
+export type EmailState =
+  | { kind: "unbound"; address: null; verified: false }
+  | { kind: "bound"; address: string; verified: boolean };
+
+export function resolveEmailState(user?: {
+  email?: string | null;
+  emailVerified?: boolean | null;
+  emailIsPlaceholder?: boolean | null;
+}): EmailState {
+  return user?.emailIsPlaceholder
+    ? { kind: "unbound", address: null, verified: false }
+    : {
+        kind: "bound",
+        address: user?.email ?? "",
+        verified: Boolean(user?.emailVerified),
+      };
+}
 
 const OTP_LENGTH = 6;
 
@@ -15,16 +38,19 @@ const OTP_LENGTH = 6;
 export function useAccountSecurityStatus() {
   const { data: session, refetch } = useSession();
   const user = session?.user;
-  const [hasCredential, setHasCredential] = useState(true);
+  const [credentialState, setCredentialState] =
+    useState<CredentialState>("unknown");
 
   const refreshCredential = useCallback(async () => {
     const result = await authClient.listAccounts();
     if (result.error || !result.data) {
-      setHasCredential(true);
+      setCredentialState("unknown");
       return;
     }
-    setHasCredential(
-      result.data.some((account) => account.providerId === "credential"),
+    setCredentialState(
+      result.data.some((account) => account.providerId === "credential")
+        ? "present"
+        : "absent",
     );
   }, []);
 
@@ -32,13 +58,17 @@ export function useAccountSecurityStatus() {
     void refreshCredential();
   }, [refreshCredential, user?.id]);
 
+  const emailState = resolveEmailState(user);
+
   return {
-    email: user?.email ?? "",
-    emailVerified: Boolean(user?.emailVerified),
+    email: emailState.address ?? "",
+    emailVerified: emailState.verified,
+    emailState,
     twoFactorEnabled: Boolean(
       (user as { twoFactorEnabled?: boolean } | undefined)?.twoFactorEnabled,
     ),
-    hasCredential,
+    credentialState,
+    hasCredential: credentialState === "present",
     refetch,
     refreshCredential,
   };
@@ -51,8 +81,10 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
   const {
     email,
     emailVerified,
+    emailState,
     twoFactorEnabled,
     hasCredential,
+    credentialState,
     refetch,
     refreshCredential,
   } = useAccountSecurityStatus();
@@ -125,14 +157,32 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
 
     setPending(true);
     try {
-      const sent = await sendCurrentEmailOtp();
-      if (!sent) return;
-      setEmailStep("currentOtp");
-      notifySuccess(t("settings.profile.security.email.otpSentCurrent"));
+      if (emailState.kind === "unbound") {
+        const result = await requestEmailBinding(trimmed);
+        if (result.error) {
+          notifyError(t("settings.profile.security.errors.otpSend"));
+          return;
+        }
+        setEmailStep("newOtp");
+        notifySuccess(t("settings.profile.security.email.otpSentNew"));
+      } else {
+        const sent = await sendCurrentEmailOtp();
+        if (!sent) return;
+        setEmailStep("currentOtp");
+        notifySuccess(t("settings.profile.security.email.otpSentCurrent"));
+      }
     } finally {
       setPending(false);
     }
-  }, [email, newEmail, notifyError, notifySuccess, sendCurrentEmailOtp, t]);
+  }, [
+    email,
+    emailState.kind,
+    newEmail,
+    notifyError,
+    notifySuccess,
+    sendCurrentEmailOtp,
+    t,
+  ]);
 
   const confirmCurrentEmailOtp = useCallback(async () => {
     if (currentEmailOtp.length !== OTP_LENGTH) return;
@@ -160,10 +210,14 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
 
     setPending(true);
     try {
-      const result = await authClient.emailOtp.changeEmail({
-        newEmail: newEmail.trim().toLowerCase(),
-        otp: newEmailOtp,
-      });
+      const normalizedEmail = newEmail.trim().toLowerCase();
+      const result =
+        emailState.kind === "unbound"
+          ? await verifyEmailBinding(normalizedEmail, newEmailOtp)
+          : await authClient.emailOtp.changeEmail({
+              newEmail: normalizedEmail,
+              otp: newEmailOtp,
+            });
       if (result.error) {
         notifyError(t("settings.profile.security.errors.otpInvalid"));
         setNewEmailOtp("");
@@ -175,7 +229,16 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
     } finally {
       setPending(false);
     }
-  }, [newEmail, newEmailOtp, notifyError, notifySuccess, onClose, refetch, t]);
+  }, [
+    emailState.kind,
+    newEmail,
+    newEmailOtp,
+    notifyError,
+    notifySuccess,
+    onClose,
+    refetch,
+    t,
+  ]);
 
   const changePassword = useCallback(async () => {
     if (!currentPassword || !newPassword) {
@@ -218,6 +281,10 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
   ]);
 
   const sendSetupPasswordOtp = useCallback(async () => {
+    if (emailState.kind === "unbound") {
+      notifyError(t("settings.profile.security.errors.emailRequired"));
+      return;
+    }
     if (!email) return;
     setPending(true);
     try {
@@ -230,7 +297,7 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
     } finally {
       setPending(false);
     }
-  }, [email, notifyError, notifySuccess, t]);
+  }, [email, emailState.kind, notifyError, notifySuccess, t]);
 
   const completeSetupPassword = useCallback(async () => {
     if (setupOtp.length !== OTP_LENGTH) return;
@@ -375,8 +442,10 @@ export function useAccountSecurity({ onClose }: { onClose: () => void }) {
   return {
     email,
     emailVerified,
+    emailState,
     twoFactorEnabled,
     hasCredential,
+    credentialState,
     pending,
     otpLength: OTP_LENGTH,
 

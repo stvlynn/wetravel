@@ -18,7 +18,7 @@ import { toTripDto, type TripDto } from "./dto";
 export interface InviteActor {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   image?: string | null;
 }
 

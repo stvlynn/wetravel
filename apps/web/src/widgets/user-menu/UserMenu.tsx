@@ -76,8 +76,12 @@ export function UserMenu({ compact, direction = "up" }: UserMenuProps) {
   };
 
   const user = session?.user;
-  const name = user?.name?.trim() || user?.email || "";
-  const email = user?.email ?? "";
+  const hasContactEmail = Boolean(user && !user.emailIsPlaceholder);
+  const name =
+    user?.name?.trim() ||
+    (hasContactEmail ? user?.email : t("settings.userMenu.account")) ||
+    "";
+  const email = hasContactEmail ? (user?.email ?? "") : "";
   const image = user?.image ?? null;
   const seed = user?.id ?? name;
   const color = AVATAR_PALETTE[avatarHashIndex(seed || "?", AVATAR_PALETTE.length)]!;

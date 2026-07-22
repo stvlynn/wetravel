@@ -180,8 +180,9 @@ describe("Mini Program WebView session bridge", () => {
     user: {
       id: "user-1",
       name: "WeChat User",
-      email: "user@wechat.invalid",
-      emailVerified: true,
+      email: "wechat+user-1@identity.invalid",
+      emailVerified: false,
+      emailIsPlaceholder: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     },

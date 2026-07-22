@@ -22,7 +22,7 @@ Other useful targets:
 | `make dev-web` | Vite only |
 | `make dev-api` | Postgres + migrations + API only |
 | `make miniapp` | Generate native-shell config and open WeChat DevTools |
-| `make miniapp-open` | Sync config, clear DevTools project cache, and reopen `apps/miniapp` |
+| `make miniapp-open` | Sync config, clear DevTools project cache, and reopen `apps/miniapp/miniprogram` |
 | `make miniapp-sync-config` | Generate gitignored AppID/API/PWA config from `apps/miniapp/.env` |
 | `make miniapp-clear-cache` | Clear DevTools file/compile cache and rebuild its file watcher |
 | `make dev-miniapp-api` | Postgres + API + PWA dev servers for shell development |
@@ -72,7 +72,7 @@ not part of automated verification.
 | `S3_FORCE_PATH_STYLE` | api (`s3`) | optional `true`/`false`, default `false` |
 | `WECHAT_WEB_APP_ID` / `WECHAT_WEB_APP_SECRET` | api | optional WeChat Open Platform website QR login |
 | `WECHAT_MINI_PROGRAM_APP_ID` / `WECHAT_MINI_PROGRAM_APP_SECRET` | api only | Mini Program login (`jscode2session`); never ship secret to the client |
-| `MINIAPP_APP_ID` | `make miniapp*` | AppID generated into gitignored `project.private.config.json` |
+| `MINIAPP_APP_ID` | `make miniapp*` | AppID generated into gitignored `miniprogram/project.private.config.json` |
 | `MINIAPP_API_BASE_URL` | native shell | API request origin generated into gitignored `miniprogram/config.js` |
 | `MINIAPP_WEB_BASE_URL` | native shell | PWA business-domain origin generated into gitignored `miniprogram/config.js` |
 | `CLOUDFLARE_OBSERVABILITY_TOKEN` | local operator | historical Workers Logs query token; never synced to the Worker |
@@ -91,6 +91,8 @@ business domain and `MINIAPP_API_BASE_URL` as a request domain.
 | `pnpm db:migrate` | apply pending Prisma migrations |
 | `pnpm db:seed` | load prototype seed data |
 | `pnpm db:reset` | drop public schema, then migrate + seed |
+| `pnpm --filter @opentrip/api db:backfill-wechat` | one-time idempotent cleanup after the WeChat identity migration |
+| `pnpm --filter @opentrip/api db:audit-wechat` | inspect scoped identity counts and unresolved conflicts |
 | `pnpm db:generate` | regenerate Prisma Client after schema changes |
 | `make help` | list Make targets |
 

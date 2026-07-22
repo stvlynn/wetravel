@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import {
   bearer,
   captcha,
@@ -17,6 +17,10 @@ import {
   generateUserAvatar,
   resolveInitialAvatar,
 } from "../../application/user/user-initializer";
+import {
+  isInternalEmail,
+} from "../../application/user/email-address";
+import type { ResolveWechatIdentity } from "../../application/user/wechat-identity";
 import type { Trip, TripRepository } from "../../domain/trip";
 import { createEmailSender } from "../email/create-email-sender";
 import { buildLinkEmail } from "../email/link-email";
@@ -27,6 +31,7 @@ import {
 } from "../email/email-locale";
 import type { AppConfig } from "../config";
 import type { AuthRateLimitStorage } from "./auth-rate-limit";
+import { emailBinding } from "./email-binding";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
 import {
   WechatCode2SessionClient,
@@ -43,6 +48,8 @@ export interface CreateAuthOptions {
   profileProjection?: UserProfileProjectionService;
   /** Trusted client-IP headers for the active runtime. */
   ipAddressHeaders?: string[];
+  /** Resolves scoped OpenID/UnionID records for Mini Program sign-in. */
+  wechatIdentityResolver?: ResolveWechatIdentity;
 }
 
 /** OTP lifetime in seconds (Better Auth emailOTP default is 300). */
@@ -54,6 +61,7 @@ const CAPTCHA_ENDPOINTS = [
   "/sign-in/email",
   "/request-password-reset",
   "/email-otp/send-verification-otp",
+  "/email-binding/request",
 ] as const;
 
 /** Build Better Auth over the shared pg pool. Email + password (OTP-verified
@@ -93,6 +101,24 @@ export function createAuth(
         baseURL: config.betterAuthUrl,
         basePath: "/api/auth",
         trustedOrigins: config.trustedOrigins,
+        hooks: {
+            before: createAuthMiddleware(async (ctx) => {
+                if (ctx.path !== "/sign-up/email") return;
+                const email =
+                    ctx.body &&
+                    typeof ctx.body === "object" &&
+                    "email" in ctx.body &&
+                    typeof ctx.body.email === "string"
+                        ? ctx.body.email
+                        : "";
+                if (isInternalEmail(email)) {
+                    throw new APIError("BAD_REQUEST", {
+                        code: "INVALID_EMAIL",
+                        message: "A real email address is required",
+                    });
+                }
+            }),
+        },
         rateLimit: options.rateLimitStorage
             ? { customStorage: options.rateLimitStorage }
             : undefined,
@@ -103,6 +129,7 @@ export function createAuth(
             enabled: true,
             requireEmailVerification: true,
             sendResetPassword: async ({ user, url }, request) => {
+                assertDeliverableAddress(user.email);
                 const message = buildLinkEmail({
                     to: user.email,
                     type: "reset-password",
@@ -153,15 +180,29 @@ export function createAuth(
                             wechat: {
                                 clientId: config.wechatOAuth.clientId,
                                 clientSecret: config.wechatOAuth.clientSecret,
+                                mapProfileToUser: () => ({
+                                    email: `wechat+${crypto.randomUUID()}@identity.invalid`,
+                                    emailVerified: false,
+                                    emailIsPlaceholder: true,
+                                }),
                             },
                         }
                       : {}),
               }
             : undefined,
+        account: {
+            accountLinking: {
+                enabled: true,
+                disableImplicitLinking: true,
+                allowDifferentEmails: false,
+                updateUserInfoOnLink: false,
+            },
+        },
         user: {
             changeEmail: {
                 enabled: true,
                 sendChangeEmailConfirmation: async ({ user, newEmail, url }, request) => {
+                    assertDeliverableAddress(user.email);
                     const message = buildLinkEmail({
                         to: user.email,
                         type: "change-email-confirmation",
@@ -187,15 +228,45 @@ export function createAuth(
                     defaultValue: "JPY",
                     input: true,
                 },
+                emailIsPlaceholder: {
+                    type: "boolean",
+                    required: false,
+                    defaultValue: false,
+                    input: false,
+                },
             },
         },
         databaseHooks: {
             user: {
                 create: {
                     before: async (user) => {
-                        if (user.image) return;
-                        const seed = user.id ?? user.email ?? crypto.randomUUID();
-                        return { data: { ...user, image: generateUserAvatar(seed) } };
+                        const internal = isInternalEmail(user.email);
+                        const data = {
+                            ...user,
+                            ...(internal
+                                ? {
+                                      emailIsPlaceholder: true,
+                                      emailVerified: false,
+                                  }
+                                : {}),
+                            ...(!user.image
+                                ? {
+                                      image: generateUserAvatar(
+                                          user.id ??
+                                              user.email ??
+                                              crypto.randomUUID(),
+                                      ),
+                                  }
+                                : {}),
+                        };
+                        if (
+                            data.emailIsPlaceholder === user.emailIsPlaceholder &&
+                            data.emailVerified === user.emailVerified &&
+                            data.image === user.image
+                        ) {
+                            return;
+                        }
+                        return { data };
                     },
                     after: async (user) => {
                         if (!tripRepository || !loadSampleTripTemplate) return;
@@ -212,11 +283,22 @@ export function createAuth(
                 },
                 update: {
                     before: async (data) => {
-                        if (data.name === undefined) return;
+                        let normalized = data;
+                        if (data.email !== undefined) {
+                            const internal = isInternalEmail(data.email);
+                            normalized = {
+                                ...normalized,
+                                emailIsPlaceholder: internal,
+                                ...(internal ? { emailVerified: false } : {}),
+                            };
+                        }
+                        if (data.name === undefined) {
+                            return normalized === data ? undefined : { data: normalized };
+                        }
                         try {
                             return {
                                 data: {
-                                    ...data,
+                                    ...normalized,
                                     name: normalizeDisplayName(data.name),
                                 },
                             };
@@ -249,6 +331,23 @@ export function createAuth(
                 disableClientRequest: true,
                 storeToken: "hashed",
             }),
+            emailBinding({
+                async sendVerificationOTP({
+                    email,
+                    otp,
+                    expiresInSeconds,
+                    context,
+                }) {
+                    const message = buildOtpEmail({
+                        to: email,
+                        otp,
+                        type: "bind-email",
+                        expiresInSeconds,
+                        locale: localeFromAuthContext(context as never),
+                    });
+                    await emailSender.send(message);
+                },
+            }),
             emailOTP({
                 otpLength: 6,
                 expiresIn: OTP_EXPIRES_IN_SECONDS,
@@ -259,6 +358,7 @@ export function createAuth(
                     verifyCurrentEmail: true,
                 },
                 async sendVerificationOTP({ email, otp, type }, ctx) {
+                    assertDeliverableAddress(email);
                     const message = buildOtpEmail({
                         to: email,
                         otp,
@@ -291,6 +391,9 @@ export function createAuth(
                               appId: config.wechatMiniProgram.appId,
                               appSecret: config.wechatMiniProgram.appSecret,
                           }),
+                          identityResolver: requireWechatIdentityResolver(options),
+                          miniProgramIssuer: config.wechatMiniProgram.appId,
+                          openPlatformIssuer: "opentrip-wechat-open-platform",
                       }),
                   ]
                 : []),
@@ -308,6 +411,25 @@ export function createAuth(
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+function requireWechatIdentityResolver(
+  options: CreateAuthOptions,
+): ResolveWechatIdentity {
+  if (!options.wechatIdentityResolver) {
+    throw new Error(
+      "wechatIdentityResolver is required when Mini Program auth is enabled",
+    );
+  }
+  return options.wechatIdentityResolver;
+}
+
+function assertDeliverableAddress(email: string): void {
+  if (!isInternalEmail(email)) return;
+  throw new APIError("BAD_REQUEST", {
+    code: "EMAIL_NOT_DELIVERABLE",
+    message: "A real email address must be bound before using email delivery",
+  });
+}
 
 function profileFieldsFromBody(
   body: unknown,

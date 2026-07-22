@@ -59,9 +59,28 @@ export const authClient = createAuthClient({
           required: false,
           input: false,
         },
+        emailIsPlaceholder: {
+          type: "boolean",
+          required: false,
+          input: false,
+        },
       },
     }),
   ],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;
+
+export function requestEmailBinding(email: string) {
+  return authClient.$fetch<{ success: boolean }>("/email-binding/request", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function verifyEmailBinding(email: string, otp: string) {
+  return authClient.$fetch<{ success: boolean }>("/email-binding/verify", {
+    method: "POST",
+    body: { email, otp },
+  });
+}

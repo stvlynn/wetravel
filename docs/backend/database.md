@@ -189,3 +189,18 @@ regenerate for Postgres with the Better Auth CLI, pull into `schema.prisma`,
 create a Prisma migration, **and** update `prisma/mysql/schema.sql`. The `user`
 table also carries a `defaultCurrency` column (a Better Auth `additionalField`)
 surfaced on every session. See [auth.md](auth.md).
+
+WeChat authentication adds:
+
+- `user.emailIsPlaceholder` — authoritative flag separating Better Auth's
+  required compatibility email from a verified contact address.
+- `external_identities` — scoped `(provider, subject_type, issuer, subject)`
+  records; OpenID and UnionID are never compared outside their issuer.
+- `identity_conflicts` — redacted, auditable conflicts that require explicit
+  resolution.
+
+After deploying the corresponding Prisma migration, run the idempotent
+`pnpm --filter @opentrip/api db:backfill-wechat` once against each existing
+database, then verify with `db:audit-wechat`. The backfill intentionally labels
+historical opaque account IDs `legacy_unknown`; it does not guess whether they
+were OpenID or UnionID.

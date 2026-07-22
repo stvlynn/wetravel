@@ -4,7 +4,8 @@ export type OtpEmailType =
   | "sign-in"
   | "email-verification"
   | "forget-password"
-  | "change-email";
+  | "change-email"
+  | "bind-email";
 
 export type LinkEmailType = "reset-password" | "change-email-confirmation";
 
@@ -57,6 +58,13 @@ const OTP_COPY: Record<EmailLocale, Record<OtpEmailType, OtpEmailCopy>> = {
       expiry: (m) => `It expires in ${m} minute${m === 1 ? "" : "s"}.`,
       ignore: "If you did not request this, you can ignore this email.",
     },
+    "bind-email": {
+      subject: "Bind your OpenTrip email",
+      heading: "Confirm your email",
+      intro: "Enter this code to bind this email address to your OpenTrip account.",
+      expiry: (m) => `It expires in ${m} minute${m === 1 ? "" : "s"}.`,
+      ignore: "If you did not request this, you can ignore this email.",
+    },
   },
   zh: {
     "sign-in": {
@@ -84,6 +92,13 @@ const OTP_COPY: Record<EmailLocale, Record<OtpEmailType, OtpEmailCopy>> = {
       subject: "确认你的新 OpenTrip 邮箱",
       heading: "确认新邮箱",
       intro: "请输入以下验证码，以确认新的邮箱地址。",
+      expiry: (m) => `验证码将在 ${m} 分钟后失效。`,
+      ignore: "如果这不是你本人的操作，可以忽略这封邮件。",
+    },
+    "bind-email": {
+      subject: "绑定你的 OpenTrip 邮箱",
+      heading: "确认邮箱",
+      intro: "请输入以下验证码，将此邮箱绑定到你的 OpenTrip 账号。",
       expiry: (m) => `验证码将在 ${m} 分钟后失效。`,
       ignore: "如果这不是你本人的操作，可以忽略这封邮件。",
     },

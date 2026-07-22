@@ -39,6 +39,7 @@ function EmailPanel({ security }: { security: Security }): React.ReactElement {
   const { t } = useTranslation("common");
   const {
     emailStep,
+    emailState,
     newEmail,
     setNewEmail,
     currentEmailOtp,
@@ -84,7 +85,9 @@ function EmailPanel({ security }: { security: Security }): React.ReactElement {
     <>
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-foreground">
-          {t("settings.profile.security.email.newLabel")}
+          {emailState.kind === "unbound"
+            ? t("settings.profile.security.email.bindLabel")
+            : t("settings.profile.security.email.newLabel")}
         </span>
         <Input
           type="email"
@@ -99,7 +102,9 @@ function EmailPanel({ security }: { security: Security }): React.ReactElement {
         className="self-start active:scale-[0.96]"
         onClick={() => void startEmailChange()}
       >
-        {t("settings.profile.security.email.continue")}
+        {emailState.kind === "unbound"
+          ? t("settings.profile.security.email.bind")
+          : t("settings.profile.security.email.continue")}
       </Button>
     </>
   );
@@ -113,6 +118,8 @@ function PasswordPanel({
   const { t } = useTranslation("common");
   const {
     hasCredential,
+    credentialState,
+    emailState,
     currentPassword,
     setCurrentPassword,
     newPassword,
@@ -128,7 +135,22 @@ function PasswordPanel({
     completeSetupPassword,
   } = security;
 
+  if (credentialState === "unknown") {
+    return (
+      <p className="text-xs text-pretty text-muted-foreground">
+        {t("settings.profile.security.password.loadFailed")}
+      </p>
+    );
+  }
+
   if (!hasCredential) {
+    if (emailState.kind === "unbound") {
+      return (
+        <p className="text-xs text-pretty text-muted-foreground">
+          {t("settings.profile.security.password.bindEmailFirst")}
+        </p>
+      );
+    }
     return (
       <>
         <p className="text-xs text-pretty text-muted-foreground">
@@ -244,6 +266,7 @@ function TwoFactorEnable({
   const { t } = useTranslation("common");
   const {
     hasCredential,
+    credentialState,
     twoFactorEnableStep,
     twoFactorPassword,
     setTwoFactorPassword,
@@ -255,6 +278,14 @@ function TwoFactorEnable({
     startTwoFactorEnable,
     verifyTwoFactorEnable,
   } = security;
+
+  if (credentialState === "unknown") {
+    return (
+      <p className="text-xs text-pretty text-muted-foreground">
+        {t("settings.profile.security.password.loadFailed")}
+      </p>
+    );
+  }
 
   const secret = totpUri ? totpSecretFromUri(totpUri) : null;
 
@@ -353,6 +384,7 @@ function TwoFactorManage({
   const { t } = useTranslation("common");
   const {
     hasCredential,
+    credentialState,
     disablePassword,
     setDisablePassword,
     backupCodes,
@@ -360,6 +392,14 @@ function TwoFactorManage({
     disableTwoFactor,
     regenerateBackupCodes,
   } = security;
+
+  if (credentialState === "unknown") {
+    return (
+      <p className="text-xs text-pretty text-muted-foreground">
+        {t("settings.profile.security.password.loadFailed")}
+      </p>
+    );
+  }
 
   return (
     <>

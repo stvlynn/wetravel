@@ -2,6 +2,14 @@ import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { z } from "zod";
+import {
+  isInternalEmail,
+  placeholderEmailForUser,
+} from "../../application/user/email-address";
+import type {
+  ResolveWechatIdentity,
+  WechatExternalIdentity,
+} from "../../application/user/wechat-identity";
 
 const WECHAT_PROVIDER_ID = "wechat";
 const WECHAT_CODE2SESSION_URL =
@@ -66,6 +74,9 @@ export class WechatCode2SessionClient implements WechatMiniProgramIdentityPort {
 
 export interface WechatMiniProgramPluginOptions {
   identityPort: WechatMiniProgramIdentityPort;
+  identityResolver: ResolveWechatIdentity;
+  miniProgramIssuer: string;
+  openPlatformIssuer: string;
 }
 
 /**
@@ -98,40 +109,102 @@ export function wechatMiniProgram(
             });
           }
 
-          const accountId = identity.unionid ?? identity.openid;
-          const email = `${accountId}@wechat.invalid`;
-          let existing = await ctx.context.internalAdapter.findOAuthUser(
-            email,
-            accountId,
-            WECHAT_PROVIDER_ID,
-          );
+          const identities = externalIdentities(identity, options);
+          const resolution = await options.identityResolver.resolve(identities);
+          if (resolution.kind === "conflict") throw identityConflict();
 
-          // If a Mini Program is bound to Open Platform after users already
-          // signed in with openid, promote that account to UnionID instead of
-          // creating a duplicate user. Future web QR login then resolves the
-          // newly linked UnionID account as well.
-          if (!existing && identity.unionid) {
-            existing = await ctx.context.internalAdapter.findOAuthUser(
-              `${identity.openid}@wechat.invalid`,
-              identity.openid,
-              WECHAT_PROVIDER_ID,
-            );
+          const canonicalAccountId = identity.unionid
+            ? identity.unionid
+            : `openid:${options.miniProgramIssuer}:${identity.openid}`;
+          let user =
+            resolution.kind === "resolved"
+              ? await ctx.context.internalAdapter.findUserById(resolution.userId)
+              : null;
+
+          // Migrate users created by the former account-only implementation.
+          // The external identity table becomes authoritative after this bind.
+          if (!user) {
+            const legacyCandidates = [
+              ...(identity.unionid
+                ? [
+                    {
+                      accountId: identity.unionid,
+                      email: `${identity.unionid}@wechat.invalid`,
+                    },
+                  ]
+                : []),
+              {
+                accountId: identity.openid,
+                email: `${identity.openid}@wechat.invalid`,
+              },
+            ];
+            for (const candidate of legacyCandidates) {
+              const existing =
+                await ctx.context.internalAdapter.findOAuthUser(
+                  candidate.email,
+                  candidate.accountId,
+                  WECHAT_PROVIDER_ID,
+                );
+              if (existing?.user) {
+                user = existing.user;
+                break;
+              }
+            }
           }
 
-          let user = existing?.user;
           if (!user) {
-            const created = await ctx.context.internalAdapter.createOAuthUser(
-              {
-                name: "WeChat User",
-                email,
-                emailVerified: true,
-              },
-              { accountId, providerId: WECHAT_PROVIDER_ID },
-            );
-            user = created.user;
-          } else if (existing?.linkedAccount?.accountId !== accountId) {
+            const placeholderId = crypto.randomUUID();
+            const placeholderEmail = placeholderEmailForUser(placeholderId);
+            try {
+              const created =
+                await ctx.context.internalAdapter.createOAuthUser(
+                  {
+                    name: "WeChat User",
+                    email: placeholderEmail,
+                    emailVerified: false,
+                  },
+                  {
+                    accountId: canonicalAccountId,
+                    providerId: WECHAT_PROVIDER_ID,
+                  },
+                );
+              user = created.user;
+            } catch (error) {
+              // A concurrent first login may have won the unique provider
+              // account insert. Re-read that winner; unrelated failures remain
+              // visible instead of being converted to a fallback account.
+              const winner =
+                await ctx.context.internalAdapter.findOAuthUser(
+                  placeholderEmail,
+                  canonicalAccountId,
+                  WECHAT_PROVIDER_ID,
+                );
+              if (!winner?.user) throw error;
+              user = winner.user;
+            }
+          }
+
+          const binding = await options.identityResolver.bind(user.id, identities);
+          if (binding.kind === "conflict") throw identityConflict();
+
+          if (isInternalEmail(user.email)) {
+            user = await ctx.context.internalAdapter.updateUser(user.id, {
+              email: placeholderEmailForUser(user.id),
+              emailVerified: false,
+              emailIsPlaceholder: true,
+            });
+          }
+
+          const accounts = await ctx.context.internalAdapter.findAccounts(user.id);
+          if (
+            !accounts.some(
+              (account) =>
+                account.providerId === WECHAT_PROVIDER_ID &&
+                account.accountId === canonicalAccountId,
+            )
+          ) {
             await ctx.context.internalAdapter.linkAccount({
-              accountId,
+              accountId: canonicalAccountId,
               providerId: WECHAT_PROVIDER_ID,
               userId: user.id,
             });
@@ -150,4 +223,38 @@ export function wechatMiniProgram(
       ),
     },
   } satisfies BetterAuthPlugin;
+}
+
+function externalIdentities(
+  identity: WechatMiniProgramIdentity,
+  options: Pick<
+    WechatMiniProgramPluginOptions,
+    "miniProgramIssuer" | "openPlatformIssuer"
+  >,
+): WechatExternalIdentity[] {
+  return [
+    {
+      provider: "wechat",
+      subjectType: "openid",
+      issuer: options.miniProgramIssuer,
+      subject: identity.openid,
+    },
+    ...(identity.unionid
+      ? [
+          {
+            provider: "wechat" as const,
+            subjectType: "unionid" as const,
+            issuer: options.openPlatformIssuer,
+            subject: identity.unionid,
+          },
+        ]
+      : []),
+  ];
+}
+
+function identityConflict(): APIError {
+  return new APIError("CONFLICT", {
+    code: "WECHAT_IDENTITY_CONFLICT",
+    message: "This WeChat identity is linked to another OpenTrip account",
+  });
 }

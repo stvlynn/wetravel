@@ -113,13 +113,31 @@ verifies with OTP):
 `user.changeEmail.enabled` plus `sendChangeEmailConfirmation` remain configured
 for the built-in link confirmation path; the SPA uses the OTP endpoints above.
 
+WeChat accounts start without a contact email. Better Auth's required email
+column holds an opaque `@identity.invalid` value with
+`emailIsPlaceholder=true` and `emailVerified=false`; this value is never shown
+or sent to an email provider. First binding uses a separate flow because the
+placeholder inbox cannot prove ownership:
+
+1. Sign in with WeChat again if the current session is older than ten minutes.
+2. `POST /api/auth/email-binding/request` with `{ email }` sends an OTP only to
+   the proposed real address.
+3. `POST /api/auth/email-binding/verify` with `{ email, otp }` consumes the
+   hashed, single-use five-minute OTP and atomically marks the real address
+   verified.
+
+Both endpoints require an authoritative session, are limited to three requests
+per minute, and reject an address already owned by another user. Normal
+verified-email changes continue to verify both current and new inboxes.
+
 ### Password change and setup
 
 Logged-in users with a credential account call
 `POST /api/auth/change-password` (`currentPassword`, `newPassword`,
 `revokeOtherSessions`).
 
-Google-only accounts (no credential row) set a first password via email OTP:
+Accounts with a verified real email but no credential row set a first password
+via email OTP:
 
 1. `POST /api/auth/email-otp/request-password-reset` — OTP
    (`type: "forget-password"`).
@@ -128,7 +146,8 @@ Google-only accounts (no credential row) set a first password via email OTP:
 
 The sign-in form exposes **Forgot password?** and uses the same OTP reset
 flow (request → OTP + new password → back to sign-in). Settings → Profile
-reuses these endpoints for Google-only first-password setup.
+reuses these endpoints for first-password setup. Placeholder-email WeChat users
+must bind and verify a real email first.
 
 `emailAndPassword.sendResetPassword` also sends a **link** email for the
 standard `/request-password-reset` endpoint (captcha-protected). The SPA
@@ -237,9 +256,30 @@ and handles profile edits and avatar upload through the normal web surface. The
 bearer is neither persisted nor placed in a URL.
 
 Bind the Website Application and Mini Program to the same WeChat Open Platform
-account when cross-surface account continuity is required. The adapter prefers
-`unionid` as the Better Auth `wechat` account id (falling back to Mini Program
-`openid`), matching the built-in web provider's identity selection.
+account when cross-surface account continuity is required. The adapter records
+OpenID with the Mini Program AppID as issuer and UnionID with the Open Platform
+issuer. UnionID remains the canonical Better Auth `wechat` account id when
+available; OpenID-only accounts use an AppID-scoped account id.
+
+The `external_identities` table is authoritative for Mini Program identity
+resolution. If OpenID and UnionID from one trusted response already belong to
+different users, login returns `WECHAT_IDENTITY_CONFLICT` and records a
+redacted `identity_conflicts` row; it never silently switches account
+ownership. A subsequent trusted login upgrades legacy Better Auth account-only
+records. Raw login codes, AppSecret, `session_key`, and raw subjects never enter
+conflict logs.
+
+Operations commands:
+
+- `pnpm --filter @opentrip/api db:backfill-wechat` — idempotently mark legacy
+  `@wechat.invalid` rows as unverified placeholders and import old account IDs
+  as `legacy_unknown`.
+- `pnpm --filter @opentrip/api db:audit-wechat` — report identity counts and
+  open conflicts without exposing raw subjects.
+- `pnpm --filter @opentrip/api db:merge-wechat-users <canonical> <duplicate>` —
+  dry-run a controlled merge; add `--apply` only after resolving every reported
+  credential, 2FA, email, membership, preference, or idempotency conflict. A
+  successful merge revokes all sessions and resolves the audit record.
 
 Google profiles are normalized through the shared `OAuthProfileDto`
 (`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers

@@ -6,6 +6,7 @@ POSTGRES_PORT ?= 5430
 POSTGRES_USER ?= opentrip
 POSTGRES_DB ?= opentrip
 MINIAPP_DIR ?= apps/miniapp
+MINIAPP_PROJECT_DIR ?= $(MINIAPP_DIR)/miniprogram
 WECHAT_DEVTOOLS_CLI ?= /Applications/wechatwebdevtools.app/Contents/MacOS/cli
 
 .PHONY: help install env setup postgres-up postgres-down dev dev-nodb dev-web dev-api
@@ -39,7 +40,7 @@ help:
 	@echo ""
 	@echo "WeChat Mini Program (PWA WebView shell):"
 	@echo "  make miniapp              Prepare config and open DevTools"
-	@echo "  make miniapp-open         Open apps/miniapp in WeChat Developer Tools"
+	@echo "  make miniapp-open         Open apps/miniapp/miniprogram in WeChat Developer Tools"
 	@echo "  make miniapp-sync-config  Generate AppID and public-origin config"
 	@echo "  make miniapp-clear-cache  Clear DevTools file/compile cache and rebuild watcher"
 	@echo "  make dev-miniapp-api      Start Postgres + API + PWA for shell development"
@@ -136,29 +137,38 @@ miniapp-env:
 	@$(MAKE) miniapp-sync-config
 
 miniapp-clear-cache: miniapp-env
-	@node -e 'const fs=require("fs");const p="$(MINIAPP_DIR)/project.private.config.json";const r="$(MINIAPP_DIR)/miniprogram/config.js";let id="";try{id=JSON.parse(fs.readFileSync(p,"utf8")).appid||""}catch{}if(!String(id).trim()||!fs.existsSync(r)){console.error("Mini Program config missing. Set MINIAPP_* in apps/miniapp/.env, then run: make miniapp-sync-config");process.exit(1)}console.log("Mini Program config synced ("+String(id).trim().slice(0,4)+"…).")'
+	@node -e 'const fs=require("fs");const p="$(MINIAPP_PROJECT_DIR)/project.private.config.json";const r="$(MINIAPP_PROJECT_DIR)/config.js";let id="";try{id=JSON.parse(fs.readFileSync(p,"utf8")).appid||""}catch{}if(!String(id).trim()||!fs.existsSync(r)){console.error("Mini Program config missing. Set MINIAPP_* in apps/miniapp/.env, then run: make miniapp-sync-config");process.exit(1)}console.log("Mini Program config synced ("+String(id).trim().slice(0,4)+"…).")'
 	@if [ ! -x "$(WECHAT_DEVTOOLS_CLI)" ]; then \
 		echo "WeChat Developer Tools CLI not found: $(WECHAT_DEVTOOLS_CLI)"; \
 		echo "Set WECHAT_DEVTOOLS_CLI to the installed CLI path."; \
 		exit 1; \
 	fi
-	@echo "Opening project before DevTools cache cleanup…"
-	@printf 'n\n' | "$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_DIR)" || { \
+	@echo "Closing stale DevTools windows for this project…"
+	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_DIR)" || true
+	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)" || true
+	@printf 'n\n' | "$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)" || { \
 		echo "DevTools CLI unavailable. Manually enable 设置 → 安全设置 → 服务端口, then retry."; \
 		exit 1; \
 	}
-	@echo "Clearing DevTools file and compile caches…"
-	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean file --project "$(CURDIR)/$(MINIAPP_DIR)"
-	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean compile --project "$(CURDIR)/$(MINIAPP_DIR)"
-	@echo "Rebuilding DevTools file watcher…"
-	@"$(WECHAT_DEVTOOLS_CLI)" reset-fileutils --project "$(CURDIR)/$(MINIAPP_DIR)"
+	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean file --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)"
+	@"$(WECHAT_DEVTOOLS_CLI)" cache --clean compile --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)"
+	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)" || true
 
-miniapp-open: miniapp-clear-cache
-	@echo "Project directory: $(CURDIR)/$(MINIAPP_DIR)"
-	@echo "(project.config.json loads the native shell from miniprogram/.)"
-	@echo "Restarting project after cache cleanup…"
+miniapp-open: miniapp-env
+	@node -e 'const fs=require("fs");const p="$(MINIAPP_PROJECT_DIR)/project.private.config.json";const r="$(MINIAPP_PROJECT_DIR)/config.js";let id="";try{id=JSON.parse(fs.readFileSync(p,"utf8")).appid||""}catch{}if(!String(id).trim()||!fs.existsSync(r)){console.error("Mini Program config missing. Set MINIAPP_* in apps/miniapp/.env, then run: make miniapp-sync-config");process.exit(1)}console.log("Mini Program config synced ("+String(id).trim().slice(0,4)+"…).")'
+	@if [ ! -x "$(WECHAT_DEVTOOLS_CLI)" ]; then \
+		echo "WeChat Developer Tools CLI not found: $(WECHAT_DEVTOOLS_CLI)"; \
+		echo "Set WECHAT_DEVTOOLS_CLI to the installed CLI path."; \
+		exit 1; \
+	fi
+	@echo "Closing stale DevTools windows (including the old apps/miniapp root)…"
 	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_DIR)" || true
-	@"$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_DIR)"
+	@"$(WECHAT_DEVTOOLS_CLI)" close --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)" || true
+	@echo "Project directory: $(CURDIR)/$(MINIAPP_PROJECT_DIR)"
+	@printf 'n\n' | "$(WECHAT_DEVTOOLS_CLI)" open --project "$(CURDIR)/$(MINIAPP_PROJECT_DIR)" || { \
+		echo "DevTools CLI unavailable. Manually enable 设置 → 安全设置 → 服务端口, then retry."; \
+		exit 1; \
+	}
 	@echo "Production requires the PWA business domain and API request domain in WeChat."
 
 miniapp: miniapp-open

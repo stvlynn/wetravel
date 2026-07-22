@@ -60,6 +60,7 @@
     },
     "settings": {
         "userMenu": {
+            "account": "OpenTrip 用户",
             "profile": "个人资料",
             "preferences": "偏好设置",
             "about": "关于"
@@ -101,7 +102,10 @@
                     "desc": "修改账户使用的邮箱地址。",
                     "label": "邮箱",
                     "verified": "{{email}} · 已验证",
+                    "unbound": "尚未绑定邮箱",
                     "change": "修改",
+                    "bind": "绑定邮箱",
+                    "bindLabel": "邮箱地址",
                     "newLabel": "新邮箱",
                     "continue": "继续",
                     "currentOtpLabel": "发送至当前邮箱的验证码",
@@ -118,6 +122,7 @@
                     "label": "密码",
                     "set": "已设置密码",
                     "unset": "尚未设置密码",
+                    "unknown": "无法加载密码状态",
                     "change": "修改密码",
                     "setup": "设置密码",
                     "current": "当前密码",
@@ -130,7 +135,9 @@
                     "setupOtpLabel": "设置验证码",
                     "setupOtpSent": "设置验证码已发送。",
                     "setupSubmit": "设置密码",
-                    "setupDone": "密码已设置。"
+                    "setupDone": "密码已设置。",
+                    "bindEmailFirst": "请先绑定并验证邮箱，再设置密码。",
+                    "loadFailed": "无法加载密码状态，请重新打开此页面后重试。"
                 },
                 "twoFactor": {
                     "title": "两步验证",
@@ -160,6 +167,7 @@
                     "emailSame": "这已经是你当前的邮箱。",
                     "otpSend": "验证码发送失败。",
                     "otpInvalid": "验证码无效或已过期。",
+                    "emailRequired": "请先绑定并验证邮箱。",
                     "passwordRequired": "请输入密码。",
                     "passwordMismatch": "两次输入的新密码不一致。",
                     "passwordTooShort": "密码至少需要 8 个字符。",

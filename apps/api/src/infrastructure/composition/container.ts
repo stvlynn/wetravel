@@ -40,7 +40,9 @@ import type { TripChangePublisher } from "../../domain/realtime";
 import { MapillaryStreetViewProvider } from "../street-view/mapillary/mapillary-provider";
 import { MemoryStreetViewCache } from "../street-view/memory-street-view-cache";
 import type { StreetViewCache } from "../../application/street-view";
+import { ResolveWechatIdentity } from "../../application/user/wechat-identity";
 import { observability } from "../observability";
+import { SqlExternalIdentityRepository } from "../persistence/external-identity-repository.db";
 
 export interface CreateContainerOptions {
   /** Shared runtime cache for provider metadata and preview bytes. */
@@ -151,12 +153,16 @@ export function createContainer(
     tripRepository,
     options?.tripChangePublisher ?? null,
   );
+  const wechatIdentityResolver = new ResolveWechatIdentity(
+    new SqlExternalIdentityRepository(poolFresh),
+  );
   const auth = createAuth(config, authDriver, {
     tripRepository,
     profileProjection,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
     rateLimitStorage: options?.authRateLimitStorage,
     ipAddressHeaders: options?.authIpAddressHeaders,
+    wechatIdentityResolver,
   });
   const coverImages = new UnsplashCoverProvider(config.unsplashAccessKey);
   const geoService = new GeoService(createGeoProvider(config.geo));

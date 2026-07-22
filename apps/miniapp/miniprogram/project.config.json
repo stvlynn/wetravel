@@ -1,12 +1,12 @@
 {
-  "miniprogramRoot": "miniprogram/",
   "projectname": "OpenTrip",
   "description": "OpenTrip PWA WebView shell",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
   "setting": {
     "urlCheck": true,
     "es6": true,
     "enhance": true,
     "compileHotReLoad": true
-  },
-  "compileType": "miniprogram"
+  }
 }

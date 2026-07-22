@@ -162,6 +162,13 @@ describe("TripInviteService", () => {
       expiresAt: null,
     });
     await expect(service.acceptInvite(created.token, GUEST)).rejects.toThrow();
+    await expect(
+      service.acceptInvite(created.token, {
+        id: "wechat-user",
+        name: "WeChat User",
+        email: null,
+      }),
+    ).rejects.toThrow();
 
     const allowed: InviteActor = {
       id: "allowed",

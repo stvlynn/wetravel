@@ -62,6 +62,13 @@ query via `wx.setNavigationBarTitle` before the WebView finishes loading.
 6. The PWA replaces its location with the target path (an internal redirect —
    never a native stack push) and renders in embedded mode.
 
+WeChat does not provide a contact email. The resulting session carries an
+internal, unverified placeholder that the PWA never renders. Account & security
+shows **No email bound** and uses `/api/auth/email-binding/*` to verify only the
+new real address. Binding requires a WeChat session created within ten minutes;
+when stale, the user signs in again so the shell obtains a fresh `wx.login`
+identity before the email can become a password-recovery method.
+
 Critical application state remains on the API. `wx.miniProgram.postMessage` is
 used only for share payloads because WeChat delivers it exclusively at selected
 lifecycle moments (back navigation, component destroy, share, copy link); it is
@@ -107,10 +114,12 @@ MINIAPP_WEB_BASE_URL=https://app.example.com
 
 Run `make miniapp-sync-config`. It generates:
 
-- `project.private.config.json` with the AppID;
+- `miniprogram/project.private.config.json` with the AppID;
 - `miniprogram/config.js` with the public API and PWA origins.
 
-Both files are gitignored. The AppSecret stays on the API as
+Both files are gitignored. WeChat Developer Tools must open
+`apps/miniapp/miniprogram` (that directory is the Mini Program project root;
+`make miniapp` does this). The AppSecret stays on the API as
 `WECHAT_MINI_PROGRAM_APP_SECRET`.
 
 Production WeChat configuration requires:
@@ -130,8 +139,9 @@ make miniapp
 make dev-miniapp-api
 ```
 
-There is no mini-program build or watcher. WeChat DevTools reads the native
-source directly from `apps/miniapp/miniprogram`.
+There is no mini-program build or watcher. WeChat DevTools opens
+`apps/miniapp/miniprogram` as the project root and reads the native source
+there directly.
 
 ## Embedded PWA behavior
 

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `name` TEXT NOT NULL,
   `email` VARCHAR(191) NOT NULL,
   `emailVerified` TINYINT(1) NOT NULL DEFAULT 0,
+  `emailIsPlaceholder` TINYINT(1) NOT NULL DEFAULT 0,
   `image` TEXT NULL,
   `createdAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -66,6 +67,41 @@ CREATE TABLE IF NOT EXISTS `account` (
   UNIQUE KEY `account_provider_account_unique` (`accountId`(191), `providerId`(191)),
   KEY `account_user_id_idx` (`userId`),
   CONSTRAINT `account_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_identities` (
+  `id` VARCHAR(191) NOT NULL,
+  `user_id` VARCHAR(191) NOT NULL,
+  `provider` VARCHAR(64) NOT NULL,
+  `subject_type` VARCHAR(64) NOT NULL,
+  `issuer` VARCHAR(191) NOT NULL,
+  `subject` VARCHAR(191) NOT NULL,
+  `observed_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `verified_at` DATETIME(6) NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `external_identity_subject_unique` (`provider`, `subject_type`, `issuer`, `subject`),
+  KEY `external_identities_user_idx` (`user_id`),
+  CONSTRAINT `external_identities_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `identity_conflicts` (
+  `id` VARCHAR(191) NOT NULL,
+  `provider` VARCHAR(64) NOT NULL,
+  `primary_user_id` VARCHAR(191) NOT NULL,
+  `conflicting_user_id` VARCHAR(191) NOT NULL,
+  `subject_type` VARCHAR(64) NOT NULL,
+  `issuer` VARCHAR(191) NOT NULL,
+  `subject_hash` VARCHAR(191) NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'open',
+  `resolution` TEXT NULL,
+  `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `resolved_at` DATETIME(6) NULL,
+  PRIMARY KEY (`id`),
+  KEY `identity_conflicts_primary_user_idx` (`primary_user_id`),
+  KEY `identity_conflicts_conflicting_user_idx` (`conflicting_user_id`),
+  KEY `identity_conflicts_status_created_idx` (`status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `verification` (
