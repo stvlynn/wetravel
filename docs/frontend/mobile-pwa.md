@@ -8,12 +8,17 @@ worker and runtime caching strategy are configured in `apps/web/vite.config.ts`
 
 ## Breakpoint contract
 
-One breakpoint separates the mobile and desktop layouts: Tailwind `md`
+One breakpoint separates the mobile and desktop React layouts: Tailwind `md`
 (768px). CSS uses `md:` / `max-md:` variants; JS uses `useIsMobile()` from
 `@/shared/lib`, whose `MOBILE_MEDIA_QUERY` is `(max-width: 767.9px)` so the
 JS branch and CSS variants never disagree at exactly 768px. Do not introduce
-additional layout-switching breakpoints; finer grid tuning (e.g. `lg:`
-columns) is fine.
+additional React layout-switching breakpoints; finer CSS composition tuning is
+allowed. In the planner's compact desktop range (`md` through `2xl`), the
+existing `AgentDrawer` becomes a right-side overlay instead of consuming a
+third grid column. This preserves usable map/schedule width without introducing
+a separate tablet shell. From `md` through `2xl`, an open drawer takes over the
+main workspace completely instead of leaving an unusable map sliver. At `2xl`
+and above it returns to the reserved three-pane composition.
 
 ## Planner mobile shell
 
@@ -21,7 +26,8 @@ columns) is fine.
 same always-mounted mode panes:
 
 - **Desktop** — the splitter layout: itinerary `AppSidebar`, main panel with
-  icon tabs, `AgentDrawer` side panel.
+  icon tabs, `AgentDrawer` side panel. At compact desktop widths the drawer
+  overlays the main pane; wide screens reserve space beside it.
 - **Mobile** (`useIsMobile()`) — a column shell, page-private under
   `pages/travel-planner/ui/mobile/`:
   - `MobilePlannerHeader` — back/rename row plus the agent open button.
@@ -43,6 +49,30 @@ shells.
 On the mobile map mode the search control spans the top edge and the desktop
 day legend is hidden — the itinerary pill occupies that corner (see
 [map.md](map.md)).
+
+## Home mobile shell
+
+The authenticated home content hub keeps the same three destinations as the
+desktop sidebar but presents them as a safe-area-aware bottom navigation:
+Trips, Today, and Travelogues. A compact sticky header holds the brand and
+account menu. Every surface reserves bottom padding so content and primary
+actions do not sit behind the navigation. The same card components collapse
+from the desktop content grid into one column; trip map thumbnails remain
+non-interactive so vertical swipes always scroll the page.
+
+The travelogue composer uses `DialogSheetPopup` as a full-height editor below
+`md`, with iOS-safe 16px text controls and safe-area padding in both the header
+and footer. The reader hides its sticky section rail while preserving the
+article and AI input as one continuous mobile column. The Today place card asks
+for a city or region instead of requesting location permission again, remembers
+the selection per user in localStorage, and renders current weather from the
+shared weather API. The mobile stop-detail drawer exposes
+the same “write in travelogue” action as desktop; it opens the full-height
+composer with the stop title and trip association already filled. The frontend preview stores a
+versioned local draft document per user in localStorage. It does not claim
+offline sync, sharing, or a live AI response: the UI states that drafts and
+excerpt-based answers remain local until the backend travelogue and media
+adapters are implemented.
 
 ## Drawer and responsive dialogs
 
@@ -151,7 +181,7 @@ with non-string titles are never mirrored.
 ## Install metadata and icons
 
 - `index.html` carries the `theme-color` metas (light `#fafbfd`, dark
-  `#141a30` — the `--background` tokens), the `apple-mobile-web-app-*` metas,
+  `#000000` — the `--background` tokens), the `apple-mobile-web-app-*` metas,
   tab favicons (`favicon.ico`, `favicon-32x32.png`), and the
   `apple-touch-icon` link. iOS installers need the PNG apple-touch asset;
   browsers that still request `/favicon.ico` by default get a real icon

@@ -1,6 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ClipboardEvent } from "react";
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
+import { commandsCtx, editorViewCtx } from "@milkdown/kit/core";
+import {
+  blockquoteSchema,
+  clearTextInCurrentBlockCommand,
+  paragraphSchema,
+  setBlockTypeCommand,
+  wrapInBlockTypeCommand,
+} from "@milkdown/kit/preset/commonmark";
 import { cn } from "@/shared/lib";
 import {
   NoteImageUploadError,
@@ -19,6 +27,11 @@ export interface MarkdownEditorProps {
   onUploadImage: (file: File) => Promise<string>;
   /** Called when an image cannot be uploaded. */
   onImageError?: (error: unknown) => void;
+  /** Receives non-image files pasted into the editor as article attachments. */
+  onPasteFiles?: (files: File[]) => void;
+  /** Enables a travel-map slash command with localized editor copy. */
+  mapMenuLabel?: string;
+  mapBlockLabel?: string;
 }
 
 export interface MarkdownEditorApi {
@@ -33,11 +46,15 @@ function MarkdownEditorInner({
   onReady,
   onUploadImage,
   onImageError,
+  onPasteFiles,
+  mapMenuLabel,
+  mapBlockLabel,
 }: MarkdownEditorProps) {
   const onChangeRef = useRef(onChange);
   const onReadyRef = useRef(onReady);
   const onUploadImageRef = useRef(onUploadImage);
   const onImageErrorRef = useRef(onImageError);
+  const onPasteFilesRef = useRef(onPasteFiles);
   const crepeRef = useRef<Crepe | null>(null);
 
   useEffect(() => {
@@ -56,6 +73,19 @@ function MarkdownEditorInner({
     onImageErrorRef.current = onImageError;
   }, [onImageError]);
 
+  useEffect(() => {
+    onPasteFilesRef.current = onPasteFiles;
+  }, [onPasteFiles]);
+
+  const handlePasteCapture = (event: ClipboardEvent<HTMLDivElement>) => {
+    const files = Array.from(event.clipboardData.files).filter(
+      (file) => !file.type.startsWith("image/"),
+    );
+    if (!files.length || !onPasteFilesRef.current) return;
+    event.preventDefault();
+    onPasteFilesRef.current(files);
+  };
+
   useEditor((root) => {
     const crepe = new Crepe({
       root,
@@ -73,6 +103,45 @@ function MarkdownEditorInner({
         [Crepe.Feature.Placeholder]: {
           text: placeholder ?? "",
           mode: "block",
+        },
+        [Crepe.Feature.TopBar]: {
+          headingOptions: [
+            { label: "Paragraph", level: null },
+            { label: "Heading 1", level: 1 },
+            { label: "Heading 2", level: 2 },
+            { label: "Heading 3", level: 3 },
+            { label: "Heading 4", level: 4 },
+            { label: "Heading 5", level: 5 },
+          ],
+        },
+        [Crepe.Feature.BlockEdit]: {
+          textGroup: { h6: null },
+          buildMenu: (builder) => {
+            if (!mapMenuLabel || !mapBlockLabel) return;
+            builder.addGroup("travel", mapMenuLabel).addItem("map", {
+              label: mapMenuLabel,
+              icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15M15 6v15"/></svg>',
+              onRun: (ctx) => {
+                const commands = ctx.get(commandsCtx);
+                commands.call(clearTextInCurrentBlockCommand.key);
+                commands.call(setBlockTypeCommand.key, {
+                  nodeType: paragraphSchema.type(ctx),
+                });
+                commands.call(wrapInBlockTypeCommand.key, {
+                  nodeType: blockquoteSchema.type(ctx),
+                });
+
+                const view = ctx.get(editorViewCtx);
+                const { from } = view.state.selection;
+                view.dispatch(
+                  view.state.tr
+                    .insertText(`🗺️ [!map] ${mapBlockLabel}`, from)
+                    .scrollIntoView(),
+                );
+                view.focus();
+              },
+            });
+          },
         },
         [Crepe.Feature.ImageBlock]: {
           onUpload: async (file) => {
@@ -111,7 +180,10 @@ function MarkdownEditorInner({
   }, []);
 
   return (
-    <div className={cn("wf-markdown-editor flex min-h-0 flex-col", className)}>
+    <div
+      className={cn("wf-markdown-editor flex min-h-0 flex-col", className)}
+      onPasteCapture={handlePasteCapture}
+    >
       <Milkdown />
     </div>
   );

@@ -18,6 +18,7 @@
     "@json-render/react": "^0.19.0",
     "@marsidev/react-turnstile": "^1.5.3",
     "@milkdown/crepe": "^7.21.2",
+    "@milkdown/kit": "7.21.2",
     "@milkdown/react": "^7.21.2",
     "@opentrip/agent-ui-catalog": "workspace:*",
     "@opentrip/observability-contract": "workspace:*",

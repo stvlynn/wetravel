@@ -43,6 +43,9 @@ as real cossUI React primitives.
 | Member presence dots | Demo (cosmetic, from seed) |
 | Invite | Persisted (configurable invite links with access scope, role, can-invite, and custom expiry; accepting adds a real member) |
 | Trip creation ("New trip") | Persisted (creates a planning trip owned by the current user as its first member) |
+| Travelogue editor | Frontend preview (WYSIWYG Markdown, pasted images, PDF/Markdown/TXT/CSV attachments) |
+| Travelogue draft/published state | Local browser state (not account-synced or shared yet) |
+| Travelogue media | Persisted through the linked trip media namespace |
 
 ## Data parity
 

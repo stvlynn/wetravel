@@ -7,7 +7,7 @@ what to keep, and splitting shared expenses fairly.
 ## Core user flows
 
 1. **Browse trips** — a home grid of trips with status (active, planning,
-   settled), dates, member avatars, and totals.
+   settled), dates, member avatars, totals, and place-based map thumbnails.
 2. **Plan the itinerary** — inside a trip, switch between:
    - **Map** — see stops as numbered markers and per-day routes; click a stop
      to focus it and read its details, votes, and comments.
@@ -15,13 +15,25 @@ what to keep, and splitting shared expenses fairly.
    - **Budget** — record expenses, see per-member balances, and get the
      minimal set of transfers that settles the trip.
 3. **Collaborate** — vote for stops, comment on them, and invite members.
+4. **Write travelogues** — capture a moment on mobile, organize entries by
+   journey and year, then read, edit, or revisit them in an editorial article
+   view. The current frontend preview supports draft/published workflow and a
+   mobile-friendly WYSIWYG Markdown editor. The editor supports H1–H5 and a
+   `/map` travel block that renders the linked trip as a compact map widget.
+   Images and supported attachments use trip media storage when an entry is linked to a trip; article content,
+   publication state, account sync, sharing permissions, and model-backed
+   article Q&A remain backend follow-ups.
+5. **Use Today between journeys** — set a current city or region to see local
+   weather, capture a moment, prepare an upcoming trip, or reflect on one that
+   ended recently.
 
 ## MVP scope
 
 - Trips home (read) and a fully interactive single-trip planner.
 - Guided create-trip wizard (destination, days, dates, budget, party — each
   optional / TBD), Unsplash cover when a destination is set, then navigate to
-  the planner with a one-shot `@agent` seed message on first open.
+  the planner with a one-shot suggested `@agent` draft on first open; the member
+  reviews or edits it before explicitly sending.
 - Stops: list/group by day, detail panel, vote toggle, comments, inline insert.
 - Budget: expense list, add expense with payer + split, balances, settlement.
 - Email + password authentication (Better Auth).

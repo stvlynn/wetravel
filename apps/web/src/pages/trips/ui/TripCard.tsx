@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowRightIcon } from "lucide-react";
 import type { TripSummary } from "@/entities/trip";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { Avatar } from "@/shared/ui/avatar";
 import { cn } from "@/shared/lib";
+import { TripMapThumbnail } from "@/shared/ui/map";
 
 /** Max avatars shown before collapsing the rest into a "+N" chip. */
 const MAX_AVATARS = 4;
@@ -26,35 +28,22 @@ function seededFloat(seed: string, i: number): number {
 }
 
 /** Generate a decorative route map path and stop circles for a trip card. */
-function routeMapForTrip(trip: TripSummary): { path: string; points: { x: number; y: number }[] } {
+function routeMapForTrip(trip: TripSummary): {
+  path: string;
+  points: { x: number; y: number }[];
+} {
   const count = Math.max(2, Math.min(6, trip.stopCount || 2));
   const points: { x: number; y: number }[] = [];
   for (let i = 0; i < count; i++) {
     const t = i / Math.max(1, count - 1);
     const x = 40 + t * 240 + (seededFloat(trip.id, i * 2) - 0.5) * 24;
-    const y = 32 + seededFloat(trip.id, i * 2 + 1) * 56;
+    const y = 42 + seededFloat(trip.id, i * 2 + 1) * 62;
     points.push({ x, y });
   }
 
-  if (points.length < 2) {
-    return { path: "", points };
-  }
-
-  // Catmull-Rom spline converted to cubic beziers for a smooth route line.
-  const get = (i: number) => points[Math.max(0, Math.min(points.length - 1, i))]!;
-  const first = points[0]!;
-  let path = `M ${first.x} ${first.y}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = get(i);
-    const p1 = get(i + 1);
-    const p2 = get(i + 2);
-    const p3 = get(i + 3);
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-  }
+  const path = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
 
   return { path, points };
 }
@@ -62,9 +51,11 @@ function routeMapForTrip(trip: TripSummary): { path: string; points: { x: number
 export function TripCard({
   trip,
   onOpen,
+  featured = false,
 }: {
   trip: TripSummary;
   onOpen: () => void;
+  featured?: boolean;
 }) {
   const { t } = useTranslation("trips");
   const [coverFailed, setCoverFailed] = useState(false);
@@ -73,21 +64,24 @@ export function TripCard({
   const overflow = trip.members.length - shown.length;
   const route = routeMapForTrip(trip);
   const routeColor = trip.status === "active" ? trip.coverColor : "var(--ink-400)";
-  const showCover = Boolean(trip.coverUrl) && !coverFailed;
+  const showMap = Boolean(trip.location);
+  const showCover = !showMap && Boolean(trip.coverUrl) && !coverFailed;
 
   const meta = [
     trip.startLabel && trip.endLabel
       ? t("card.dates", { start: trip.startLabel, end: trip.endLabel })
       : null,
     t("card.stops", { count: trip.stopCount }),
-    trip.creatorName ? t("card.by", { name: trip.creatorName }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   return (
     <Card
-      className="wf-enter group cursor-pointer overflow-hidden border border-border p-0 transition-[border-color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-md active:scale-[var(--press-scale)]"
+      className={cn(
+        "wf-enter group cursor-pointer overflow-hidden border border-border p-0 shadow-[var(--shadow-border)] transition-[border-color,box-shadow,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-corn-300 hover:shadow-md active:scale-[var(--press-scale)]",
+        featured && "md:min-h-[390px]",
+      )}
       onClick={onOpen}
       role="button"
       tabIndex={0}
@@ -98,8 +92,19 @@ export function TripCard({
         }
       }}
     >
-      <div className="relative h-[116px] bg-ink-150">
-        {showCover ? (
+      <div
+        className={cn(
+          "relative h-[148px] overflow-hidden bg-ink-150",
+          featured && "md:h-[210px]",
+        )}
+      >
+        {showMap && trip.location ? (
+          <TripMapThumbnail
+            lat={trip.location.lat}
+            lng={trip.location.lng}
+            markerColor={trip.coverColor}
+          />
+        ) : showCover ? (
           <img
             src={trip.coverUrl!}
             alt={t("card.coverAlt", { title: trip.title })}
@@ -110,8 +115,9 @@ export function TripCard({
           />
         ) : (
           <svg
-            viewBox="0 0 320 116"
+            viewBox="0 0 320 148"
             className="absolute inset-0 size-full"
+            preserveAspectRatio="none"
             aria-hidden="true"
           >
             {route.path && (
@@ -137,24 +143,41 @@ export function TripCard({
             ))}
           </svg>
         )}
+        {showMap || showCover ? (
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10"
+            aria-hidden="true"
+          />
+        ) : null}
+        <Badge
+          variant={STATUS_VARIANT[trip.status]}
+          className="absolute right-3 top-3 shadow-sm"
+        >
+          {t(`status.${trip.status}`)}
+        </Badge>
       </div>
-      <div className="flex flex-col gap-2.5 p-3.5 px-4 pb-4">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-heading text-base font-semibold tracking-tight text-balance">
+      <div
+        className={cn(
+          "flex flex-col gap-3 p-4",
+          featured && "md:px-5 md:pb-5",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h2
+            className={cn(
+              "font-heading text-lg font-semibold tracking-tight text-balance",
+              featured && "md:text-xl",
+            )}
+          >
             {trip.title}
           </h2>
-          <div className="flex flex-none items-center gap-1.5">
-            <Badge variant={STATUS_VARIANT[trip.status]}>
-              {t(`status.${trip.status}`)}
-            </Badge>
-          </div>
         </div>
         {meta && (
-          <p className="font-mono text-[11px] text-muted-foreground tabular-nums">
+          <p className="font-mono text-[11px] leading-5 text-muted-foreground tabular-nums">
             {meta}
           </p>
         )}
-        <div className="flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between pt-1">
           {shown.length > 0 ? (
             <div className="flex flex-none items-center">
               {shown.map((m, i) => (
@@ -184,11 +207,14 @@ export function TripCard({
           )}
           <span
             className={cn(
-              "text-xs font-medium text-corn-600 transition-[translate] duration-150",
-              "group-hover:translate-x-0.5",
+              "inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-corn-600",
             )}
           >
-            {t("card.open")} →
+            {t(`card.action.${trip.status}`)}
+            <ArrowRightIcon
+              className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
           </span>
         </div>
       </div>

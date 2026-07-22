@@ -24,6 +24,7 @@ import {
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { stopNumbers, upsertTripSummary, type Trip, type TripSummary } from "@/entities/trip";
+import type { Stop } from "@/entities/stop";
 import { CalendarCheck2, CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
 import { useRouter } from "@/app/router";
 import { useIsMiniappEmbedded } from "@/app/embedded-environment";
@@ -222,7 +223,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     [agentPanelMutation],
   );
 
-  // Open the agent panel once when a create-wizard seed is waiting.
+  // Open the agent panel once when a create-wizard prompt draft is waiting.
   useEffect(() => {
     if (!agentEnabled || !trip?.agentSeedPending) return;
     if (!agentCollapsed) return;
@@ -561,6 +562,15 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     setNoteEditingStopId(null);
   };
 
+  const writeStopTravelogue = (stop: Stop) => {
+    const search = new URLSearchParams({
+      compose: "stop",
+      tripId: trip.id,
+      title: stop.name,
+    });
+    navigate(`/journal?${search.toString()}`);
+  };
+
   const headerSubtitle = formatTripSubtitle(trip, i18n.language, t);
   const agentPanelOpen = agentEnabled && !agentCollapsed;
 
@@ -587,6 +597,10 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
       actions.stopMove.mutate({ stopId, day: targetDay, index });
     },
     onExpandNote: openNoteEditor,
+    onWriteTravelogue: (stopId) => {
+      const stop = trip.stops.find((candidate) => candidate.id === stopId);
+      if (stop) writeStopTravelogue(stop);
+    },
   };
 
   const selectedStop = selectedStopId
@@ -739,6 +753,10 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           onUpdateStop={sidebarProps.onUpdateStop}
           onChangeStopDay={sidebarProps.onChangeStopDay}
           onExpandNote={openNoteEditor}
+          onWriteTravelogue={(stopId) => {
+            const stop = trip.stops.find((candidate) => candidate.id === stopId);
+            if (stop) writeStopTravelogue(stop);
+          }}
         />
         {agentEnabled ? (
           <MobileAgentSheet
@@ -817,8 +835,8 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           className={cn(
             "relative z-[5] flex min-w-0 flex-1 overflow-hidden border border-border bg-background transition-[border-radius,box-shadow] duration-[var(--dur-slow)] ease-[var(--ease-out)]",
             agentPanelOpen
-              ? "rounded-2xl shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25),8px_0_24px_-16px_rgba(15,23,42,0.25)]"
-              : "rounded-l-2xl border-r-0 shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]",
+              ? "rounded-2xl shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25),8px_0_24px_-16px_rgba(15,23,42,0.25)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.025)]"
+              : "rounded-l-2xl border-r-0 shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.025)]",
           )}
         >
           <main className="relative flex min-w-0 flex-1 flex-col">
@@ -845,10 +863,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
       </Splitter>
 
       {agentEnabled && agentCollapsed ? (
-        <AgentToggle
-          onOpen={() => setAgentPanel(false)}
-          reserveMapControls={tab === "map" && !noteEditingStop}
-        />
+        <AgentToggle onOpen={() => setAgentPanel(false)} />
       ) : null}
 
       {agentEnabled ? (

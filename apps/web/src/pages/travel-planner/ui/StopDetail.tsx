@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Maximize2 } from "lucide-react";
+import { BookOpenTextIcon, Maximize2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import type { Trip } from "@/entities/trip";
@@ -599,6 +599,7 @@ export function StopDetail({
   onUpdateStop,
   onChangeStopDay,
   onExpandNote,
+  onWriteTravelogue,
 }: {
   trip: Trip;
   stop: Stop;
@@ -611,6 +612,7 @@ export function StopDetail({
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
   onChangeStopDay: (stopId: string, day: number) => void;
   onExpandNote: () => void;
+  onWriteTravelogue: () => void;
 }) {
   const { t } = useTranslation("planner");
   const { t: ta } = useTranslation("agent");
@@ -788,6 +790,16 @@ export function StopDetail({
             </div>
           </div>
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 w-full justify-start"
+          onClick={onWriteTravelogue}
+        >
+          <BookOpenTextIcon aria-hidden="true" />
+          {t("detail.writeTravelogue")}
+        </Button>
 
         {canEdit || stop.note ? (
           <div className="flex flex-col gap-2">

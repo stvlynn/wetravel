@@ -21,6 +21,7 @@ export function MobileStopDetailSheet({
   onUpdateStop,
   onChangeStopDay,
   onExpandNote,
+  onWriteTravelogue,
 }: {
   trip: Trip;
   stop: Stop | undefined;
@@ -33,6 +34,7 @@ export function MobileStopDetailSheet({
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
   onChangeStopDay: (stopId: string, day: number) => void;
   onExpandNote: (stopId: string) => void;
+  onWriteTravelogue: (stopId: string) => void;
 }) {
   return (
     <Drawer open={Boolean(stop)} onOpenChange={(open) => !open && onClose()}>
@@ -53,6 +55,7 @@ export function MobileStopDetailSheet({
                 onUpdateStop={onUpdateStop}
                 onChangeStopDay={onChangeStopDay}
                 onExpandNote={() => onExpandNote(stop.id)}
+                onWriteTravelogue={() => onWriteTravelogue(stop.id)}
               />
             </div>
           </>

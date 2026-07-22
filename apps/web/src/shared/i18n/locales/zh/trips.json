@@ -1,8 +1,171 @@
 {
   "title": "行程",
-  "subtitle": "一起规划，费用分摊。",
+  "subtitle": "从下一次出发，到每一段值得留下的路。",
   "newTrip": "新建行程",
   "beta": "测试版",
+  "home": {
+    "nav": {
+      "label": "首页导航",
+      "today": "今天",
+      "trips": "行程",
+      "journal": "游记"
+    },
+    "record": "记录此刻",
+    "recentTrips": "最近行程",
+    "recentJournal": "最近游记"
+  },
+  "filters": {
+    "label": "筛选行程",
+    "all": "全部",
+    "active": "进行中",
+    "planning": "规划中",
+    "settled": "已结束",
+    "empty": "这个分类里还没有行程。"
+  },
+  "today": {
+    "title": "今天",
+    "subtitle": "不一定正在旅行，也可以安排今天、准备下一次出发，或收好上一段旅程。",
+    "currentTrip": "当前行程",
+    "recentEntries": "最近记录",
+    "noTrip": {
+      "title": "今天不在旅途中",
+      "description": "可以为下一次出发做一点准备，也可以只安排好今天。",
+      "action": "规划下一次出发"
+    },
+    "place": {
+      "label": "此时此地",
+      "emptyTitle": "你今天在哪里？",
+      "emptyDescription": "填写城市或地区，今天页会记住这里并显示当前天气。",
+      "placeholder": "上海、东京、胡志明市…",
+      "inputLabel": "今天所在的城市或地区",
+      "search": "查找地点",
+      "change": "更换地点",
+      "notFound": "没有找到这个地点，试试城市或地区名称。",
+      "failed": "暂时无法查找地点，请稍后重试。",
+      "weatherLoading": "正在获取天气…",
+      "weatherUnavailable": "天气暂时不可用"
+    },
+    "quickCapture": {
+      "label": "快速记录",
+      "title": "此刻发生了什么？",
+      "description": "先写下来。标题、行程归属和分享范围都可以在记录时补充。",
+      "action": "开始写"
+    },
+    "ai": {
+      "title": "让 AI 帮你整理旅程",
+      "description": "进入当前行程，和共享助手聊聊路线、花费与旅途片段。之后也可以整理成游记。",
+      "action": "进入行程与 AI 聊聊"
+    },
+    "focus": {
+      "tripTitle": "继续今天的旅程",
+      "tripDescription": "打开当前行程，确认路线、时间和同行事项。",
+      "tripAction": "回到行程",
+      "prepareTitle": "为下一次出发做一点准备",
+      "prepareDescription": "打开即将开始的行程，确认日期、路线和待办。",
+      "prepareAction": "继续准备",
+      "reflectionTitle": "把刚结束的旅程收好",
+      "reflectionDescription": "回想一个最想留下的瞬间，把它写成游记。",
+      "reflectionAction": "写旅后感想",
+      "homeTitle": "给今天留一个落点",
+      "homeDescription": "写下今天的计划，或者整理一段刚结束的旅途感想。",
+      "homeAction": "写下今天"
+    }
+  },
+  "journal": {
+    "title": "游记",
+    "subtitle": "把旅途里的地点、照片感和当时的心情，慢慢写成故事。",
+    "newEntry": "写游记",
+    "read": "阅读",
+    "card": {
+      "coverAlt": "{{title}}的游记封面",
+      "readingTime": "{{count}} 分钟阅读",
+      "unlinked": "随记"
+    },
+    "archive": "游记归档",
+    "localDraft": "本机草稿",
+    "localNotice": "当前游记正文与发布状态保存在本机；关联行程后的图片和附件会上传到已配置的媒体服务。",
+    "savedLocal": "游记已保存",
+    "savedDraft": "已保存为草稿",
+    "published": "游记已发布",
+    "updated": "游记已更新",
+    "deleted": "游记已删除",
+    "untitled": "无标题记录",
+    "status": {
+      "draft": "草稿",
+      "published": "已发布"
+    },
+    "filters": {
+      "label": "筛选游记",
+      "all": "全部 {{count}}",
+      "published": "已发布 {{count}}",
+      "draft": "草稿 {{count}}",
+      "empty": {
+        "all": "还没有游记",
+        "published": "还没有已发布的游记",
+        "draft": "没有待整理的草稿"
+      }
+    },
+    "visibility": {
+      "private": "仅自己",
+      "trip": "同行可见"
+    },
+    "actions": {
+      "edit": "编辑",
+      "delete": "删除"
+    },
+    "delete": {
+      "title": "删除这篇游记？",
+      "description": "删除后无法恢复，这篇游记只会从当前设备移除。",
+      "action": "确认删除"
+    },
+    "detail": {
+      "back": "返回游记",
+      "opening": "旅途片段",
+      "coverAlt": "{{title}}的游记封面",
+      "mapCoverAlt": "{{title}}的行程地图",
+      "mapWidget": "行程地图",
+      "mapUnavailable": "关联行程后显示地图",
+      "readingTime": "约 {{count}} 分钟阅读",
+      "contents": "这篇游记",
+      "attachments": "相关附件",
+      "askTitle": "问问这篇游记",
+      "askPlaceholder": "例如：帮我提取值得再去的地点",
+      "send": "发送问题",
+      "aiPreviewNotice": "当前为前端体验，回答基于正文摘要生成；接入游记服务后会使用已配置的 AI 模型。",
+      "aiPreviewAnswer": "关于“{{question}}”：这篇游记记录了「{{excerpt}}…」。正式接入 AI 后，这里会结合全文和关联行程给出更完整的回答。"
+    },
+    "empty": {
+      "title": "从一个小片段开始",
+      "description": "不用写成长文。一个瞬间、一家店，或一句当时的心情，都值得留下。",
+      "action": "记录第一篇"
+    },
+    "composer": {
+      "title": "记录此刻",
+      "editTitle": "编辑游记",
+      "description": "先捕捉内容，整理可以稍后再做。",
+      "titleLabel": "标题（可选）",
+      "titlePlaceholder": "给这一刻起个名字",
+      "bodyPlaceholder": "此刻发生了什么？",
+      "tripLabel": "关联行程",
+      "noTrip": "不关联行程",
+      "visibilityLabel": "谁可以看",
+      "statusNotice": "草稿适合随手记录，可继续修改；发布后会进入正式游记列表。当前仍是前端体验，发布状态尚未同步到账号，同行可见也不会真的分享。",
+      "saveDraft": "保存草稿",
+      "publish": "发布游记",
+      "unpublish": "撤回为草稿",
+      "updatePublished": "更新已发布",
+      "attachFile": "添加附件",
+      "pasteHint": "可直接粘贴图片；PDF、Markdown、TXT、CSV 会作为附件。",
+      "mapMenuLabel": "地图",
+      "mapBlockLabel": "关联行程地图",
+      "mediaNeedsTrip": "请先关联一个行程，再上传图片或附件",
+      "mediaTooLarge": "文件不能超过 2 MB",
+      "mediaUnsupported": "暂不支持这种文件格式",
+      "mediaUploadFailed": "上传失败，请稍后重试",
+      "filesAttached": "已添加 {{count}} 个附件",
+      "removeAttachment": "移除附件 {{name}}"
+    }
+  },
   "empty": {
     "title": "还没有行程",
     "subtitle": "创建第一个行程，开始规划路线、投票与分摊花费。"
@@ -22,6 +185,11 @@
     "createdBy": "{{name}} 在{{when}}创建",
     "moreMembers": "还有 {{count}} 位",
     "open": "打开",
+    "action": {
+      "active": "继续旅程",
+      "planning": "继续规划",
+      "settled": "回看旅程"
+    },
     "coverAlt": "{{title}} 的封面图"
   },
   "wizard": {

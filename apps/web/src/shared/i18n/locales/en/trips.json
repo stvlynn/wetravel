@@ -1,8 +1,172 @@
 {
   "title": "Trips",
-  "subtitle": "Plan together, split everything.",
+  "subtitle": "From the next departure to every moment worth keeping.",
   "newTrip": "New trip",
   "beta": "beta",
+  "home": {
+    "nav": {
+      "label": "Home navigation",
+      "today": "Today",
+      "trips": "Trips",
+      "journal": "Travelogue"
+    },
+    "record": "Record now",
+    "recentTrips": "Recent trips",
+    "recentJournal": "Recent travelogues"
+  },
+  "filters": {
+    "label": "Filter trips",
+    "all": "All",
+    "active": "Active",
+    "planning": "Planning",
+    "settled": "Finished",
+    "empty": "There are no trips in this category yet."
+  },
+  "today": {
+    "title": "Today",
+    "subtitle": "Plan today, prepare for the next departure, or close out the journey you just finished.",
+    "currentTrip": "Current trip",
+    "recentEntries": "Recent entries",
+    "noTrip": {
+      "title": "You are not traveling today",
+      "description": "Prepare one thing for the next trip, or simply make a plan for today.",
+      "action": "Plan the next trip"
+    },
+    "place": {
+      "label": "Here and now",
+      "emptyTitle": "Where are you today?",
+      "emptyDescription": "Add a city or region and Today will remember it and show the current weather.",
+      "placeholder": "Shanghai, Tokyo, Ho Chi Minh City…",
+      "inputLabel": "Your city or region today",
+      "search": "Find location",
+      "change": "Change location",
+      "notFound": "No match found. Try a city or region name.",
+      "failed": "Location search is unavailable. Please try again.",
+      "weatherLoading": "Loading weather…",
+      "weatherUnavailable": "Weather is unavailable"
+    },
+    "quickCapture": {
+      "label": "Quick capture",
+      "title": "What is happening right now?",
+      "description": "Write it down first. Add a title, trip, and audience while you capture it.",
+      "action": "Start writing"
+    },
+    "ai": {
+      "title": "Let AI help organize the journey",
+      "description": "Open the current trip to chat about plans, costs, and travel moments, then shape them into a travelogue.",
+      "action": "Chat in this trip"
+    },
+    "focus": {
+      "tripTitle": "Continue today's journey",
+      "tripDescription": "Open the current trip to check the route, timing, and shared details.",
+      "tripAction": "Return to trip",
+      "prepareTitle": "Prepare for the next departure",
+      "prepareDescription": "Open the upcoming trip to confirm dates, routes, and what remains to do.",
+      "prepareAction": "Keep preparing",
+      "reflectionTitle": "Give the journey a proper ending",
+      "reflectionDescription": "Choose one moment worth keeping and shape it into a travelogue.",
+      "reflectionAction": "Write a reflection",
+      "homeTitle": "Give today a place to land",
+      "homeDescription": "Write today's plan or reflect on a journey you just finished.",
+      "homeAction": "Write about today"
+    }
+  },
+  "journal": {
+    "title": "Travelogues",
+    "subtitle": "Turn places, impressions, and honest moments from the road into stories.",
+    "newEntry": "Write a travelogue",
+    "read": "Read",
+    "card": {
+      "coverAlt": "Cover for {{title}}",
+      "readingTime": "{{count}} min read",
+      "unlinked": "Journal"
+    },
+    "archive": "Archive",
+    "localDraft": "Local draft",
+    "localNotice": "The story and publication state are stored locally. Images and attachments for linked trips use the configured media service.",
+    "savedLocal": "Travelogue saved",
+    "savedDraft": "Saved as draft",
+    "published": "Travelogue published",
+    "updated": "Travelogue updated",
+    "deleted": "Travelogue deleted",
+    "untitled": "Untitled entry",
+    "status": {
+      "draft": "Draft",
+      "published": "Published"
+    },
+    "filters": {
+      "label": "Filter travelogues",
+      "all": "All {{count}}",
+      "published": "Published {{count}}",
+      "draft": "Drafts {{count}}",
+      "empty": {
+        "all": "No travelogues yet",
+        "published": "No published travelogues yet",
+        "draft": "No drafts to finish"
+      }
+    },
+    "visibility": {
+      "private": "Only me",
+      "trip": "Trip members"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "delete": {
+      "title": "Delete this travelogue?",
+      "description": "This cannot be undone. The travelogue will be removed from this device.",
+      "action": "Delete"
+    },
+    "detail": {
+      "back": "Back to travelogues",
+      "opening": "From the journey",
+      "coverAlt": "Cover for {{title}}",
+      "mapCoverAlt": "Trip map for {{title}}",
+      "mapWidget": "Trip map",
+      "mapUnavailable": "Link a trip to show its map",
+      "readingTime": "About {{count}} min read",
+      "contents": "In this story",
+      "attachments": "Attachments",
+      "askTitle": "Ask this travelogue",
+      "askPlaceholder": "For example: pull out the places worth revisiting",
+      "send": "Send question",
+      "aiPreviewNotice": "Frontend preview: answers currently use a local excerpt. The configured AI model will be used after the travelogue service is connected.",
+      "aiPreviewAnswer": "About “{{question}}”: this travelogue records “{{excerpt}}…”. Once AI is connected, this area will answer using the full story and linked trip."
+    },
+    "empty": {
+      "title": "Start with one small moment",
+      "description": "It does not need to be an essay. A scene, a café, or one honest sentence is enough.",
+      "action": "Write the first entry"
+    },
+    "composer": {
+      "title": "Record this moment",
+      "editTitle": "Edit travelogue",
+      "description": "Capture it first. You can organize it later.",
+      "titleLabel": "Title (optional)",
+      "titlePlaceholder": "Name this moment",
+      "bodyPlaceholder": "What is happening right now?",
+      "tripLabel": "Related trip",
+      "noTrip": "No related trip",
+      "visibilityLabel": "Who can see this",
+      "statusNotice": "Drafts are for ongoing notes. Published entries appear in the finished collection. This remains a frontend preview: status is not synced to your account and trip visibility does not share it yet.",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "unpublish": "Move to drafts",
+      "updatePublished": "Update published",
+      "attachFile": "Attach file",
+      "pasteHint": "Paste images directly. PDF, Markdown, TXT, and CSV are saved as attachments.",
+      "mapMenuLabel": "Map",
+      "mapBlockLabel": "Related trip map",
+      "mediaNeedsTrip": "Link a trip before uploading images or attachments",
+      "mediaTooLarge": "Files must be 2 MB or smaller",
+      "mediaUnsupported": "This file type is not supported",
+      "mediaUploadFailed": "Upload failed. Please try again",
+      "filesAttached": "Attached {{count}} file",
+      "filesAttached_other": "Attached {{count}} files",
+      "removeAttachment": "Remove attachment {{name}}"
+    }
+  },
   "empty": {
     "title": "No trips yet",
     "subtitle": "Create your first trip to start planning stops, votes, and shared expenses."
@@ -22,6 +186,11 @@
     "createdBy": "{{name}} created {{when}}",
     "moreMembers": "{{count}} more",
     "open": "Open",
+    "action": {
+      "active": "Continue trip",
+      "planning": "Keep planning",
+      "settled": "Revisit trip"
+    },
     "coverAlt": "Cover photo for {{title}}"
   },
   "wizard": {

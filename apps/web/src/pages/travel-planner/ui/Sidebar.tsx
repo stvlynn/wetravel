@@ -23,6 +23,7 @@ export interface SidebarProps {
   onUpdateStop: (stopId: string, patch: UpdateStopInput) => void;
   onChangeStopDay: (stopId: string, day: number) => void;
   onExpandNote: (stopId: string) => void;
+  onWriteTravelogue: (stopId: string) => void;
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -50,6 +51,7 @@ export function Sidebar(props: SidebarProps) {
           onUpdateStop={props.onUpdateStop}
           onChangeStopDay={props.onChangeStopDay}
           onExpandNote={() => props.onExpandNote(selectedStop.id)}
+          onWriteTravelogue={() => props.onWriteTravelogue(selectedStop.id)}
         />
       ) : (
         <>

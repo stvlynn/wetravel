@@ -73,3 +73,17 @@
   height: auto;
   border-radius: var(--radius-md);
 }
+
+.wf-markdown-editor .milkdown .ProseMirror blockquote {
+  margin-block: 1rem;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: var(--secondary);
+  padding: 1rem 1.125rem;
+  box-shadow: var(--shadow-border);
+  color: var(--muted-foreground);
+}
+
+.wf-markdown-editor .milkdown .ProseMirror blockquote p {
+  margin: 0;
+}

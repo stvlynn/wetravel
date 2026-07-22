@@ -13,7 +13,25 @@ and the root render. No business logic. Files: `app/providers`, `app/styles`,
 Route-level compositions. A page reads routing/session data and composes
 widgets and features. Two pages:
 
-- `pages/trips` — the trips home grid and guided create-trip wizard.
+- `pages/trips` — the authenticated home content hub. It owns the three
+  collection surfaces (`/today`, `/`, and `/journal`), `/journal/:entryId`
+  travelogue reading routes, the phase-aware trip grid, guided create-trip
+  wizard, and the travelogue frontend preview. Travelogues support local
+  create, read, update, and delete flows and are stored in a user-partitioned,
+  versioned localStorage document until the backend travelogue aggregate and
+  sync adapter ship. Trips, Today, and Travelogues share the same responsive
+  card-grid language in the main content panel. Trip cards render a
+  non-interactive MapLibre place thumbnail when coordinates are available,
+  then fall back to a cover or route illustration. The travelogue reader uses
+  a cover, article typography, active section rail, and a clearly labeled local
+  AI-answer preview. A stop detail can launch
+  the composer through `/journal?compose=stop`: the stop name is prefilled as
+  the title and the current trip is selected, while the body remains empty so
+  the product never invents the member's memory. The Today surface can remember
+  a user-selected city or region locally and show its live weather through the
+  existing weather proxy. It selects in-trip, pre-trip, post-trip, or everyday
+  guidance from trip dates and links the existing trip agent rather than
+  claiming backend-generated travelogues.
 - `pages/invite` — the `/invite/:token` accept surface. Previews the invite
   (public), renders the auth form inline when signed out so the token survives
   sign-in, then adds the user and routes into the planner on accept.
@@ -76,11 +94,16 @@ Reusable composite blocks used by more than one page:
 - `widgets/app-sidebar` — the persistent left sidebar shared by both pages.
   Pins a brand (or a page-provided `top`, e.g. the planner's back + trip title)
   above a scrollable content slot, with the account menu docked at the bottom.
-  The trips page opens a guided create-trip wizard from the main header (and
-  empty-state CTA). On success the wizard echoes the `POST /api/trips` body into
+  The home page fills that slot with page-owned Trips / Today / Travelogue
+  navigation, a capture action, country-flag recent-trip shortcuts, and recent
+  travelogue drafts; the reusable widget remains unaware of those routes. The
+  trips collection opens a guided
+  create-trip wizard from the main header (and empty-state CTA). On success the
+  wizard echoes the `POST /api/trips` body into
   the trips list + trip detail caches (see [data-caching.md](data-caching.md);
   no immediate list refetch — Hyperdrive read-after-write) and navigates to the
-  planner so the one-shot `@agent` seed can run. The planner injects its
+  planner, opens the agent panel, and pre-fills a one-shot `@agent` suggestion.
+  The member can edit it and must explicitly send it. The planner injects its
   itinerary into the middle slot.
   It is the base layer: pages set the shell background to the sidebar color and
   float the main panel above it with rounded left corners + a left shadow. A
@@ -91,9 +114,9 @@ Reusable composite blocks used by more than one page:
 - `widgets/settings-dialog` — responsive account settings composition for
   profile, language, appearance, and application information.
 
-There is no top bar; global chrome lives in the sidebar. Most planner blocks
-stay page-private under `pages/travel-planner/ui` until reuse emerges — the
-narrow-screen planner shell (bottom navigation, itinerary/detail/agent
+There is no desktop top bar; global chrome lives in the sidebar. Most planner
+blocks stay page-private under `pages/travel-planner/ui` until reuse emerges —
+the narrow-screen planner shell (bottom navigation, itinerary/detail/agent
 sheets) is page-private under `pages/travel-planner/ui/mobile`. See
 [mobile-pwa.md](mobile-pwa.md).
 
