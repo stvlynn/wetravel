@@ -2,6 +2,7 @@
     "name": "opentrip",
     "version": "0.1.0",
     "private": true,
+    "license": "Apache-2.0",
     "description": "Travel Planner SaaS — plan trips together, split everything.",
     "packageManager": "pnpm@10.28.1",
     "engines": {

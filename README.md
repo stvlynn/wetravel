@@ -189,7 +189,7 @@ Issues and pull requests are welcome. Please:
 
 ## License
 
-See the repository for license details.
+Licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
