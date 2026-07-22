@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppProviders } from "./providers";
 import { RouterProvider, useRouter, matchTripId, matchInviteToken } from "./router";
-import { detectMiniappContainer } from "./embedded-environment";
+import { detectMiniappContainer, useIsMiniappEmbedded } from "./embedded-environment";
 import { MiniappBootstrap } from "./MiniappBootstrap";
 import { resolveInitialSession } from "./auth-session-state";
 import { useSession } from "@/shared/auth";
 import { Spinner } from "@/shared/ui/spinner";
 import { AuthPage } from "@/pages/auth";
+import { LandingPage } from "@/pages/landing";
 import { InvitePage } from "@/pages/invite";
 import { TripsPage } from "@/pages/trips";
 import { TravelPlannerPage } from "@/pages/travel-planner";
@@ -27,6 +28,7 @@ function Gate({
   initialSessionResolved: boolean;
 }) {
   const { path } = useRouter();
+  const embedded = useIsMiniappEmbedded();
   const inviteToken = matchInviteToken(path);
 
   if (!initialSessionResolved) {
@@ -43,7 +45,14 @@ function Gate({
     return <InvitePage token={inviteToken} isAuthenticated={isAuthenticated} />;
   }
 
-  if (!isAuthenticated) return <AuthPage />;
+  if (!isAuthenticated) {
+    // Web visitors land on the marketing page at the root; the auth form lives
+    // at `/signin`. Deep links (e.g. a shared trip) still route straight to
+    // sign-in so the target path survives login, and embedded WeChat sessions
+    // skip the landing entirely.
+    if (!embedded && path === "/") return <LandingPage />;
+    return <AuthPage />;
+  }
 
   return (
     <>

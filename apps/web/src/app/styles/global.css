@@ -308,6 +308,30 @@ img {
 .wf-enter-stagger > .wf-enter:nth-child(7) { animation-delay: calc(var(--enter-stagger) * 6); }
 .wf-enter-stagger > .wf-enter:nth-child(8) { animation-delay: calc(var(--enter-stagger) * 7); }
 
+/* Scroll reveal — sections lift and fade in the first time they enter the
+ * viewport. Driven by an IntersectionObserver that flips `data-shown`, so the
+ * transition is interruptible and never fires on load for above-the-fold
+ * content. Movement is transform/opacity only (GPU); reduced motion keeps the
+ * fade but drops the lift. Optional `--reveal-delay` staggers siblings. */
+.wf-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: transform, opacity;
+}
+.wf-reveal[data-shown="true"] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-reveal {
+    transform: none;
+  }
+}
+
 /* Exit animation — shorter than enter, lifts up and fades out (no blur; blur
  * is reserved for the icon cross-fade where it masks overlapping glyphs). */
 @keyframes wf-exit {

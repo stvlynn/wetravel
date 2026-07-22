@@ -17,6 +17,15 @@ Prototype-specific logic stays in the page (`pages/travel-planner`,
 `pages/trips`) with page-private widgets. Only genuinely reusable code
 (UI primitives, API client, map wrapper, formatters, i18n) lives in `shared`.
 
+## Unauthenticated routing
+
+Signed-out web visitors land on the marketing page (`pages/landing`) at the
+root; the auth form lives at `/signin`. Deep links (e.g. a shared trip) route
+straight to sign-in so the target path survives login, and embedded WeChat
+sessions skip the landing entirely. The gate lives in `app/App.tsx`. Landing
+copy is centralized in the `landing` i18n namespace (EN + 中文) and its
+screenshots reuse the README captures under `pages/landing/assets`.
+
 ## Path aliases
 
 `@/*` maps to `apps/web/src/*` (see `apps/web/tsconfig.json` and

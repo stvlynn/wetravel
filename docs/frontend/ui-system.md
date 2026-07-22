@@ -161,6 +161,11 @@ skill).
 - **List entrance**: put `.wf-enter-stagger` on the parent and `.wf-enter` on
   children; the stagger step is `--enter-stagger` (60ms). Children never
   hardcode `animationDelay`.
+- **Scroll reveal**: for sections that lift-and-fade the first time they enter
+  the viewport, use the `Reveal` wrapper (`pages/landing/ui/Reveal`, backed by
+  the `useReveal` IntersectionObserver hook) which drives the `.wf-reveal`
+  utility. Movement is transform/opacity only and reduced motion keeps the fade
+  but drops the lift. Reserve this for long marketing scrolls, not app chrome.
 - **Scroll edge fade**: use `ScrollEdgeFade` (`shared/ui/scroll-edge-fade`) for
   overflowing strips — CSS `mask-image` edge fades (`.wf-scroll-edge-fade`) +
   circular page controls with ease-out enter/exit and ease-out page scrolling.

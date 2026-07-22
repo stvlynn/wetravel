@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "signIn": "登录",
+    "getStarted": "开始规划"
+  },
+  "hero": {
+    "badge": "多人协作行程规划",
+    "titleLead": "一起规划，",
+    "titleHighlight": "费用平摊。",
+    "subtitle": "路线、每日安排、共享账本，还有懂行程的 AI，全都在同一个空间里。",
+    "primary": "开始规划",
+    "secondary": "看看规划器",
+    "trust": "免费开始 · 内置「日本 · 秋」示例行程",
+    "imageAlt": "OpenTrip 桌面端「日本 · 秋」行程地图"
+  },
+  "facts": {
+    "label": "示例行程",
+    "days": "5 天",
+    "stops": "25 个地点",
+    "route": "东京 → 京都 → 大阪"
+  },
+  "features": {
+    "overline": "一个共享工作区",
+    "map": {
+      "kicker": "地图行程",
+      "title": "看清整条路线",
+      "body": "实时地图上的编号地点，可按天筛选，附带天气与一键地点搜索。",
+      "imageAlt": "带编号地点与每日路线的行程地图"
+    },
+    "schedule": {
+      "kicker": "日程看板",
+      "title": "掌控每一天",
+      "body": "每天一列，时间、交通和住宿一眼看清。",
+      "imageAlt": "逐日日程看板与地点卡片"
+    },
+    "budget": {
+      "kicker": "预算与结算",
+      "title": "公平地结清",
+      "body": "记下谁付了多少，OpenTrip 自动算清余额，并用最少的转账结算——支持任意货币。",
+      "imageAlt": "共享支出、成员余额与结算转账"
+    },
+    "agent": {
+      "kicker": "行程助手",
+      "title": "问问行程助手",
+      "body": "共享助手随时答疑，任何改动都要有人确认后才会生效。",
+      "imageAlt": "行程助手在对话中建议行程改动"
+    },
+    "collaborate": {
+      "kicker": "协作",
+      "title": "全队一起定",
+      "body": "每个地点都能投票、评论、分享邀请链接，全队进度同步。",
+      "imageAlt": "地点详情中的投票、评论与费用"
+    }
+  },
+  "mobile": {
+    "overline": "随身携带",
+    "title": "随身带着走",
+    "body": "可安装的 PWA 与微信小程序外壳，让同一份行程装进每个人的口袋。",
+    "mapAlt": "OpenTrip 移动端地图",
+    "scheduleAlt": "OpenTrip 移动端日程",
+    "agentAlt": "OpenTrip 移动端行程助手"
+  },
+  "cta": {
+    "title": "你准备好，队友就位。",
+    "subtitle": "注册账号，示例行程立即打开。",
+    "button": "开始规划"
+  },
+  "footer": {
+    "tagline": "为和朋友一起旅行的人而做。",
+    "license": "开源 · Apache 2.0"
+  }
+}
