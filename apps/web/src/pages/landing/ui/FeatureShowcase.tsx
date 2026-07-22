@@ -39,9 +39,6 @@ export function FeatureShowcase() {
   const { t } = useTranslation("landing");
   return (
     <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-5">
-      <Reveal as="p" className="text-center text-sm font-medium text-brand">
-        {t("features.overline")}
-      </Reveal>
       <div className="mt-12 flex flex-col gap-20 sm:gap-28">
         {FEATURES.map((feature, index) => (
           <FeatureRow key={feature.id} feature={feature} index={index} />

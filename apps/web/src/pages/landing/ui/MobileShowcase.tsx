@@ -11,8 +11,7 @@ export function MobileShowcase() {
     <section className="mx-auto max-w-6xl px-5">
       <Reveal className="grid items-center gap-12 md:grid-cols-2">
         <div className="max-w-md">
-          <p className="text-sm font-medium text-brand">{t("mobile.overline")}</p>
-          <h2 className="mt-4 text-2xl font-semibold tracking-[-0.01em] text-balance sm:text-3xl">
+          <h2 className="text-2xl font-semibold tracking-[-0.01em] text-balance sm:text-3xl">
             {t("mobile.title")}
           </h2>
           <p className="mt-3 text-base text-pretty text-muted-foreground">

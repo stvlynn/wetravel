@@ -15,12 +15,6 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
 
   return (
     <section className="relative overflow-hidden">
-      {/* Soft cornflower wash behind the fold — token-driven, theme-aware. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] bg-[radial-gradient(60%_60%_at_50%_-5%,var(--brand-muted),transparent_70%)]"
-      />
-
       <div className="mx-auto max-w-6xl px-5 pt-16 pb-12 sm:pt-24">
         <div className="wf-enter-stagger mx-auto flex max-w-2xl flex-col items-center text-center">
           <span className="wf-enter inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-[var(--shadow-border)]">

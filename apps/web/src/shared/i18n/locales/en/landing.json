@@ -20,7 +20,6 @@
     "route": "Tokyo → Kyoto → Osaka"
   },
   "features": {
-    "overline": "One shared workspace",
     "map": {
       "kicker": "Map itinerary",
       "title": "See the whole route",
@@ -53,7 +52,6 @@
     }
   },
   "mobile": {
-    "overline": "Anywhere",
     "title": "Take it anywhere",
     "body": "An installable PWA and a WeChat shell put the same trip in everyone's pocket.",
     "mapAlt": "OpenTrip mobile map",

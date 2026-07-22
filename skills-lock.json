@@ -37,6 +37,12 @@
       "skillPath": "SKILL.md",
       "computedHash": "cab9ad83719e4c4cc85fff64bf84707c0ca4b1f730370e4694136d8ec5750347"
     },
+    "kill-ai-slop": {
+      "source": "yetone/kill-ai-slop",
+      "sourceType": "github",
+      "skillPath": "skill/SKILL.md",
+      "computedHash": "bece0e23b22176d36a1d07c9c01b448b8458affd5c17328fb780b88b08018939"
+    },
     "make-interfaces-feel-better": {
       "source": "jakubkrehel/make-interfaces-feel-better",
       "sourceType": "github",

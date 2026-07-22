@@ -413,7 +413,7 @@ export function AgentMessageItem({
 
           {showThinking ? (
             <div className="flex w-fit items-center gap-2 rounded-xl rounded-tl-sm bg-accent px-3 py-2 text-xs text-muted-foreground">
-              <span className="inline-block size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
+              <span className="inline-block size-1.5 rounded-full bg-muted-foreground/70" />
               {t("panel.thinking")}
             </div>
           ) : null}

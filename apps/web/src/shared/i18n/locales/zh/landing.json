@@ -20,7 +20,6 @@
     "route": "东京 → 京都 → 大阪"
   },
   "features": {
-    "overline": "一个共享工作区",
     "map": {
       "kicker": "地图行程",
       "title": "看清整条路线",
@@ -53,7 +52,6 @@
     }
   },
   "mobile": {
-    "overline": "随身携带",
     "title": "随身带着走",
     "body": "可安装的 PWA 与微信小程序外壳，让同一份行程装进每个人的口袋。",
     "mapAlt": "OpenTrip 移动端地图",

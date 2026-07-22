@@ -7,10 +7,6 @@ export function CallToAction({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="mx-auto max-w-6xl px-5">
       <Reveal className="relative overflow-hidden rounded-3xl bg-primary px-6 py-16 text-center text-primary-foreground sm:py-20">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(60%_100%_at_50%_0%,color-mix(in_srgb,var(--corn-500)_28%,transparent),transparent_70%)]"
-        />
         <h2 className="mx-auto max-w-xl text-3xl font-semibold tracking-[-0.02em] text-balance sm:text-4xl">
           {t("cta.title")}
         </h2>
