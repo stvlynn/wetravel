@@ -2,6 +2,7 @@
 // Derives platform sizes from the image-generated master artwork. Run
 // `pnpm --filter @opentrip/web icons:generate` after replacing the master and
 // commit the regenerated PNGs / favicon.
+import { Buffer } from "node:buffer";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
