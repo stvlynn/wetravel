@@ -1,41 +1,54 @@
 import { useTranslation } from "react-i18next";
-import { cn, interactive } from "@/shared/lib";
+import { cn } from "@/shared/lib";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { supportedLanguages, type SupportedLanguage } from "./index";
 
-/** Compact segmented control to switch UI language. Choice persists via the
- * i18next language detector (localStorage). */
+function resolveLanguage(raw: string | undefined): SupportedLanguage {
+  const base = (raw ?? "en").split("-")[0];
+  return supportedLanguages.includes(base as SupportedLanguage)
+    ? (base as SupportedLanguage)
+    : "en";
+}
+
+/** Compact select to switch UI language. Choice persists via the i18next
+ * language detector (localStorage). */
 export function LanguageSwitch({ className }: { className?: string }) {
   const { t, i18n } = useTranslation("common");
-  const active = (i18n.resolvedLanguage ?? "en") as SupportedLanguage;
+  const active = resolveLanguage(i18n.resolvedLanguage ?? i18n.language);
+
+  const items = supportedLanguages.map((lng) => ({
+    value: lng,
+    label: t(`languageName.${lng}` as const),
+  }));
 
   return (
-    <div
-      role="group"
-      aria-label={t("language")}
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-full bg-card p-0.5 shadow-[var(--shadow-border)]",
-        className,
-      )}
+    <Select
+      items={items}
+      value={active}
+      onValueChange={(next) => {
+        if (!next || next === active) return;
+        void i18n.changeLanguage(next);
+      }}
     >
-      {supportedLanguages.map((lng) => {
-        const selected = lng === active;
-        return (
-          <button
-            key={lng}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => void i18n.changeLanguage(lng)}
-            className={cn(
-              `h-10 rounded-full px-3 text-xs font-medium ${interactive}`,
-              selected
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
+      <SelectTrigger
+        className={cn("w-36", className)}
+        aria-label={t("language")}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup>
+        {supportedLanguages.map((lng) => (
+          <SelectItem key={lng} value={lng}>
             {t(`languageName.${lng}` as const)}
-          </button>
-        );
-      })}
-    </div>
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
   );
 }
