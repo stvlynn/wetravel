@@ -52,16 +52,16 @@ The seed demo is **Japan · Autumn** — Tokyo → Kyoto → Osaka, 5 days, 25 s
 
 ## Features
 
-| | Capability | What you get |
-| --- | --- | --- |
-| 🗺️ | **Map itinerary** | Numbered stop markers, per-day routes, place search, stop detail with votes & comments |
-| 📅 | **Schedule board** | Day columns, inline stop cards, transit segments, weather hints |
-| 💰 | **Budget & settle-up** | Shared expenses, per-member balances, minimal repayment graph, multi-currency display |
-| 🎫 | **Reservations** | Track bookings and confirmations alongside the itinerary |
-| 🤖 | **Trip agent** | Shared AI chat per trip — ask about the plan, get suggestions, apply changes with approval |
-| 👥 | **Collaboration** | Invite links, member roles, stop voting, threaded comments |
-| 📱 | **Desktop + PWA** | Full desktop planner and a mobile-first PWA (installable; WeChat mini-program shell available) |
-| 🌐 | **i18n** | English and 中文, switchable at any time |
+| Capability | What you get |
+| --- | --- |
+| **Map itinerary** | Numbered stop markers, per-day routes, place search, stop detail with votes & comments |
+| **Schedule board** | Day columns, inline stop cards, transit segments, weather hints |
+| **Budget & settle-up** | Shared expenses, per-member balances, minimal repayment graph, multi-currency display |
+| **Reservations** | Track bookings and confirmations alongside the itinerary |
+| **Trip agent** | Shared AI chat per trip — ask about the plan, get suggestions, apply changes with approval |
+| **Collaboration** | Invite links, member roles, stop voting, threaded comments |
+| **Desktop + PWA** | Full desktop planner and a mobile-first PWA (installable; WeChat mini-program shell available) |
+| **i18n** | English and 中文, switchable at any time |
 
 ---
 

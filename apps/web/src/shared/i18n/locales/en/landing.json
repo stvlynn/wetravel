@@ -4,9 +4,7 @@
     "getStarted": "Start planning"
   },
   "hero": {
-    "badge": "Collaborative trip planner",
-    "titleLead": "Plan trips together,",
-    "titleHighlight": "split everything.",
+    "title": "Plan trips together, split everything.",
     "subtitle": "Map the route, own each day, share the costs, and keep a trip-aware AI in the loop — all in one place.",
     "primary": "Start planning",
     "secondary": "See the planner",
@@ -21,31 +19,26 @@
   },
   "features": {
     "map": {
-      "kicker": "Map itinerary",
       "title": "See the whole route",
       "body": "Numbered stops on a live map, filtered by day, with weather and one-tap place search.",
       "imageAlt": "Map itinerary with numbered stops and per-day routes"
     },
     "schedule": {
-      "kicker": "Schedule board",
       "title": "Own every day",
       "body": "A column per day keeps timing, transit segments, and stays readable at a glance.",
       "imageAlt": "Day-by-day schedule board with stop cards"
     },
     "budget": {
-      "kicker": "Budget & settle-up",
       "title": "Settle up, fairly",
       "body": "Log who paid what; OpenTrip balances it and finds the fewest transfers to settle — in any currency.",
       "imageAlt": "Shared expenses with per-member balances and settle-up transfers"
     },
     "agent": {
-      "kicker": "Trip agent",
       "title": "Ask the trip agent",
       "body": "A shared assistant answers questions and applies changes only after someone approves.",
       "imageAlt": "Trip agent chat suggesting itinerary changes"
     },
     "collaborate": {
-      "kicker": "Collaboration",
       "title": "Decide as a crew",
       "body": "Votes, comments, and invite links live on every stop, so the whole group stays in sync.",
       "imageAlt": "Stop detail with votes, comments, and costs"

@@ -16,14 +16,9 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
         <BrowserFrame src={feature.image} alt={t(`${base}.imageAlt`)} />
       </div>
       <div className={cn("max-w-md", reverse ? "md:order-1" : "md:justify-self-end")}>
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-brand-muted text-brand">
-            <Icon className="size-5" strokeWidth={1.75} />
-          </span>
-          <span className="text-sm font-medium text-muted-foreground">
-            {t(`${base}.kicker`)}
-          </span>
-        </div>
+        <span className="inline-flex size-9 items-center justify-center rounded-xl bg-brand-muted text-brand">
+          <Icon className="size-5" strokeWidth={1.75} />
+        </span>
         <h2 className="mt-4 text-2xl font-semibold tracking-[-0.01em] text-balance sm:text-3xl">
           {t(`${base}.title`)}
         </h2>
@@ -36,7 +31,6 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
 }
 
 export function FeatureShowcase() {
-  const { t } = useTranslation("landing");
   return (
     <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-5">
       <div className="mt-12 flex flex-col gap-20 sm:gap-28">
