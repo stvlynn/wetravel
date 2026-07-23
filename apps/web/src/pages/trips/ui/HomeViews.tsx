@@ -14,6 +14,7 @@ import { cn } from "@/shared/lib";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Spinner } from "@/shared/ui/spinner";
+import { Tabs } from "@/shared/ui/tabs";
 import type { LocalJournalEntry } from "../model/local-journal";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { TripCard } from "./TripCard";
@@ -46,6 +47,7 @@ export function TodayView({
   onOpenTrip,
   onCreateTrip,
   onRecord,
+  onOpenEntry,
   userId,
 }: TripsDataProps & JournalDataProps & { userId?: string }) {
   const { t } = useTranslation("trips");
@@ -198,6 +200,7 @@ export function TodayView({
                 entry={entry}
                 trip={trips.find((trip) => trip.id === entry.tripId)}
                 locale={locale}
+                onOpen={onOpenEntry ? () => onOpenEntry(entry.id) : undefined}
               />
             ))}
           </div>
@@ -242,28 +245,15 @@ export function TripsCollection({
       />
 
       {!isPending && !isError && trips.length > 0 ? (
-        <div
-          className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1"
-          role="group"
+        <Tabs
           aria-label={t("filters.label")}
-        >
-          {filters.map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-              className={cn(
-                "wf-interactive wf-pressable h-9 flex-none rounded-full px-3.5 text-sm font-medium",
-                filter === value
-                  ? "bg-foreground text-background"
-                  : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {t(`filters.${value}`)}
-            </button>
-          ))}
-        </div>
+          value={filter}
+          onValueChange={(value) => setFilter(value as TripFilter)}
+          items={filters.map((value) => ({
+            value,
+            label: t(`filters.${value}`),
+          }))}
+        />
       ) : null}
 
       {isPending ? (
@@ -320,29 +310,22 @@ export function JournalCollection({
       />
 
       {entries.length ? (
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="group" aria-label={t("journal.filters.label")}>
-          {(["all", "published", "draft"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-              className={cn(
-                "wf-interactive wf-pressable h-9 flex-none rounded-full px-3.5 text-sm font-medium",
-                filter === value
-                  ? "bg-foreground text-background"
-                  : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {t(`journal.filters.${value}`, {
-                count:
-                  value === "all"
-                    ? entries.length
-                    : entries.filter((entry) => entry.status === value).length,
-              })}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          aria-label={t("journal.filters.label")}
+          value={filter}
+          onValueChange={(value) =>
+            setFilter(value as "all" | "published" | "draft")
+          }
+          items={(["all", "published", "draft"] as const).map((value) => ({
+            value,
+            label: t(`journal.filters.${value}`, {
+              count:
+                value === "all"
+                  ? entries.length
+                  : entries.filter((entry) => entry.status === value).length,
+            }),
+          }))}
+        />
       ) : null}
 
       {entries.length === 0 ? (

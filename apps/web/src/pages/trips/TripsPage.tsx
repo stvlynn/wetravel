@@ -174,6 +174,7 @@ export function TripsPage() {
             onOpenTrip={openTrip}
             onCreateTrip={() => setWizardOpen(true)}
             onRecord={() => setComposerOpen(true)}
+            onOpenEntry={(entryId) => navigate(`/journal/${entryId}`)}
           />
         ) : surface === "journal" ? (
           <JournalCollection

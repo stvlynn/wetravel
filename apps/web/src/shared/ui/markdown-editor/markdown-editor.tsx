@@ -138,7 +138,7 @@ function MarkdownEditorInner({
                 const { from } = view.state.selection;
                 view.dispatch(
                   view.state.tr
-                    .insertText(`🗺️ [!map] ${mapBlockLabel}`, from)
+                    .insertText(`[!map] ${mapBlockLabel}`, from)
                     .scrollIntoView(),
                 );
                 view.focus();

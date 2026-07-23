@@ -3,6 +3,7 @@ import {
   BookOpenTextIcon,
   CalendarDaysIcon,
   MapIcon,
+  MapPinIcon,
   PenLineIcon,
 } from "lucide-react";
 import type { TripSummary } from "@/entities/trip";
@@ -16,25 +17,6 @@ const NAV_ITEMS = [
   { id: "today", href: "/today", icon: CalendarDaysIcon },
   { id: "journal", href: "/journal", icon: BookOpenTextIcon },
 ] as const;
-
-const COUNTRY_FLAGS: ReadonlyArray<[RegExp, string]> = [
-  [/(日本|japan|东京|tokyo|京都|kyoto|大阪|osaka)/i, "🇯🇵"],
-  [/(越南|vietnam|胡志明|hanoi|saigon)/i, "🇻🇳"],
-  [/(中国|china|北京|上海|深圳|广州)/i, "🇨🇳"],
-  [/(韩国|korea|首尔|seoul)/i, "🇰🇷"],
-  [/(泰国|thailand|曼谷|bangkok)/i, "🇹🇭"],
-  [/(新加坡|singapore)/i, "🇸🇬"],
-  [/(法国|france|巴黎|paris)/i, "🇫🇷"],
-  [/(意大利|italy|罗马|rome)/i, "🇮🇹"],
-  [/(英国|united kingdom|london|伦敦)/i, "🇬🇧"],
-  [/(美国|united states|usa|new york|纽约)/i, "🇺🇸"],
-];
-
-function flagForTrip(trip: TripSummary): string {
-  return (
-    COUNTRY_FLAGS.find(([pattern]) => pattern.test(trip.title))?.[1] ?? "🗺️"
-  );
-}
 
 interface HomeNavigationProps {
   surface: HomeSurface;
@@ -109,9 +91,10 @@ export function HomeSidebar({
                 onClick={() => onNavigate(`/trips/${trip.id}`)}
                 className="wf-interactive wf-pressable flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                <span className="w-5 flex-none text-base leading-none" aria-hidden="true">
-                  {flagForTrip(trip)}
-                </span>
+                <MapPinIcon
+                  className="size-4 flex-none text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <span className="truncate">{trip.title}</span>
               </button>
             ))}

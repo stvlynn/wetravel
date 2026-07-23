@@ -29,6 +29,13 @@ import {
 import { Field, FieldLabel } from "@/shared/ui/field";
 import { Input } from "@/shared/ui/input";
 import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+import {
   MarkdownEditor,
   NoteImageUploadError,
   type MarkdownEditorApi,
@@ -193,8 +200,14 @@ export function JournalComposerDialog({
                   </DialogDescription>
                 </div>
                 <DialogClose
-                  aria-label={tc("actions.close")}
-                  className="wf-interactive wf-pressable -mr-2 flex size-10 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="-mr-2 flex-none"
+                      aria-label={tc("actions.close")}
+                    />
+                  }
                 >
                   <XIcon className="size-5" aria-hidden="true" />
                 </DialogClose>
@@ -279,20 +292,21 @@ export function JournalComposerDialog({
                           <span className="min-w-0 flex-1 truncate text-sm">
                             {attachment.name}
                           </span>
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 flex-none"
                             onClick={() =>
                               setAttachments((current) =>
                                 current.filter((item) => item.id !== attachment.id),
                               )
                             }
-                            className="wf-interactive wf-pressable flex size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
                             aria-label={t("journal.composer.removeAttachment", {
                               name: attachment.name,
                             })}
                           >
                             <Trash2Icon className="size-4" aria-hidden="true" />
-                          </button>
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -304,22 +318,35 @@ export function JournalComposerDialog({
                     <FieldLabel htmlFor="journal-trip" className="text-xs text-muted-foreground">
                       {t("journal.composer.tripLabel")}
                     </FieldLabel>
-                    <select
-                      id="journal-trip"
-                      name="tripId"
+                    <Select
                       value={tripId}
-                      onChange={(event) => {
-                        const nextTripId = event.target.value;
+                      onValueChange={(value) => {
+                        const nextTripId = value ? String(value) : "";
                         setTripId(nextTripId);
                         if (!nextTripId) setVisibility("private");
                       }}
-                      className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground outline-none transition-[border-color,background-color] hover:border-ring/50 focus:border-ring md:text-sm"
                     >
-                      <option value="">{t("journal.composer.noTrip")}</option>
-                      {trips.map((trip) => (
-                        <option key={trip.id} value={trip.id}>{trip.title}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="journal-trip" className="h-11">
+                        <SelectValue>
+                          {(selected: string | null) =>
+                            selected
+                              ? (trips.find((trip) => trip.id === selected)
+                                  ?.title ?? t("journal.composer.noTrip"))
+                              : t("journal.composer.noTrip")
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup>
+                        <SelectItem value="">
+                          {t("journal.composer.noTrip")}
+                        </SelectItem>
+                        {trips.map((trip) => (
+                          <SelectItem key={trip.id} value={trip.id}>
+                            {trip.title}
+                          </SelectItem>
+                        ))}
+                      </SelectPopup>
+                    </Select>
                   </Field>
 
                   <fieldset className="flex min-w-0 flex-col gap-2">

@@ -15,9 +15,10 @@ what to keep, and splitting shared expenses fairly.
    - **Budget** — record expenses, see per-member balances, and get the
      minimal set of transfers that settles the trip.
 3. **Collaborate** — vote for stops, comment on them, and invite members.
-4. **Write travelogues** — capture a moment on mobile, organize entries by
-   journey and year, then read, edit, or revisit them in an editorial article
-   view. The current frontend preview supports draft/published workflow and a
+4. **Write travelogues** — capture a moment on mobile, group entries by their
+   linked journey (or leave them unlinked), then read, edit, or revisit them in
+   an editorial article view with draft and published filters. The current
+   frontend preview supports draft/published workflow and a
    mobile-friendly WYSIWYG Markdown editor. The editor supports H1–H5 and a
    `/map` travel block that renders the linked trip as a compact map widget.
    Images and supported attachments use trip media storage when an entry is linked to a trip; article content,
