@@ -4,60 +4,60 @@
     "getStarted": "Start planning"
   },
   "hero": {
-    "title": "Plan trips together, split everything.",
-    "subtitle": "Map the route, own each day, share the costs, and keep a trip-aware AI in the loop — all in one place.",
+    "title": "Every great trip starts as a group chat.",
+    "subtitle": "OpenTrip turns the chaos into one shared plan: the route, the days, the money — and an AI co-planner that knows every stop.",
     "primary": "Start planning",
-    "secondary": "See the planner",
-    "trust": "Free to start · Japan · Autumn demo included",
-    "imageAlt": "OpenTrip desktop map of the Japan · Autumn trip"
+    "secondary": "See how it works",
+    "trust": "Free to start · Includes a 5-day Japan demo trip",
+    "imageAlt": "OpenTrip desktop map of the five-day Japan demo trip"
   },
   "facts": {
-    "label": "Seed trip",
+    "label": "The demo trip",
     "days": "5 days",
     "stops": "25 stops",
     "route": "Tokyo → Kyoto → Osaka"
   },
   "features": {
     "map": {
-      "title": "See the whole route",
-      "body": "Numbered stops on a live map, filtered by day, with weather and one-tap place search.",
-      "imageAlt": "Map itinerary with numbered stops and per-day routes"
+      "title": "The whole trip, on one map.",
+      "body": "Every stop, pinned and numbered. Filter by day, check the forecast, and find that café everyone's been talking about — without leaving the map.",
+      "imageAlt": "Itinerary map with numbered stops and per-day routes"
     },
     "schedule": {
-      "title": "Own every day",
-      "body": "A column per day keeps timing, transit segments, and stays readable at a glance.",
-      "imageAlt": "Day-by-day schedule board with stop cards"
+      "title": "Every day, at a glance.",
+      "body": "One column per day — what time, which train, where you're staying. The plan practically reads itself.",
+      "imageAlt": "Day-by-day schedule with stop cards"
     },
     "budget": {
-      "title": "Settle up, fairly",
-      "body": "Log who paid what; OpenTrip balances it and finds the fewest transfers to settle — in any currency.",
-      "imageAlt": "Shared expenses with per-member balances and settle-up transfers"
+      "title": "No more awkward math.",
+      "body": "Log expenses as they happen. OpenTrip keeps the balance and works out the fewest transfers to settle up — in any currency.",
+      "imageAlt": "Shared expenses with balances and settle-up transfers"
     },
     "agent": {
-      "title": "Ask the trip agent",
-      "body": "A shared assistant answers questions and applies changes only after someone approves.",
+      "title": "An AI that knows your trip.",
+      "body": "“Can we swap day two and three?” Just ask — it proposes the change, and nothing is final until someone on the crew approves.",
       "imageAlt": "Trip agent chat suggesting itinerary changes"
     },
     "collaborate": {
-      "title": "Decide as a crew",
-      "body": "Votes, comments, and invite links live on every stop, so the whole group stays in sync.",
+      "title": "Everyone gets a say.",
+      "body": "Vote on stops, leave comments, share one invite link. The plan stays in sync, so no one has to dig through the group chat.",
       "imageAlt": "Stop detail with votes, comments, and costs"
     }
   },
   "mobile": {
-    "title": "Take it anywhere",
-    "body": "An installable PWA and a WeChat shell put the same trip in everyone's pocket.",
+    "title": "The trip goes where you go.",
+    "body": "Install it as an app, or open it in WeChat — same plan, live in everyone's pocket.",
     "mapAlt": "OpenTrip mobile map",
     "scheduleAlt": "OpenTrip mobile schedule",
     "agentAlt": "OpenTrip mobile trip agent"
   },
   "cta": {
     "title": "Your crew is ready when you are.",
-    "subtitle": "Create an account and the seed trip opens right away.",
+    "subtitle": "Sign up and the demo trip is waiting — five days across Japan, already planned.",
     "button": "Start planning"
   },
   "footer": {
-    "tagline": "Made for people who travel with friends.",
+    "tagline": "Made for people who travel together.",
     "license": "Open source · Apache 2.0"
   }
 }

@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
                 manifest: {
                     name: "OpenTrip",
                     short_name: "OpenTrip",
-                    description: "Plan trips together, wherever you are.",
+                    description: "One shared plan for the whole crew — routes, days, budgets, and an AI co-planner.",
                     // Matches the app background (--ink-50 / --ink-950 tokens)
                     // so the install splash and title bar blend into the UI.
                     theme_color: "#fafbfd",
