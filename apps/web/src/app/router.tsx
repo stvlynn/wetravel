@@ -95,11 +95,26 @@ export function matchInviteToken(path: string): string | null {
   return m ? decodeURIComponent(m[1]!) : null;
 }
 
+/** Extracts a travelogue entry id from `/journal/:entryId`, else null. */
+export function matchJournalEntryId(path: string): string | null {
+  const m = /^\/journal\/([^/]+)$/.exec(path);
+  return m ? decodeURIComponent(m[1]!) : null;
+}
+
+/** The authenticated home hub surfaces, all owned by `pages/trips`. */
+const HUB_PATHS: ReadonlySet<string> = new Set(["/", "/today", "/journal"]);
+
 /** Whether a path maps to a real route. Unknown paths render the 404 surface
  *  instead of silently falling back to the trips home. */
 export function isKnownPath(path: string): boolean {
-  if (path === "/" || path === "/signin" || path === "/miniapp") return true;
-  return matchTripId(path) !== null || matchInviteToken(path) !== null;
+  if (HUB_PATHS.has(path) || path === "/signin" || path === "/miniapp") {
+    return true;
+  }
+  return (
+    matchTripId(path) !== null ||
+    matchInviteToken(path) !== null ||
+    matchJournalEntryId(path) !== null
+  );
 }
 
 /**
@@ -120,13 +135,21 @@ function navigateNativeStack(to: string, title?: string): boolean {
     bridge.navigateTo({ url: nativePageUrl("/pages/invite/invite", to, title) });
     return true;
   }
-  if (to === "/") {
-    // "Back to trips" must work from any stack shape (including share-card
-    // entries where the trip page is the stack bottom), so reset the stack
-    // instead of popping it.
+  if (HUB_PATHS.has(to)) {
+    // Trips / Today / Travelogues are sibling surfaces of the same home page.
+    // Switching between them (or from a travelogue reader) stays in the current
+    // WebView via SPA history so the native stack is not reset on every tab
+    // change. Returning to the hub from a deeper native page (e.g. a trip)
+    // resets the stack instead of popping it, so "back to trips" works from any
+    // stack shape (including share-card entries where the trip page is the
+    // stack bottom).
+    const current = window.location.pathname;
+    if (HUB_PATHS.has(current) || matchJournalEntryId(current)) return false;
     bridge.reLaunch({ url: nativePageUrl("/pages/home/home", to) });
     return true;
   }
+  // `/journal/:entryId` has no dedicated native page; read it in place through
+  // SPA history within the home WebView.
   return false;
 }
 

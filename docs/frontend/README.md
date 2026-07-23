@@ -39,6 +39,25 @@ paths (`isKnownPath` in `app/router.tsx`), and `app/AppErrorBoundary.tsx`
 catches render-time crashes and shows the `500` surface with a working
 "Try again".
 
+## Known routes
+
+`isKnownPath` (in `app/router.tsx`) is the single allow-list the gate consults
+before rendering the `404` surface, so **every new client route must be
+registered there** (with a regression test in `app/router.test.ts`). Current
+routes:
+
+- `/`, `/today`, `/journal` — the authenticated home hub surfaces owned by
+  `pages/trips` (Trips grid, Today, Travelogues). Grouped as `HUB_PATHS`.
+- `/journal/:entryId` — travelogue reader (`matchJournalEntryId`).
+- `/trips/:id` — the single-trip planner (`matchTripId`).
+- `/invite/:token` — invite accept surface (`matchInviteToken`).
+- `/signin`, `/miniapp` — auth form and the WeChat embedded entry.
+
+In the WeChat shell the hub surfaces share one native page: switching between
+`HUB_PATHS` (or leaving a travelogue reader) stays in the current WebView via
+SPA history, and only returning to the hub from a deeper native page (e.g. a
+trip) resets the native stack. See [miniapp.md](miniapp.md).
+
 ## Path aliases
 
 `@/*` maps to `apps/web/src/*` (see `apps/web/tsconfig.json` and

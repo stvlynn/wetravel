@@ -12,7 +12,7 @@ hosted by its own native page so WeChat provides real native navigation:
 
 | Native page | PWA route | Role |
 | --- | --- | --- |
-| `pages/home/home` | `/` | Stack bottom; trips list |
+| `pages/home/home` | `/`, `/today`, `/journal`, `/journal/:entryId` | Stack bottom; the authenticated home hub (Trips, Today, Travelogues) and the travelogue reader |
 | `pages/trip/trip` | `/trips/:id` | Trip planner; share-card target |
 | `pages/invite/invite` | `/invite/:token` | Invite acceptance |
 
@@ -27,7 +27,12 @@ embedded mode — no `wx.config` signature is required for this API family):
 
 - opening a trip or invite calls `wx.miniProgram.navigateTo` with the PWA path
   (and an optional `title` used to pre-label the native bar) in the query;
-- "back to trips" calls `wx.miniProgram.reLaunch` to the home page, which is
+- the home hub surfaces (`/`, `/today`, `/journal`) and the travelogue reader
+  (`/journal/:entryId`) all live in the home page's WebView: switching between
+  them navigates via SPA history in place, so the bottom hub navigation does not
+  push native pages;
+- "back to trips" (returning to any hub surface from a deeper native page such
+  as a trip) calls `wx.miniProgram.reLaunch` to the home page, which is
   stack-safe from any entry point (including share cards) and avoids the
   ten-page stack limit;
 - the native back button and iOS swipe-back pop the stack without any web
